@@ -6,14 +6,20 @@ CREATE EXTENSION IF NOT EXISTS pgcrypto;  -- gen_random_uuid()
 
 -- ---------- Players & sessions (auth simplified for the slice: token only) ----------
 CREATE TABLE players (
-    id           UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    display_name TEXT UNIQUE NOT NULL,
-    created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    email         TEXT UNIQUE NOT NULL,
+    password_hash TEXT NOT NULL,
+    display_name  TEXT UNIQUE NOT NULL,
+    totp_secret   TEXT,                         -- 2FA shared secret
+    totp_enabled  BOOLEAN NOT NULL DEFAULT FALSE,
+    onboarded     BOOLEAN NOT NULL DEFAULT FALSE, -- passed manual + quiz
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- One session row per player; token rotates on login, game state persists.
 CREATE TABLE player_sessions (
-    token        UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    player_id    UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    token        UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+    player_id    UUID PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
     current_node TEXT,
     story_time   BIGINT NOT NULL DEFAULT 0,
     log_id       UUID,

@@ -13,28 +13,42 @@ async function req(path, { method = 'GET', body, auth = true } = {}) {
     body: body ? JSON.stringify(body) : undefined,
   });
   if (res.status === 401) {
-    // Stale/invalid session (e.g. the DB was reset) — drop it so the UI can
-    // fall back to the name screen instead of getting stuck loading.
+    // Stale/invalid session — drop it so the UI can fall back to the login screen.
     localStorage.removeItem('onelife_token');
     const err = new Error('session expired');
     err.unauthorized = true;
     throw err;
   }
-  if (!res.ok) {
-    const detail = await res.json().catch(() => ({}));
-    throw new Error(detail.detail || `HTTP ${res.status}`);
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 403) {
+    const err = new Error(data.detail || 'forbidden');
+    err.forbidden = true;
+    throw err;
   }
-  return res.json();
+  if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
+  return data;
 }
 
 export const api = {
   hasToken: () => !!token(),
-  async register(display_name) {
-    const r = await req('/api/auth/register', { method: 'POST', body: { display_name }, auth: false });
+  logout() { localStorage.removeItem('onelife_token'); },
+
+  // auth
+  register: (email, password, display_name) =>
+    req('/api/auth/register', { method: 'POST', auth: false, body: { email, password, display_name } }),
+  enableTotp: (email, password, code) =>
+    req('/api/auth/totp/enable', { method: 'POST', auth: false, body: { email, password, code } }),
+  async login(email, password, code) {
+    const r = await req('/api/auth/login', { method: 'POST', auth: false, body: { email, password, code } });
     localStorage.setItem('onelife_token', r.token);
     return r;
   },
-  logout() { localStorage.removeItem('onelife_token'); },
+
+  // onboarding
+  onboarding: () => req('/api/onboarding'),
+  submitOnboarding: (answers) => req('/api/onboarding/submit', { method: 'POST', body: { answers } }),
+
+  // game
   state: () => req('/api/state'),
   log: () => req('/api/log'),
   leaderboard: () => req('/api/leaderboard'),

@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content
+from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding
 from .dsl import evaluate
 
 app = FastAPI(title="OneLife API")
@@ -62,7 +62,7 @@ async def _session(authorization: str | None):
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """SELECT s.token, s.player_id, s.current_node, s.story_time, s.log_id,
-                      p.display_name
+                      p.display_name, p.onboarded
                FROM player_sessions s JOIN players p ON p.id = s.player_id
                WHERE s.token=$1""", token)
     if row is None:
@@ -70,9 +70,49 @@ async def _session(authorization: str | None):
     return dict(row)
 
 
+def _require_onboarded(sess: dict):
+    if not sess.get("onboarded"):
+        raise HTTPException(403, "onboarding required")
+
+
+async def _start_game(conn, sess: dict):
+    """Idempotently begin a player's game: create the log and place them at the
+    entry node. No-op if they already have a game in progress."""
+    if sess.get("log_id"):
+        return
+    pid = sess["player_id"]
+    log_id = await conn.fetchval(
+        "INSERT INTO game_logs (player_id) VALUES ($1) RETURNING id", pid)
+    entry = await conn.fetchrow("SELECT id FROM story_nodes WHERE is_entry LIMIT 1")
+    await conn.execute(
+        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary)
+           VALUES ($1,0,0,$2,'You woke at Killebäckskolan.')""", log_id, entry["id"])
+    await conn.execute(
+        "UPDATE player_sessions SET current_node=$1, log_id=$2 WHERE player_id=$3",
+        entry["id"], log_id, pid)
+    sess["current_node"] = entry["id"]
+    sess["log_id"] = log_id
+    await engine.discover_clues(conn, pid, log_id, 0, 0)
+
+
 # --------------------------------------------------------------------------- #
 class RegisterBody(BaseModel):
+    email: str
+    password: str
     display_name: str
+
+class TotpBody(BaseModel):
+    email: str
+    password: str
+    code: str
+
+class LoginBody(BaseModel):
+    email: str
+    password: str
+    code: str = ""
+
+class OnboardingBody(BaseModel):
+    answers: dict[str, int]
 
 class EdgeBody(BaseModel):
     edge_id: str
@@ -92,40 +132,99 @@ async def health():
     return {"ok": True, "using_real_llm": llm.USING_REAL_LLM}
 
 
+# ---------- Auth ----------
 @app.post("/api/auth/register")
 async def register(body: RegisterBody):
+    email = body.email.strip().lower()
     name = body.display_name.strip()
+    if "@" not in email:
+        raise HTTPException(400, "valid email required")
+    if len(body.password) < 8:
+        raise HTTPException(400, "password must be at least 8 characters")
     if not name:
         raise HTTPException(400, "display_name required")
+    secret = auth.new_totp_secret()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            exists = await conn.fetchval(
-                "SELECT 1 FROM players WHERE display_name=$1", name)
-            if exists:
-                raise HTTPException(409, "name taken")
-            player_id = await conn.fetchval(
-                "INSERT INTO players (display_name) VALUES ($1) RETURNING id", name)
-            log_id = await conn.fetchval(
-                "INSERT INTO game_logs (player_id) VALUES ($1) RETURNING id", player_id)
-            entry = await conn.fetchrow(
-                "SELECT id FROM story_nodes WHERE is_entry LIMIT 1")
-            token = await conn.fetchval(
-                """INSERT INTO player_sessions (player_id, current_node, log_id)
-                   VALUES ($1,$2,$3) RETURNING token""",
-                player_id, entry["id"], log_id)
-            # Seq 0: the player wakes at the entry node.
+            if await conn.fetchval("SELECT 1 FROM players WHERE email=$1", email):
+                raise HTTPException(409, "email already registered")
+            if await conn.fetchval("SELECT 1 FROM players WHERE display_name=$1", name):
+                raise HTTPException(409, "display name taken")
             await conn.execute(
-                """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary)
-                   VALUES ($1,0,0,$2,'You woke at Killebäckskolan.')""",
-                log_id, entry["id"])
-            await engine.discover_clues(conn, player_id, log_id, 0, 0)
-    return {"token": str(token), "display_name": name}
+                """INSERT INTO players (email, password_hash, display_name, totp_secret)
+                   VALUES ($1,$2,$3,$4)""",
+                email, auth.hash_password(body.password), name, secret)
+    uri = auth.totp_uri(secret, email)
+    # Account exists but 2FA must be set up before login; hand back the QR.
+    return {"otpauth_uri": uri, "secret": secret, "qr_svg": auth.qr_svg(uri)}
+
+
+@app.post("/api/auth/totp/enable")
+async def totp_enable(body: TotpBody):
+    email = body.email.strip().lower()
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        p = await conn.fetchrow(
+            "SELECT id, password_hash, totp_secret FROM players WHERE email=$1", email)
+        if p is None or not auth.verify_password(body.password, p["password_hash"]):
+            raise HTTPException(401, "invalid email or password")
+        if not auth.verify_totp(p["totp_secret"], body.code):
+            raise HTTPException(400, "invalid authenticator code")
+        await conn.execute("UPDATE players SET totp_enabled=TRUE WHERE id=$1", p["id"])
+    return {"ok": True}
+
+
+@app.post("/api/auth/login")
+async def login(body: LoginBody):
+    email = body.email.strip().lower()
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        p = await conn.fetchrow(
+            """SELECT id, password_hash, totp_secret, totp_enabled, onboarded
+               FROM players WHERE email=$1""", email)
+        if p is None or not auth.verify_password(body.password, p["password_hash"]):
+            raise HTTPException(401, "invalid email or password")
+        if not p["totp_enabled"]:
+            raise HTTPException(403, "two-factor setup not complete")
+        if not auth.verify_totp(p["totp_secret"], body.code):
+            raise HTTPException(401, "invalid authenticator code")
+        # One session per player: rotate the token, preserve game state.
+        token = await conn.fetchval(
+            """INSERT INTO player_sessions (player_id) VALUES ($1)
+               ON CONFLICT (player_id)
+               DO UPDATE SET token=gen_random_uuid(), created_at=now()
+               RETURNING token""", p["id"])
+    return {"token": str(token), "onboarded": p["onboarded"]}
+
+
+# ---------- Onboarding (forced manual + quiz) ----------
+@app.get("/api/onboarding")
+async def get_onboarding(authorization: str | None = Header(default=None)):
+    await _session(authorization)
+    return {"manual": onboarding.MANUAL, "questions": onboarding.public_questions()}
+
+
+@app.post("/api/onboarding/submit")
+async def submit_onboarding(body: OnboardingBody,
+                            authorization: str | None = Header(default=None)):
+    sess = await _session(authorization)
+    passed, score, total = onboarding.grade(body.answers)
+    if passed:
+        pool = await db.get_pool()
+        async with pool.acquire() as conn:
+            async with conn.transaction():
+                await conn.execute(
+                    "UPDATE players SET onboarded=TRUE WHERE id=$1", sess["player_id"])
+                sess["onboarded"] = True
+                await _start_game(conn, sess)
+    return {"passed": passed, "score": score, "total": total}
 
 
 @app.get("/api/state")
 async def state(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         return await engine.render_state(conn, sess["player_id"], sess)
@@ -134,6 +233,7 @@ async def state(authorization: str | None = Header(default=None)):
 @app.post("/api/edge")
 async def take_edge(body: EdgeBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -159,6 +259,7 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
 @app.post("/api/gate/message")
 async def gate_message(body: GateBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -170,6 +271,7 @@ async def gate_message(body: GateBody, authorization: str | None = Header(defaul
 @app.post("/api/puzzle/submit")
 async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -181,6 +283,7 @@ async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(def
 @app.post("/api/rollback")
 async def do_rollback(body: RollbackBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -194,6 +297,7 @@ async def do_rollback(body: RollbackBody, authorization: str | None = Header(def
 @app.get("/api/log")
 async def get_log(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
+    _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(

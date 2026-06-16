@@ -2,107 +2,214 @@
   import { onMount } from 'svelte';
   import { api } from './lib/api.js';
 
-  let registered = $state(api.hasToken());
-  let name = $state('');
+  let phase = $state('loading');        // loading | auth | twofa | onboarding | game
+  let authMode = $state('login');       // login | register
+  let busy = $state(false);
+  let error = $state('');
+  let notice = $state('');
+
+  // auth form
+  let email = $state('');
+  let password = $state('');
+  let displayName = $state('');
+  let code = $state('');
+
+  // 2fa setup
+  let qrSvg = $state('');
+  let secret = $state('');
+
+  // onboarding
+  let manual = $state('');
+  let questions = $state([]);
+  let answers = $state({});
+  let quizMsg = $state('');
+
+  // game
   let game = $state(null);
   let logEntries = $state([]);
   let board = $state([]);
   let gateInput = $state('');
   let puzzleInput = $state('');
-  let error = $state('');
-  let busy = $state(false);
   let showBoard = $state(false);
   let actions = 0;
 
-  onMount(() => { if (registered) refresh(); });
+  onMount(async () => {
+    if (!api.hasToken()) { phase = 'auth'; return; }
+    try {
+      await loadGame();
+    } catch (e) {
+      if (e.unauthorized) phase = 'auth';
+      else if (e.forbidden) await loadOnboarding();
+      else { error = e.message; phase = 'auth'; }
+    }
+  });
+
+  // ---------- auth ----------
+  async function doRegister() {
+    error = ''; busy = true;
+    try {
+      const r = await api.register(email.trim(), password, displayName.trim());
+      qrSvg = r.qr_svg; secret = r.secret;
+      phase = 'twofa';
+      notice = 'Scan the QR with an authenticator app, then enter a code to finish setup.';
+    } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+
+  async function doEnable() {
+    error = ''; busy = true;
+    try {
+      await api.enableTotp(email.trim(), password, code.trim());
+      // Try to log straight in with the same code (still valid in its window).
+      try {
+        const r = await api.login(email.trim(), password, code.trim());
+        code = '';
+        if (r.onboarded) await loadGame(); else await loadOnboarding();
+      } catch {
+        notice = '2FA enabled. Please log in.'; authMode = 'login'; phase = 'auth'; code = '';
+      }
+    } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+
+  async function doLogin() {
+    error = ''; busy = true;
+    try {
+      const r = await api.login(email.trim(), password, code.trim());
+      code = '';
+      if (r.onboarded) await loadGame(); else await loadOnboarding();
+    } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+
+  function logout() {
+    api.logout(); game = null; phase = 'auth'; authMode = 'login';
+    email = ''; password = ''; code = ''; notice = '';
+  }
+
+  // ---------- onboarding ----------
+  async function loadOnboarding() {
+    const r = await api.onboarding();
+    manual = r.manual; questions = r.questions; answers = {}; quizMsg = '';
+    phase = 'onboarding';
+  }
+
+  function pick(qid, i) { answers = { ...answers, [qid]: i }; }
+
+  async function submitQuiz() {
+    error = ''; busy = true;
+    try {
+      const r = await api.submitOnboarding(answers);
+      if (r.passed) await loadGame();
+      else quizMsg = `You got ${r.score}/${r.total}. Read the manual again and retry.`;
+    } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+
+  // ---------- game ----------
+  async function loadGame() {
+    game = await api.state();
+    logEntries = (await api.log()).entries;
+    board = (await api.leaderboard()).rows;
+    error = ''; phase = 'game';
+  }
 
   async function refresh() {
     try {
       game = await api.state();
       logEntries = (await api.log()).entries;
       board = (await api.leaderboard()).rows;
-      error = '';
     } catch (e) {
-      if (e.unauthorized) {
-        // Token no longer valid — return to the name screen.
-        registered = false;
-        game = null;
-        error = '';
-      } else {
-        error = e.message;
-      }
+      if (e.unauthorized) logout(); else error = e.message;
     }
   }
 
-  async function doRegister() {
-    if (!name.trim()) return;
-    busy = true;
-    try { await api.register(name.trim()); registered = true; await refresh(); }
-    catch (e) { error = e.message; }
-    finally { busy = false; }
-  }
-
-  function tick() {
-    actions += 1;
-    if (actions % 5 === 0) showBoard = true;   // periodic leaderboard focus (design §7)
-  }
+  function tick() { actions += 1; if (actions % 5 === 0) showBoard = true; }
 
   async function onEdge(id) {
     busy = true;
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; tick(); }
-    catch (e) { error = e.message; }
-    finally { busy = false; }
+    catch (e) { error = e.message; } finally { busy = false; }
   }
-
   async function onGate() {
-    if (!gateInput.trim()) return;
-    busy = true;
-    try {
-      const r = await api.gate(gateInput.trim());
-      gateInput = '';
-      game = r.state;
-      logEntries = (await api.log()).entries;
-      tick();
-    } catch (e) { error = e.message; }
-    finally { busy = false; }
+    if (!gateInput.trim()) return; busy = true;
+    try { const r = await api.gate(gateInput.trim()); gateInput = ''; game = r.state; logEntries = (await api.log()).entries; tick(); }
+    catch (e) { error = e.message; } finally { busy = false; }
   }
-
   async function onPuzzle() {
-    if (!puzzleInput.trim()) return;
-    busy = true;
+    if (!puzzleInput.trim()) return; busy = true;
     try {
       const r = await api.puzzle(puzzleInput.trim());
-      game = r.state;
-      logEntries = (await api.log()).entries;
-      if (!r.result.solved && r.result.hint) error = `Hint: ${r.result.hint}`;
-      else error = '';
-      puzzleInput = '';
-      tick();
-    } catch (e) { error = e.message; }
-    finally { busy = false; }
+      game = r.state; logEntries = (await api.log()).entries;
+      error = (!r.result.solved && r.result.hint) ? `Hint: ${r.result.hint}` : '';
+      puzzleInput = ''; tick();
+    } catch (e) { error = e.message; } finally { busy = false; }
   }
-
   async function onRollback(seq) {
     if (!confirm(`Roll the log back to step ${seq}? You will lose all progress after it.`)) return;
     busy = true;
     try { game = await api.rollback(seq); logEntries = (await api.log()).entries; board = (await api.leaderboard()).rows; }
-    catch (e) { error = e.message; }
-    finally { busy = false; }
+    catch (e) { error = e.message; } finally { busy = false; }
   }
 </script>
 
 <main>
   <h1>OneLife <span class="sub">— prototype slice</span></h1>
-
   {#if error}<div class="error">{error}</div>{/if}
+  {#if notice}<div class="notice">{notice}</div>{/if}
 
-  {#if !registered}
-    <div class="panel">
-      <p>Enter a name to begin. (Auth is stubbed for the slice — no password yet.)</p>
-      <input bind:value={name} placeholder="Your name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
-      <button onclick={doRegister} disabled={busy}>Begin</button>
+  {#if phase === 'loading'}
+    <p>Loading…</p>
+
+  {:else if phase === 'auth'}
+    <div class="panel narrow">
+      <div class="tabs">
+        <button class:active={authMode==='login'} onclick={() => { authMode='login'; error=''; }}>Log in</button>
+        <button class:active={authMode==='register'} onclick={() => { authMode='register'; error=''; }}>Register</button>
+      </div>
+      <input type="email" bind:value={email} placeholder="Email" />
+      <input type="password" bind:value={password} placeholder="Password (min 8 chars)" />
+      {#if authMode==='register'}
+        <input bind:value={displayName} placeholder="Display name" />
+        <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
+      {:else}
+        <input bind:value={code} placeholder="6-digit authenticator code" inputmode="numeric" />
+        <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
+      {/if}
     </div>
-  {:else if game}
+
+  {:else if phase === 'twofa'}
+    <div class="panel narrow">
+      <h2>Set up two-factor auth</h2>
+      <p>Scan this with Google Authenticator, Authy, 1Password, etc. — then enter a code to confirm.</p>
+      <div class="qr">{@html qrSvg}</div>
+      <p class="sub">Can't scan? Secret: <code>{secret}</code></p>
+      <input bind:value={code} placeholder="6-digit code" inputmode="numeric" />
+      <button class="primary" onclick={doEnable} disabled={busy}>Enable 2FA &amp; continue</button>
+    </div>
+
+  {:else if phase === 'onboarding'}
+    <div class="panel">
+      <h2>Before you begin</h2>
+      <pre class="manual">{manual}</pre>
+      <h3>Quick check</h3>
+      {#each questions as q}
+        <div class="quiz-q">
+          <p class="q">{q.prompt}</p>
+          {#each q.options as opt, i}
+            <label class="opt">
+              <input type="radio" name={q.id} checked={answers[q.id]===i} onchange={() => pick(q.id, i)} />
+              {opt}
+            </label>
+          {/each}
+        </div>
+      {/each}
+      {#if quizMsg}<div class="error">{quizMsg}</div>{/if}
+      <button class="primary" onclick={submitQuiz} disabled={busy}>Begin</button>
+    </div>
+
+  {:else if phase === 'game' && game}
+    <div class="topbar"><button class="link" onclick={logout}>log out</button></div>
     <div class="layout">
       <section class="story">
         <h2>{game.node.title}</h2>
@@ -142,10 +249,7 @@
         </div>
 
         {#if game.notes.length}
-          <div class="notes">
-            <h3>Notes</h3>
-            <ul>{#each game.notes as n}<li>{n}</li>{/each}</ul>
-          </div>
+          <div class="notes"><h3>Notes</h3><ul>{#each game.notes as n}<li>{n}</li>{/each}</ul></div>
         {/if}
       </section>
 
@@ -158,8 +262,7 @@
           <h3>Log <span class="sub">(your progress)</span></h3>
           <ul class="log">
             {#each logEntries as l}
-              <li>
-                <span class="seq">#{l.seq}</span> {l.summary || '…'}
+              <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
                 {#if l.seq > 0}<button class="link" onclick={() => onRollback(l.seq)}>roll back here</button>{/if}
               </li>
             {/each}
@@ -167,8 +270,6 @@
         </div>
       </aside>
     </div>
-  {:else}
-    <p>Loading…</p>
   {/if}
 
   {#if showBoard}
@@ -187,21 +288,36 @@
   main { max-width: 1000px; margin: 0 auto; padding: 1.5rem; }
   h1 { font-weight: normal; } .sub { color:#6b6b80; font-size:.7em; }
   .layout { display:grid; grid-template-columns: 1fr 300px; gap:1.5rem; }
+  .topbar { text-align:right; margin-bottom:.5rem; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
   .panel, .notes { background:#1a1d28; border:1px solid #2a2e3e; border-radius:8px; padding:1rem; margin-bottom:1rem; }
+  .narrow { max-width:420px; }
+  .tabs { display:flex; gap:.5rem; margin-bottom:1rem; }
+  .tabs button { flex:1; background:#15171f; }
+  .tabs button.active { background:#34416a; }
   .chat { background:#15171f; border-radius:8px; padding:.75rem; margin:.5rem 0; }
   .chat .me { color:#9fd3ff; } .chat .npc { color:#cdbb9a; }
   .row { display:flex; gap:.5rem; margin:.5rem 0; }
-  input { flex:1; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; }
+  input { display:block; width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; margin:.4rem 0; }
+  .row input { margin:0; flex:1; }
+  .qr { background:#fff; padding:.5rem; border-radius:6px; width:max-content; }
+  .qr :global(svg) { display:block; width:180px; height:180px; }
+  .manual { white-space:pre-wrap; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:1rem; font-family:Georgia,serif; line-height:1.5; }
+  .quiz-q { margin:.8rem 0; } .quiz-q .q { font-weight:bold; margin-bottom:.3rem; }
+  .opt { display:block; cursor:pointer; padding:.15rem 0; }
+  .opt input { display:inline; width:auto; margin-right:.5rem; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
   button { background:#2a3550; color:#e8e8f0; border:1px solid #3a456a; padding:.55rem .8rem; border-radius:6px; cursor:pointer; text-align:left; }
   button:hover { background:#34416a; }
+  button.primary { background:#34416a; text-align:center; width:100%; }
   button.danger { background:#4a2330; border-color:#6a3346; }
   button.link { background:none; border:none; color:#7fa8d8; padding:0 0 0 .4rem; width:auto; cursor:pointer; font-size:.8rem; }
   .dead { color:#c98; }
   .log { list-style:none; padding:0; font-size:.85rem; } .log .seq { color:#5a5a72; }
   .error { background:#3a2330; border:1px solid #6a3346; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
+  .notice { background:#23323a; border:1px solid #356a5a; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
   .modal-card { background:#1a1d28; border:1px solid #3a456a; border-radius:10px; padding:1.5rem 2rem; min-width:300px; }
+  code { color:#cdbb9a; }
 </style>
