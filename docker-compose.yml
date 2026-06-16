@@ -1,0 +1,45 @@
+services:
+  db:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: onelife
+      POSTGRES_PASSWORD: onelife
+      POSTGRES_DB: onelife
+    ports:
+      - "5432:5432"
+    volumes:
+      - ./db:/docker-entrypoint-initdb.d:ro
+      - onelife_db:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U onelife"]
+      interval: 3s
+      timeout: 3s
+      retries: 20
+
+  api:
+    build: ./api
+    environment:
+      DATABASE_URL: postgresql://onelife:onelife@db:5432/onelife
+      # Optional: set to use the real Claude API for the dialogue gate.
+      # Leave empty to run the deterministic offline stub (no key required).
+      ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
+      ACTOR_MODEL: claude-haiku-4-5
+      REFEREE_MODEL: claude-haiku-4-5
+    ports:
+      - "8000:8000"
+    depends_on:
+      db:
+        condition: service_healthy
+
+  web:
+    build: ./web
+    environment:
+      # Browser talks to the API directly on localhost:8000
+      VITE_API_BASE: http://localhost:8000
+    ports:
+      - "5173:5173"
+    depends_on:
+      - api
+
+volumes:
+  onelife_db:
