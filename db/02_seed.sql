@@ -124,3 +124,48 @@ INSERT INTO puzzle_clues (id, puzzle_id, placement, reveal_text, discover_condit
    '{"kind":"interaction","location_id":"killebackskolan"}',
    'The brass memorial plaque reads: IN MEMORIAM — 1998.',
    '{"all":[{"flag_set":"examined_plaque"}]}');
+
+-- ---------- Second NPC: Märta (lights up cross-character leakage) ----------
+INSERT INTO characters (id, name, persona) VALUES
+  ('marta', 'Märta',
+   'A frightened teenage girl hiding in a classroom since the lights went out. She whispers, flinches at sudden movement, and trusts only slowly. She has watched the building in the dark and overheard things. She knows nothing about the world outside Sandby or why the stranger is here, and clams up if pushed on it.');
+
+INSERT INTO story_nodes (id, arc_id, type, location_id, title, body, is_entry, is_death, gate_id, puzzle_id, media) VALUES
+  ('kbk-classroom', 'main', 'gate', 'killebackskolan', 'The Classroom',
+   'You follow a thin sound of crying into a darkened classroom. A girl is wedged between two desks, knees drawn to her chest. She freezes when she sees you, eyes wide. (Try to calm her enough to talk.)',
+   FALSE, FALSE, 'kbk-marta-calm', NULL, '{"image_theme":"dark-classroom","music_theme":"fragile-quiet"}');
+
+INSERT INTO story_edges (id, from_node, to_node, label, conditions, effects, danger, sort_order) VALUES
+  ('e-hall-classroom', 'kbk-entrance-hall', 'kbk-classroom',
+   'Follow the sound of crying into a classroom', '{"all":[]}',
+   '{"progress_points":5,"log":"You found a frightened girl hiding in a classroom."}', 0, 4),
+  ('e-classroom-leave', 'kbk-classroom', 'kbk-entrance-hall',
+   'Step back into the hall', '{"all":[]}', '{"log":"You left the classroom."}', 0, 9);
+
+INSERT INTO dialogue_gates (id, location_id, character_id, spec) VALUES
+  ('kbk-marta-calm', 'killebackskolan', 'marta', '{
+    "intent": "Calm the frightened girl enough that she will talk.",
+    "criteria": [
+      {"id":"reassured","desc":"Player is gentle, kind, or reassuring — tries to calm her, or promises not to hurt her."},
+      {"id":"asked_something","desc":"Player asks her a question — who she is, what she saw, what happened, or how long she has been here."}
+    ],
+    "success_rule": "reassured AND asked_something",
+    "knowledge_boundary": {
+      "knows": ["she has been hiding in this classroom since the lights went out","she has seen the old caretaker creeping toward the boiler room in the dark"],
+      "refuses": ["anything about why the stranger is here","the larger mystery"],
+      "tone": "frightened teenage girl, whispers, flinches, trusts only slowly"
+    },
+    "hint_ladder": [
+      "She presses herself into the corner and will not speak.",
+      "She watches you, deciding whether to trust you.",
+      "She whispers: \"I''ve been here since the lights died. I saw the caretaker... going down to the boiler room. In the dark.\""
+    ],
+    "mercy_after_attempts": 6,
+    "on_success": {
+      "progress_points": 35,
+      "set_flag": "calmed_marta",
+      "story_node_next": "kbk-classroom",
+      "log": "You calmed Märta; she whispered what she had seen.",
+      "write_memory": {"owner":"marta","content":"A kind stranger calmed me and I told them what I saw in the dark.","leakable":true}
+    }
+  }');

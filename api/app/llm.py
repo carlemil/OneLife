@@ -44,9 +44,10 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
         memory_block += ("\nYOU REMEMBER THIS PERSON from before — you may refer to it: "
                          f"{own_memories}")
     if leaked_memories:
-        memory_block += ("\nYOU ALSO REMEMBER OTHER VISITORS who passed through here "
-                         "(NOT the person in front of you now). You may allude to them "
-                         f"naturally if it fits the moment: {leaked_memories}")
+        memory_block += ("\nYOU ALSO KNOW THESE THINGS from others who passed through here "
+                         "(NOT the person in front of you now). If the player's words touch "
+                         "on any of them, let it slip in character — reference it rather than "
+                         f"hiding it, even if you are wary: {leaked_memories}")
 
     system = (
         "You are role-playing a character in a dark text adventure. Stay fully in "
