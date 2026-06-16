@@ -79,3 +79,25 @@ async def void_after(conn, player_id, seq):
     await conn.execute(
         "UPDATE agent_memories SET voided=TRUE WHERE origin_player_id=$1 AND created_seq>$2",
         player_id, seq)
+
+
+async def dedupe_existing(conn) -> int:
+    """One-time, idempotent cleanup of leaked memories that accumulated before
+    propagation dedupe existed. Keeps the earliest live leaked memory per
+    (character, base fact) and voids the rest. `split_part(content, ' (', 1)`
+    recovers the base fact by dropping the trailing '(explanation)'. Safe to run
+    on every boot — re-running voids nothing once duplicates are voided."""
+    rows = await conn.fetch(
+        """WITH ranked AS (
+               SELECT id,
+                      row_number() OVER (
+                          PARTITION BY character_id, split_part(content, ' (', 1)
+                          ORDER BY created_at, id
+                      ) AS rn
+               FROM agent_memories
+               WHERE source = 'leaked' AND NOT voided
+           )
+           UPDATE agent_memories SET voided = TRUE
+           WHERE id IN (SELECT id FROM ranked WHERE rn > 1)
+           RETURNING id""")
+    return len(rows)

@@ -5,11 +5,12 @@ DATA_MODEL.md §players for the real plan). Every mutating endpoint runs inside 
 transaction so a failed action leaves no partial state.
 """
 import json
+import uuid
 from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm
+from . import db, engine, gates, puzzles, llm, memory
 from .dsl import evaluate
 
 app = FastAPI(title="OneLife API")
@@ -20,7 +21,10 @@ app.add_middleware(
 
 @app.on_event("startup")
 async def _startup():
-    await db.get_pool()
+    pool = await db.get_pool()
+    # Self-heal any duplicate leaked memories left by pre-dedupe runs.
+    async with pool.acquire() as conn:
+        await memory.dedupe_existing(conn)
 
 
 @app.on_event("shutdown")
@@ -32,6 +36,10 @@ async def _session(authorization: str | None):
     if not authorization or not authorization.lower().startswith("bearer "):
         raise HTTPException(401, "missing bearer token")
     token = authorization.split(" ", 1)[1].strip()
+    try:
+        uuid.UUID(token)  # malformed token → 401, not a 500 from the UUID column
+    except ValueError:
+        raise HTTPException(401, "invalid token")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(

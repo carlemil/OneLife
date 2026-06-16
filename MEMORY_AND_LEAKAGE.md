@@ -116,6 +116,9 @@ check whether the target already holds a still-live memory starting with the
 same base fact (`starts_with`, `NOT voided`) and skip if so — checked *before*
 the explanation call, so repeats cost nothing. A voided memory doesn't block
 re-propagation, so if the only teacher rolls back, a later one re-teaches it.
+Duplicates already in a long-lived DB are cleaned by `dedupe_existing()`, an
+idempotent startup sweep that keeps the earliest live leaked memory per
+(character, base fact) and voids the rest.
 
 ---
 

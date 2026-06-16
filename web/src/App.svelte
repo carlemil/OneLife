@@ -22,7 +22,16 @@
       logEntries = (await api.log()).entries;
       board = (await api.leaderboard()).rows;
       error = '';
-    } catch (e) { error = e.message; }
+    } catch (e) {
+      if (e.unauthorized) {
+        // Token no longer valid — return to the name screen.
+        registered = false;
+        game = null;
+        error = '';
+      } else {
+        error = e.message;
+      }
+    }
   }
 
   async function doRegister() {

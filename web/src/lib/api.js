@@ -12,6 +12,14 @@ async function req(path, { method = 'GET', body, auth = true } = {}) {
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
+  if (res.status === 401) {
+    // Stale/invalid session (e.g. the DB was reset) — drop it so the UI can
+    // fall back to the name screen instead of getting stuck loading.
+    localStorage.removeItem('onelife_token');
+    const err = new Error('session expired');
+    err.unauthorized = true;
+    throw err;
+  }
   if (!res.ok) {
     const detail = await res.json().catch(() => ({}));
     throw new Error(detail.detail || `HTTP ${res.status}`);
