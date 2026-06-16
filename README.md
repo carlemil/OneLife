@@ -10,6 +10,8 @@ with AI-driven agents. See the design docs:
 - [STORY_AND_PUZZLES.md](STORY_AND_PUZZLES.md) — story graph & puzzle system
 - [MEMORY_AND_LEAKAGE.md](MEMORY_AND_LEAKAGE.md) — agent memory & cross-player/character leakage
 - [AUTHORING.md](AUTHORING.md) — how to write game content (YAML → DB, with a spine lint)
+- [ACCOUNTS_AND_ONBOARDING.md](ACCOUNTS_AND_ONBOARDING.md) — auth (email/password + TOTP 2FA) & onboarding
+- [ATMOSPHERE.md](ATMOSPHERE.md) — per-location generated image + LLM-picked Spotify soundtrack
 
 ## Vertical slice (this repo, runnable)
 

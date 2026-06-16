@@ -163,6 +163,61 @@ async def generate_share_explanation(*, from_character: str, to_character: str,
     return resp.content[0].text.strip()
 
 
+async def suggest_tracks(location: str, description: str, theme: str,
+                         setting: str, n: int = 4) -> list[dict]:
+    """Music director: pick real, findable songs that fit a location and its
+    setting (ATMOSPHERE.md). Returns [{artist, title, why}]."""
+    if _client is None:
+        return _stub_tracks(n)
+    tool = {
+        "name": "tracks",
+        "description": "Suggest fitting real songs.",
+        "input_schema": {
+            "type": "object",
+            "properties": {
+                "tracks": {
+                    "type": "array",
+                    "items": {
+                        "type": "object",
+                        "properties": {
+                            "artist": {"type": "string"},
+                            "title": {"type": "string"},
+                            "why": {"type": "string"},
+                        },
+                        "required": ["artist", "title", "why"],
+                    },
+                },
+            },
+            "required": ["tracks"],
+        },
+    }
+    system = (
+        "You are the music director for a dark, atmospheric narrative game. Choose "
+        "real, findable songs that fit the given location and its setting "
+        f"({setting}). Match the mood; lean period- and place-appropriate for the "
+        f"setting. Return exactly {n} tracks, each with a one-line reason."
+    )
+    resp = await _client.messages.create(
+        model=_ACTOR_MODEL, max_tokens=500, system=system,
+        tools=[tool], tool_choice={"type": "tool", "name": "tracks"},
+        messages=[{"role": "user", "content":
+                   f"Location: {location}\n{description}\nMood theme: {theme}\nSetting: {setting}"}])
+    for block in resp.content:
+        if block.type == "tool_use":
+            return block.input.get("tracks", [])[:n]
+    return []
+
+
+def _stub_tracks(n: int) -> list[dict]:
+    base = [
+        {"artist": "Brian Eno", "title": "An Ending (Ascent)", "why": "cold, weightless dread"},
+        {"artist": "Burzum", "title": "Tomhet", "why": "bleak early-90s Nordic atmosphere"},
+        {"artist": "Kate Bush", "title": "Under Ice", "why": "frozen, uneasy stillness"},
+        {"artist": "Tangerine Dream", "title": "Love on a Real Train", "why": "haunted nostalgia"},
+    ]
+    return base[:n]
+
+
 def success_rule_met(spec: dict, met: list[str]) -> bool:
     """Evaluate the gate's success_rule. Supports simple 'A AND B' / 'A OR B'."""
     rule = spec.get("success_rule", "")

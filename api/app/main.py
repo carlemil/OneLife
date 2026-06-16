@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding
+from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere
 from .dsl import evaluate
 
 app = FastAPI(title="OneLife API")
@@ -323,6 +323,32 @@ async def memories(character: str = "the-janitor",
     return {"character": character, "memories": [
         {"content": r["content"], "source": r["source"], "story_time": r["story_time"],
          "voided": r["voided"], "origin": r["origin"]} for r in rows]}
+
+
+@app.get("/api/atmosphere")
+async def get_atmosphere(spotify: int = 0,
+                         authorization: str | None = Header(default=None)):
+    """Image (always) + LLM-picked Spotify soundtrack (when spotify=1) for the
+    player's current location, set in southern Sweden, 1992."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        node = await conn.fetchrow(
+            "SELECT location_id, media FROM story_nodes WHERE id=$1", sess["current_node"])
+        loc = None
+        if node and node["location_id"]:
+            loc = await conn.fetchrow(
+                "SELECT id, name, description FROM locations WHERE id=$1", node["location_id"])
+    theme = json.loads(node["media"]).get("image_theme", "") if node else ""
+    setting = atmosphere.setting_for(loc)
+    tracks = []
+    if spotify and loc is not None:
+        tracks = await atmosphere.tracks_for(
+            loc["id"], loc["name"], loc["description"], theme, setting)
+    return {"image_svg": atmosphere.image_svg(theme), "setting": setting,
+            "theme": theme, "tracks": tracks,
+            "spotify_configured": atmosphere.SPOTIFY_CONFIGURED}
 
 
 @app.get("/api/leaderboard")

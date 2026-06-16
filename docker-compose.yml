@@ -26,6 +26,10 @@ services:
       ACTOR_MODEL: claude-haiku-4-5
       REFEREE_MODEL: claude-haiku-4-5
       CONTENT_DIR: /content
+      # Optional: enables real Spotify track resolution (search + previews + art).
+      # Without these, the LLM still suggests tracks (shown as text, no playback).
+      SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
+      SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
     volumes:
       - ./content:/content:ro
     ports:

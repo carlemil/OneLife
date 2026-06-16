@@ -48,6 +48,9 @@ export const api = {
   onboarding: () => req('/api/onboarding'),
   submitOnboarding: (answers) => req('/api/onboarding/submit', { method: 'POST', body: { answers } }),
 
+  // atmosphere
+  atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
+
   // game
   state: () => req('/api/state'),
   log: () => req('/api/log'),

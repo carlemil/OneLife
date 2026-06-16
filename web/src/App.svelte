@@ -33,7 +33,62 @@
   let showBoard = $state(false);
   let actions = 0;
 
+  // atmosphere (image + Spotify soundtrack)
+  let atmo = $state(null);
+  let spotifyOn = $state(false);
+  let _players = [];
+  let _active = 0;
+  let _curUrl = '';
+  let _lastNode = '';
+
+  function _ensureAudio() {
+    if (!_players.length) {
+      _players = [new Audio(), new Audio()];
+      _players.forEach((p) => { p.loop = true; p.volume = 0; });
+    }
+  }
+  function crossfade(url) {
+    _ensureAudio();
+    if (url === _curUrl) return;
+    _curUrl = url;
+    const cur = _players[_active], next = _players[1 - _active];
+    next.src = url; next.currentTime = 0; next.volume = 0;
+    next.play().catch(() => {});
+    _active = 1 - _active;
+    const start = performance.now(), dur = 1500, fromVol = cur.volume;
+    function step(t) {
+      const k = Math.min(1, (t - start) / dur);
+      next.volume = 0.7 * k; cur.volume = fromVol * (1 - k);
+      if (k < 1) requestAnimationFrame(step); else cur.pause();
+    }
+    requestAnimationFrame(step);
+  }
+  function stopAudio() { _players.forEach((p) => { try { p.pause(); } catch {} }); _curUrl = ''; }
+
+  async function loadAtmosphere() {
+    try {
+      atmo = await api.atmosphere(spotifyOn);
+      if (spotifyOn) {
+        const t = (atmo.tracks || []).find((x) => x.preview_url);
+        if (t) crossfade(t.preview_url);
+      } else stopAudio();
+    } catch { /* atmosphere is non-critical */ }
+  }
+  function toggleSpotify() {
+    spotifyOn = !spotifyOn;
+    localStorage.setItem('onelife_spotify', spotifyOn ? '1' : '0');
+    if (!spotifyOn) stopAudio();
+    loadAtmosphere();
+  }
+
+  // Reload atmosphere whenever the location (node) changes.
+  $effect(() => {
+    const id = game?.node?.id;
+    if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; loadAtmosphere(); }
+  });
+
   onMount(async () => {
+    spotifyOn = localStorage.getItem('onelife_spotify') === '1';
     if (!api.hasToken()) { phase = 'auth'; return; }
     try {
       await loadGame();
@@ -212,6 +267,9 @@
     <div class="topbar"><button class="link" onclick={logout}>log out</button></div>
     <div class="layout">
       <section class="story">
+        {#if atmo?.image_svg}
+          <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
+        {/if}
         <h2>{game.node.title}</h2>
         <p class="body">{game.node.body}</p>
         <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
@@ -255,6 +313,28 @@
 
       <aside class="side">
         <div class="panel">
+          <h3>Atmosphere</h3>
+          <button class="primary" onclick={toggleSpotify}>🎵 Spotify: {spotifyOn ? 'on' : 'off'}</button>
+          {#if spotifyOn}
+            {#if atmo && !atmo.spotify_configured}<p class="sub">No Spotify keys set — these are the game's picks (no playback).</p>{/if}
+            <ul class="tracks">
+              {#each atmo?.tracks || [] as t}
+                <li>
+                  {#if t.album_art}<img src={t.album_art} alt="" />{/if}
+                  <div><b>{t.matched || (t.artist + ' — ' + t.title)}</b><br>
+                    <span class="sub">{t.why}</span>
+                    {#if t.spotify_url}&nbsp;<a href={t.spotify_url} target="_blank" rel="noopener">open ↗</a>{/if}
+                  </div>
+                </li>
+              {/each}
+            </ul>
+            {#if atmo?.tracks?.length && !atmo.tracks.some((x) => x.preview_url) && atmo.tracks[0].spotify_id}
+              <iframe title="spotify" src={"https://open.spotify.com/embed/track/" + atmo.tracks[0].spotify_id}
+                width="100%" height="80" style="border:0;border-radius:8px" allow="autoplay; encrypted-media"></iframe>
+            {/if}
+          {/if}
+        </div>
+        <div class="panel">
           <h3>Leaderboard</h3>
           <ol>{#each board as r}<li>{r.display_name} — <b>{r.progress}</b></li>{/each}</ol>
         </div>
@@ -291,6 +371,12 @@
   .topbar { text-align:right; margin-bottom:.5rem; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
+  .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
+  .banner :global(svg) { display:block; width:100%; height:140px; }
+  .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
+  .tracks { list-style:none; padding:0; font-size:.8rem; margin:.6rem 0 0; }
+  .tracks li { display:flex; gap:.5rem; margin:.55rem 0; align-items:center; }
+  .tracks img { width:42px; height:42px; border-radius:4px; flex-shrink:0; }
   .panel, .notes { background:#1a1d28; border:1px solid #2a2e3e; border-radius:8px; padding:1rem; margin-bottom:1rem; }
   .narrow { max-width:420px; }
   .tabs { display:flex; gap:.5rem; margin-bottom:1rem; }
