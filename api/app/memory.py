@@ -50,6 +50,16 @@ async def propagate_to_other_characters(conn, *, source_character_id, content,
         return
     src = await conn.fetchrow("SELECT name FROM characters WHERE id=$1", source_character_id)
     for other in others:
+        # Dedupe: skip if this character already knows the fact (a still-live
+        # memory whose content starts with the same base fact). Checked before
+        # the explanation LLM call so duplicates cost nothing.
+        already = await conn.fetchval(
+            """SELECT 1 FROM agent_memories
+               WHERE character_id=$1 AND NOT voided AND starts_with(content, $2)
+               LIMIT 1""",
+            other["id"], content)
+        if already:
+            continue
         explanation = await llm.generate_share_explanation(
             from_character=src["name"] if src else source_character_id,
             to_character=other["name"], fact=content)

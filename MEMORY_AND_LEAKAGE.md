@@ -109,8 +109,13 @@ spreads into another player's game, bounded by the timeline so it stays coherent
 `propagate_to_other_characters()` takes a freshly written memory and shares it to
 other characters as `source='leaked'`, attaching a generated **believable
 explanation** of *how* they know it (`generate_share_explanation()`, a cheap
-`claude-haiku-4-5` call, offline-stubbed). With only the janitor authored today
-this is a no-op; adding a second NPC activates it with no further wiring.
+`claude-haiku-4-5` call, offline-stubbed).
+
+**Dedupe:** a fact is propagated to a given NPC only once. Before sharing, we
+check whether the target already holds a still-live memory starting with the
+same base fact (`starts_with`, `NOT voided`) and skip if so — checked *before*
+the explanation call, so repeats cost nothing. A voided memory doesn't block
+re-propagation, so if the only teacher rolls back, a later one re-teaches it.
 
 ---
 
