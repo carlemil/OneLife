@@ -10,7 +10,7 @@ from fastapi import FastAPI, Header, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory
+from . import db, engine, gates, puzzles, llm, memory, content
 from .dsl import evaluate
 
 app = FastAPI(title="OneLife API")
@@ -22,6 +22,24 @@ app.add_middleware(
 @app.on_event("startup")
 async def _startup():
     pool = await db.get_pool()
+    # Load authored content from YAML (idempotent upsert) so `docker compose up`
+    # yields a playable game. Validate first; skip seeding on errors rather than
+    # crash, leaving whatever content is already in the DB.
+    try:
+        data, _ = content.load_dir()
+        errors, warnings = content.validate(data)
+        for w in warnings:
+            print(f"[content] WARN {w}")
+        if errors:
+            for e in errors:
+                print(f"[content] ERROR {e}")
+            print("[content] validation failed — skipping seed")
+        else:
+            async with pool.acquire() as conn:
+                await content.seed_content(conn, data)
+            print(f"[content] seeded {len(data['nodes'])} nodes from {data and 'YAML'}")
+    except Exception as e:  # noqa: BLE001
+        print(f"[content] seed skipped: {e}")
     # Self-heal any duplicate leaked memories left by pre-dedupe runs.
     async with pool.acquire() as conn:
         await memory.dedupe_existing(conn)

@@ -8,6 +8,8 @@ with AI-driven agents. See the design docs:
 - [DATA_MODEL.md](DATA_MODEL.md) — database schema
 - [AI_DIALOGUE_GATES.md](AI_DIALOGUE_GATES.md) — the "talk your way through" design
 - [STORY_AND_PUZZLES.md](STORY_AND_PUZZLES.md) — story graph & puzzle system
+- [MEMORY_AND_LEAKAGE.md](MEMORY_AND_LEAKAGE.md) — agent memory & cross-player/character leakage
+- [AUTHORING.md](AUTHORING.md) — how to write game content (YAML → DB, with a spine lint)
 
 ## Vertical slice (this repo, runnable)
 
@@ -72,8 +74,17 @@ leaderboard, and the uniform seq-stamped **rollback** across all runtime state.
 ## Layout
 
 ```
-db/        Postgres schema + seed (opening content)
-api/       FastAPI backend (story engine, gates, puzzles)
+content/   Game content authored in YAML (loaded into Postgres; see AUTHORING.md)
+db/        Postgres schema (DDL only; content comes from content/)
+api/       FastAPI backend (story engine, gates, puzzles, memory, content loader)
 web/       Svelte + Vite frontend (text-stream UI)
+Makefile   up / down / reset / seed / lint shortcuts
 *.md       Design docs
 ```
+
+## Authoring content
+
+Story, NPCs, puzzles, and clues live in `content/*.yaml`, loaded by a validating
+seeder. `make lint` checks references and proves the spine is completable;
+`make seed` loads it. See [AUTHORING.md](AUTHORING.md). (The API also auto-seeds
+on startup, so `docker compose up` is self-contained.)

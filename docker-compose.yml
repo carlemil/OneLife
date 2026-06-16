@@ -25,6 +25,9 @@ services:
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ACTOR_MODEL: claude-haiku-4-5
       REFEREE_MODEL: claude-haiku-4-5
+      CONTENT_DIR: /content
+    volumes:
+      - ./content:/content:ro
     ports:
       - "8000:8000"
     depends_on:
