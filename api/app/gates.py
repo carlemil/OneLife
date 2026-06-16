@@ -2,7 +2,7 @@
 (AI_DIALOGUE_GATES.md §2/§5). State is mutated only here, in code, only on a
 validated verdict."""
 import json
-from . import llm
+from . import llm, memory
 from .engine import apply_action, discover_clues, next_seq
 
 
@@ -42,7 +42,13 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     ladder = spec.get("hint_ladder", [])
     hint_level = min(attempts - 1, max(len(ladder) - 1, 0))
 
-    reply = await llm.actor_reply(spec, history, hint_level)
+    # Retrieve what this NPC remembers — own (this player) and leaked (others),
+    # timeline-safe (MEMORY_AND_LEAKAGE.md §4).
+    own_mem, leaked_mem = await memory.retrieve(
+        conn, character_id=gate["character_id"], query_text=text,
+        player_id=player_id, story_time=session["story_time"])
+
+    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem)
     verdict = await llm.referee_verdict(spec, history, json.loads(ga["criteria_met"]))
     met = verdict["criteria_met"]
 
@@ -76,6 +82,14 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         session["current_node"] = next_node
         session["story_time"] = story_time
         await discover_clues(conn, player_id, session["log_id"], story_time, seq)
+
+        # Write the NPC's memory of this interaction — becomes leakable to others.
+        wm = on_success.get("write_memory")
+        if wm:
+            await memory.write_memory(
+                conn, character_id=wm["owner"], content=wm["content"],
+                location_id=gate["location_id"], story_time=story_time,
+                origin_player_id=player_id, seq=seq, source="told")
         transitioned = True
 
     return {"reply": reply, "satisfied": satisfied, "transitioned": transitioned}

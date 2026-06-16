@@ -2,6 +2,7 @@
 state rendering, and the uniform rollback (STORY_AND_PUZZLES.md §6/§7)."""
 import json
 from .dsl import PlayerContext, evaluate
+from . import memory
 
 
 # --------------------------------------------------------------------------- #
@@ -176,6 +177,7 @@ async def rollback(conn, player_id, session, to_seq: int) -> dict:
         player_id, to_seq)
     await conn.execute(
         "DELETE FROM gate_messages WHERE player_id=$1 AND seq>$2", player_id, to_seq)
+    await memory.void_after(conn, player_id, to_seq)
 
     await conn.execute(
         "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",

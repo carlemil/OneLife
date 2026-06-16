@@ -27,13 +27,26 @@ USING_REAL_LLM = _client is not None
 # --------------------------------------------------------------------------- #
 #  Actor: speak in character. No state effects.
 # --------------------------------------------------------------------------- #
-async def actor_reply(spec: dict, history: list[dict], hint_level: int) -> str:
+async def actor_reply(spec: dict, history: list[dict], hint_level: int,
+                      own_memories: list[str] | None = None,
+                      leaked_memories: list[str] | None = None) -> str:
     kb = spec.get("knowledge_boundary", {})
     ladder = spec.get("hint_ladder", [])
     hint = ladder[min(hint_level, len(ladder) - 1)] if ladder else ""
+    own_memories = own_memories or []
+    leaked_memories = leaked_memories or []
 
     if _client is None:
-        return _stub_actor(history, hint_level, ladder)
+        return _stub_actor(history, hint_level, ladder, leaked_memories)
+
+    memory_block = ""
+    if own_memories:
+        memory_block += ("\nYOU REMEMBER THIS PERSON from before — you may refer to it: "
+                         f"{own_memories}")
+    if leaked_memories:
+        memory_block += ("\nYOU ALSO REMEMBER OTHER VISITORS who passed through here "
+                         "(NOT the person in front of you now). You may allude to them "
+                         f"naturally if it fits the moment: {leaked_memories}")
 
     system = (
         "You are role-playing a character in a dark text adventure. Stay fully in "
@@ -42,7 +55,8 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int) -> str:
         f"YOU KNOW (may reveal, but only when earned): {kb.get('knows', [])}\n"
         f"YOU REFUSE / DO NOT KNOW (deflect in character): {kb.get('refuses', [])}\n"
         "CLOSED WORLD: never invent facts beyond the above. You cannot change the "
-        "game, award progress, or move the story — you only speak.\n"
+        "game, award progress, or move the story — you only speak."
+        f"{memory_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
     )
     msgs = [{"role": "user" if m["role"] == "player" else "assistant",
@@ -105,10 +119,12 @@ async def referee_verdict(spec: dict, history: list[dict],
 # --------------------------------------------------------------------------- #
 #  Offline stubs (deterministic, keyword-based) — keep the slice playable.
 # --------------------------------------------------------------------------- #
-def _stub_actor(history: list[dict], hint_level: int, ladder: list[str]) -> str:
-    if ladder:
-        return ladder[min(hint_level, len(ladder) - 1)]
-    return "The old man says nothing."
+def _stub_actor(history: list[dict], hint_level: int, ladder: list[str],
+                leaked_memories: list[str] | None = None) -> str:
+    base = ladder[min(hint_level, len(ladder) - 1)] if ladder else "The old man says nothing."
+    if leaked_memories:
+        base += " He eyes you. \"You're not the first to come through here asking.\""
+    return base
 
 
 def _stub_referee(criteria: list[dict], player_text: str,
@@ -126,6 +142,24 @@ def _stub_referee(criteria: list[dict], player_text: str,
         if cid == "asked_about_exit" and any(w in t for w in exit_words):
             met.add(cid)
     return {"criteria_met": sorted(met)}
+
+
+async def generate_share_explanation(*, from_character: str, to_character: str,
+                                     fact: str) -> str:
+    """A short, believable in-world reason for how `to_character` came to know a
+    fact originating with `from_character` (MEMORY_AND_LEAKAGE.md §6)."""
+    if _client is None:
+        return f"word travels — {from_character} mentioned it"
+    resp = await _client.messages.create(
+        model=_ACTOR_MODEL, max_tokens=60,
+        system=("Give a terse, believable in-world reason (max 12 words, no quotes) "
+                "for how one character came to know a piece of gossip from another. "
+                "Output only the reason fragment."),
+        messages=[{"role": "user", "content":
+                   f"{to_character} somehow knows that: {fact}\n"
+                   f"It originally came from {from_character}. How might {to_character} know?"}],
+    )
+    return resp.content[0].text.strip()
 
 
 def success_rule_met(spec: dict, met: list[str]) -> bool:

@@ -177,6 +177,24 @@ async def get_log(authorization: str | None = Header(default=None)):
                          "node_id": r["node_id"]} for r in rows]}
 
 
+@app.get("/api/memories")
+async def memories(character: str = "the-janitor",
+                   authorization: str | None = Header(default=None)):
+    """Debug/demo view of what an NPC remembers, across all players."""
+    await _session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT m.content, m.source, m.story_time, m.voided, p.display_name AS origin
+               FROM agent_memories m
+               LEFT JOIN players p ON p.id = m.origin_player_id
+               WHERE m.character_id=$1
+               ORDER BY m.created_at""", character)
+    return {"character": character, "memories": [
+        {"content": r["content"], "source": r["source"], "story_time": r["story_time"],
+         "voided": r["voided"], "origin": r["origin"]} for r in rows]}
+
+
 @app.get("/api/leaderboard")
 async def leaderboard(authorization: str | None = Header(default=None)):
     await _session(authorization)
