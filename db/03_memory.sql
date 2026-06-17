@@ -11,7 +11,9 @@ CREATE TABLE agent_memories (
     location_id      TEXT REFERENCES locations(id),
     story_time       BIGINT NOT NULL DEFAULT 0,
     source           TEXT NOT NULL DEFAULT 'told',   -- observed | told | leaked
-    origin_player_id UUID REFERENCES players(id),
+    -- SET NULL so deleting a player doesn't fail; their leaked memories persist
+    -- as anonymous "world gossip".
+    origin_player_id UUID REFERENCES players(id) ON DELETE SET NULL,
     created_seq      BIGINT NOT NULL DEFAULT 0,      -- creating player's log seq (rollback)
     voided           BOOLEAN NOT NULL DEFAULT FALSE,
     created_at       TIMESTAMPTZ NOT NULL DEFAULT now()
