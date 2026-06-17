@@ -1,6 +1,6 @@
 <script>
   import { onMount, tick } from 'svelte';
-  import { api } from './lib/api.js';
+  import { api, download } from './lib/api.js';
   import * as spotify from './lib/spotify.js';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
@@ -52,6 +52,15 @@
   // world map
   let world = $state(null);
   let showMap = $state(false);
+
+  // admin (hidden export/import)
+  let isAdmin = $state(false);
+  let showAdmin = $state(false);
+  let adminMsg = $state('');
+  let adminPlayers = $state([]);
+  let selPlayer = $state('');
+  let dbConfirm = $state('');
+  let savConfirm = $state('');
 
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
@@ -207,6 +216,43 @@
     logEntries = (await api.log()).entries;
     board = (await api.leaderboard()).rows;
     error = ''; notice = ''; phase = 'game';
+    try { isAdmin = (await api.adminMe()).is_admin; } catch { isAdmin = false; }
+  }
+
+  // ---------- admin ----------
+  async function openAdmin() {
+    adminMsg = ''; showAdmin = true;
+    try { adminPlayers = (await api.listPlayers()).players; } catch (e) { adminMsg = e.message; }
+  }
+  async function readJson(ev) {
+    const f = ev.target.files?.[0]; if (!f) return null;
+    return JSON.parse(await f.text());
+  }
+  async function exportContent() {
+    try { const r = await api.exportContent(); download(r.filename, r.body); }
+    catch (e) { adminMsg = e.message; }
+  }
+  async function importContentFile(ev) {
+    const f = ev.target.files?.[0]; if (!f) return;
+    try { const r = await api.importContent(await f.text()); adminMsg = `Content imported (${r.counts.nodes} nodes).`; }
+    catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
+  }
+  async function exportDb() {
+    try { const r = await api.exportDb(); download(r.filename, r.body); }
+    catch (e) { adminMsg = e.message; }
+  }
+  async function importDbFile(ev) {
+    try { const data = await readJson(ev); await api.importDb(data, dbConfirm); adminMsg = 'Database replaced.'; dbConfirm = ''; }
+    catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
+  }
+  async function exportPlayer() {
+    if (!selPlayer) return;
+    try { const r = await api.exportPlayer(selPlayer); download(r.filename, r.body); }
+    catch (e) { adminMsg = e.message; }
+  }
+  async function importPlayerFile(ev) {
+    try { const data = await readJson(ev); await api.importPlayer(data, savConfirm); adminMsg = 'Player save restored.'; savConfirm = ''; }
+    catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
   }
 
   async function refresh() {
@@ -326,7 +372,10 @@
     </div>
 
   {:else if phase === 'game' && game}
-    <div class="topbar"><button class="link" onclick={logout}>log out</button></div>
+    <div class="topbar">
+      {#if isAdmin}<button class="link" title="Admin" onclick={openAdmin}>⚙</button>{/if}
+      <button class="link" onclick={logout}>log out</button>
+    </div>
     <div class="layout">
       <section class="story">
         {#if atmo?.image_url}
@@ -439,7 +488,7 @@
   {#if showMap && world}
     <div class="modal" onclick={() => (showMap = false)}>
       <div class="modal-card" onclick={(e) => e.stopPropagation()}>
-        <h2>🗺 World map <span class="sub">— southern Sweden, 1992</span></h2>
+        <h2>🗺 World map <span class="sub">— southern Sweden</span></h2>
         <div class="worldgrid">
           {#each world.cells as c}
             <button class="cell {c.kind}" class:current={c.id === world.current_cell_id}
@@ -453,6 +502,50 @@
           {/each}
         </div>
         <button onclick={() => (showMap = false)}>Close</button>
+      </div>
+    </div>
+  {/if}
+
+  {#if showAdmin}
+    <div class="modal" onclick={() => (showAdmin = false)}>
+      <div class="modal-card admin" onclick={(e) => e.stopPropagation()}>
+        <h2>⚙ Admin</h2>
+        {#if adminMsg}<div class="notice">{adminMsg}</div>{/if}
+
+        <div class="admin-sec">
+          <h3>Authored content</h3>
+          <p class="sub">World, NPCs, story, puzzles. Import is validated + non-destructive (upsert).</p>
+          <button onclick={exportContent}>Export YAML</button>
+          <label class="filebtn">Import YAML/JSON<input type="file" accept=".yaml,.yml,.json" onchange={importContentFile} /></label>
+        </div>
+
+        <div class="admin-sec">
+          <h3>Full database <span class="sub">(sensitive · destructive)</span></h3>
+          <p class="sub">Every table incl. accounts. Import <b>replaces everything</b>.</p>
+          <button onclick={exportDb}>Export JSON</button>
+          <div class="row">
+            <input bind:value={dbConfirm} placeholder="type REPLACE to import" />
+            <label class="filebtn" class:disabled={dbConfirm !== 'REPLACE'}>Import<input type="file" accept=".json" disabled={dbConfirm !== 'REPLACE'} onchange={importDbFile} /></label>
+          </div>
+        </div>
+
+        <div class="admin-sec">
+          <h3>Player save <span class="sub">(destructive)</span></h3>
+          <p class="sub">One player's progress. Import overwrites that player's state.</p>
+          <div class="row">
+            <select bind:value={selPlayer}>
+              <option value="">— pick a player —</option>
+              {#each adminPlayers as p}<option value={p.id}>{p.display_name}</option>{/each}
+            </select>
+            <button onclick={exportPlayer} disabled={!selPlayer}>Export</button>
+          </div>
+          <div class="row">
+            <input bind:value={savConfirm} placeholder="type REPLACE to import" />
+            <label class="filebtn" class:disabled={savConfirm !== 'REPLACE'}>Import<input type="file" accept=".json" disabled={savConfirm !== 'REPLACE'} onchange={importPlayerFile} /></label>
+          </div>
+        </div>
+
+        <button onclick={() => (showAdmin = false)}>Close</button>
       </div>
     </div>
   {/if}
@@ -510,6 +603,13 @@
   .notice { background:#23323a; border:1px solid #356a5a; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
   .modal-card { background:#1a1d28; border:1px solid #3a456a; border-radius:10px; padding:1.5rem 2rem; min-width:300px; }
+  .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
+  .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }
+  .admin-sec h3 { margin:.2rem 0; }
+  .admin-sec button, .admin-sec .filebtn, .admin-sec select { margin:.2rem .4rem .2rem 0; }
+  .filebtn { display:inline-block; background:#2a3550; border:1px solid #3a456a; padding:.5rem .8rem; border-radius:6px; cursor:pointer; }
+  .filebtn input { display:none; }
+  .filebtn.disabled { opacity:.4; pointer-events:none; }
   .worldgrid { display:grid; gap:.6rem; margin:1rem 0; }
   .cell { text-align:center; min-width:110px; min-height:64px; border-radius:8px; }
   .cell.city { background:#2c2f4a; } .cell.village { background:#2a3a2f; }

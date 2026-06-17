@@ -28,6 +28,8 @@ services:
       CONTENT_DIR: /content
       # Encrypts TOTP secrets at rest; set a strong value in production.
       ONELIFE_SECRET_KEY: ${ONELIFE_SECRET_KEY:-}
+      # Comma-separated emails allowed to use the hidden admin export/import UI.
+      ONELIFE_ADMIN_EMAILS: ${ONELIFE_ADMIN_EMAILS:-}
       # Allowed browser origins for CORS (comma-separated; localhost and the
       # 127.0.0.1 loopback are distinct origins, so allow both for local dev).
       WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}

@@ -234,3 +234,92 @@ async def seed_content(conn, data: dict):
                      reveal_text=EXCLUDED.reveal_text,discover_conditions=EXCLUDED.discover_conditions""",
                 c["id"], c.get("puzzle"), json.dumps(c.get("placement", {})),
                 c.get("reveal_text", ""), json.dumps(c.get("discover_conditions", {"all": []})))
+
+
+def _j(v, default):
+    """Parse a JSONB column (asyncpg returns it as a str) with a fallback."""
+    if v is None:
+        return default
+    return json.loads(v) if isinstance(v, str) else v
+
+
+async def export_content(conn) -> dict:
+    """Inverse of seed_content: read the authored tables into the same dict shape
+    that load_dir()/validate()/seed_content() consume (see AUTHORING.md). Edges
+    are emitted as a top-level `edges` list (not embedded in nodes)."""
+    data = {k: [] for k in _LIST_KEYS}
+
+    for a in await conn.fetch("SELECT id,title,is_spine FROM story_arcs ORDER BY id"):
+        data["arcs"].append({"id": a["id"], "title": a["title"], "is_spine": a["is_spine"]})
+
+    for c in await conn.fetch(
+            "SELECT id,grid_x,grid_y,name,kind,region,arrival_node FROM world_cells ORDER BY id"):
+        data["cells"].append(dict(c))
+
+    for c in await conn.fetch("SELECT id,name,persona,reveal_name FROM characters ORDER BY id"):
+        row = {"id": c["id"], "name": c["name"], "persona": c["persona"]}
+        if c["reveal_name"]:
+            row["reveal_name"] = c["reveal_name"]
+        data["characters"].append(row)
+
+    for l in await conn.fetch("SELECT id,name,description,cell_id FROM locations ORDER BY id"):
+        row = {"id": l["id"], "name": l["name"], "description": l["description"]}
+        if l["cell_id"]:
+            row["cell"] = l["cell_id"]
+        data["locations"].append(row)
+
+    for p in await conn.fetch(
+            "SELECT id,type,prompt,solution,required_clues,hint_ladder,on_solve FROM puzzles ORDER BY id"):
+        data["puzzles"].append({
+            "id": p["id"], "type": p["type"], "prompt": p["prompt"],
+            "solution": _j(p["solution"], {}),
+            "required_clues": list(p["required_clues"] or []),
+            "hint_ladder": _j(p["hint_ladder"], []),
+            "on_solve": _j(p["on_solve"], {}),
+        })
+
+    for c in await conn.fetch(
+            "SELECT id,puzzle_id,placement,reveal_text,discover_conditions FROM puzzle_clues ORDER BY id"):
+        data["clues"].append({
+            "id": c["id"], "puzzle": c["puzzle_id"],
+            "placement": _j(c["placement"], {}), "reveal_text": c["reveal_text"],
+            "discover_conditions": _j(c["discover_conditions"], {"all": []}),
+        })
+
+    for n in await conn.fetch("SELECT * FROM story_nodes ORDER BY id"):
+        row = {"id": n["id"], "arc": n["arc_id"], "type": n["type"],
+               "title": n["title"], "body": n["body"]}
+        if n["location_id"]:
+            row["location"] = n["location_id"]
+        if n["is_entry"]:
+            row["entry"] = True
+        if n["is_death"]:
+            row["is_death"] = True
+        if n["world_access"]:
+            row["world_access"] = True
+        if n["gate_id"]:
+            row["gate"] = n["gate_id"]
+        if n["puzzle_id"]:
+            row["puzzle"] = n["puzzle_id"]
+        media = _j(n["media"], {})
+        if media:
+            row["media"] = media
+        data["nodes"].append(row)
+
+    for g in await conn.fetch("SELECT id,location_id,character_id,spec FROM dialogue_gates ORDER BY id"):
+        row = {"id": g["id"]}
+        if g["location_id"]:
+            row["location"] = g["location_id"]
+        if g["character_id"]:
+            row["character"] = g["character_id"]
+        row.update(_j(g["spec"], {}))   # criteria, knowledge_boundary, hint_ladder, on_success, …
+        data["gates"].append(row)
+
+    for e in await conn.fetch("SELECT * FROM story_edges ORDER BY from_node, sort_order, id"):
+        data["edges"].append({
+            "id": e["id"], "from": e["from_node"], "to": e["to_node"], "label": e["label"],
+            "conditions": _j(e["conditions"], {"all": []}), "effects": _j(e["effects"], {}),
+            "danger": e["danger"], "sort_order": e["sort_order"],
+        })
+
+    return data

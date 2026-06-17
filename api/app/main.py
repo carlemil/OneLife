@@ -11,7 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere, security
+from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere, security, admin
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -19,6 +19,9 @@ from .dsl import evaluate
 WEB_ORIGIN = os.environ.get("WEB_ORIGIN", "http://localhost:5173,http://127.0.0.1:5173")
 _origins = [o.strip() for o in WEB_ORIGIN.split(",") if o.strip()]
 SESSION_TTL = "7 days"
+
+# Accounts whose email is listed here can use the /api/admin/* export/import.
+ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ONELIFE_ADMIN_EMAILS", "").split(",") if e.strip()}
 
 app = FastAPI(title="OneLife API")
 app.add_middleware(
@@ -85,7 +88,7 @@ async def _session(authorization: str | None):
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
             """SELECT s.token, s.player_id, s.current_node, s.story_time, s.log_id,
-                      p.display_name, p.onboarded
+                      p.display_name, p.onboarded, p.email
                FROM player_sessions s JOIN players p ON p.id = s.player_id
                WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
             token)
@@ -97,6 +100,15 @@ async def _session(authorization: str | None):
 def _require_onboarded(sess: dict):
     if not sess.get("onboarded"):
         raise HTTPException(403, "onboarding required")
+
+
+def _is_admin(sess: dict) -> bool:
+    return (sess.get("email") or "").lower() in ADMIN_EMAILS
+
+
+def _require_admin(sess: dict):
+    if not _is_admin(sess):
+        raise HTTPException(403, "admin only")
 
 
 async def _start_game(conn, sess: dict):
@@ -171,6 +183,13 @@ class RollbackBody(BaseModel):
 
 class TravelBody(BaseModel):
     cell_id: str
+
+class ContentImportBody(BaseModel):
+    text: str
+
+class DataImportBody(BaseModel):
+    data: dict
+    confirm: str = ""
 
 
 @app.get("/api/health")
@@ -524,6 +543,103 @@ async def get_atmosphere(spotify: int = 0,
     return {"image_svg": atmosphere.image_svg(theme), "image_url": image_url,
             "setting": setting, "theme": theme, "tracks": tracks,
             "spotify_configured": atmosphere.SPOTIFY_CONFIGURED}
+
+
+# ---------- Admin: export / import (email-allowlisted) ----------
+async def _admin_session(authorization):
+    sess = await _session(authorization)
+    _require_admin(sess)
+    return sess
+
+
+@app.get("/api/admin/me")
+async def admin_me(authorization: str | None = Header(default=None)):
+    return {"is_admin": _is_admin(await _session(authorization))}
+
+
+@app.get("/api/admin/content/export")
+async def admin_content_export(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        data = await content.export_content(conn)
+    import yaml
+    body = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
+    return {"filename": "content-export.yaml", "body": body}
+
+
+@app.post("/api/admin/content/import")
+async def admin_content_import(body: ContentImportBody,
+                               authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    import yaml
+    parsed = yaml.safe_load(body.text) or {}
+    data = {k: (parsed.get(k) or []) for k in content._LIST_KEYS}
+    errors, warnings = content.validate(data)
+    if errors:
+        raise HTTPException(400, "; ".join(errors[:10]))
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await content.seed_content(conn, data)
+    return {"ok": True, "warnings": warnings,
+            "counts": {k: len(data[k]) for k in content._LIST_KEYS}}
+
+
+@app.get("/api/admin/db/export")
+async def admin_db_export(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        data = await admin.export_all(conn)
+    return {"filename": "onelife-db-export.json", "body": json.dumps(data)}
+
+
+@app.post("/api/admin/db/import")
+async def admin_db_import(body: DataImportBody,
+                          authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    if body.confirm != "REPLACE":
+        raise HTTPException(400, "type REPLACE to confirm a destructive import")
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await admin.import_all(conn, body.data)
+    return {"ok": True}
+
+
+@app.get("/api/admin/players")
+async def admin_players(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return {"players": await admin.list_players(conn)}
+
+
+@app.get("/api/admin/player/{player_id}/export")
+async def admin_player_export(player_id: str,
+                              authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        save = await admin.export_player(conn, player_id)
+    if not save:
+        raise HTTPException(404, "no such player")
+    name = (save["player"]["display_name"] or "player").replace(" ", "_")
+    return {"filename": f"onelife-save-{name}.json", "body": json.dumps(save)}
+
+
+@app.post("/api/admin/player/import")
+async def admin_player_import(body: DataImportBody,
+                              authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    if body.confirm != "REPLACE":
+        raise HTTPException(400, "type REPLACE to confirm a destructive import")
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        try:
+            await admin.import_player(conn, body.data)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+    return {"ok": True}
 
 
 @app.get("/api/leaderboard")

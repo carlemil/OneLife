@@ -66,4 +66,22 @@ export const api = {
   gate: (text) => req('/api/gate/message', { method: 'POST', body: { text } }),
   puzzle: (answer) => req('/api/puzzle/submit', { method: 'POST', body: { answer } }),
   rollback: (to_seq) => req('/api/rollback', { method: 'POST', body: { to_seq } }),
+
+  // admin (export/import) — all require an allowlisted account
+  adminMe: () => req('/api/admin/me'),
+  exportContent: () => req('/api/admin/content/export'),
+  importContent: (text) => req('/api/admin/content/import', { method: 'POST', body: { text } }),
+  exportDb: () => req('/api/admin/db/export'),
+  importDb: (data, confirm) => req('/api/admin/db/import', { method: 'POST', body: { data, confirm } }),
+  listPlayers: () => req('/api/admin/players'),
+  exportPlayer: (id) => req(`/api/admin/player/${id}/export`),
+  importPlayer: (data, confirm) => req('/api/admin/player/import', { method: 'POST', body: { data, confirm } }),
 };
+
+// Trigger a browser download of a text body.
+export function download(filename, body) {
+  const url = URL.createObjectURL(new Blob([body], { type: 'application/octet-stream' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = filename; a.click();
+  URL.revokeObjectURL(url);
+}
