@@ -331,21 +331,11 @@
         <p class="body">{game.node.body}</p>
         <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
-        {#if game.node.type === 'gate' && game.gate}
-          {#if !game.gate.satisfied}
-            <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
-              <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." />
-              <button type="submit" disabled={busy}>Say</button>
-            </form>
-          {/if}
-          <div class="chat">
-            {#each gateMsgs.slice(0, gateShown) as m}
-              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : 'NPC'}:</b> {m.content}</p>
-            {/each}
-            {#if gateMsgs.length > gateShown}
-              <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
-            {/if}
-          </div>
+        {#if game.node.type === 'gate' && game.gate && !game.gate.satisfied}
+          <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
+            <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." />
+            <button type="submit" disabled={busy}>Say</button>
+          </form>
         {/if}
 
         {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
@@ -368,6 +358,17 @@
             <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
           {/if}
         </div>
+
+        {#if game.node.type === 'gate' && game.gate}
+          <div class="chat">
+            {#each gateMsgs.slice(0, gateShown) as m}
+              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : 'NPC'}:</b> {m.content}</p>
+            {/each}
+            {#if gateMsgs.length > gateShown}
+              <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
+            {/if}
+          </div>
+        {/if}
 
         {#if game.notes.length}
           <div class="notes"><h3>Notes</h3><ul>{#each game.notes as n}<li>{n}</li>{/each}</ul></div>
