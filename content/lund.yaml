@@ -1,0 +1,67 @@
+# OneLife content — Lund deepened: the cathedral library and Inga, a third NPC.
+# Inga ties the 1998 memorial (the school) to the wider story, and — being a
+# third character — she also receives leaked memories from the janitor & Märta.
+
+characters:
+  - id: inga
+    name: Inga
+    persona: "A soft-spoken night librarian at the cathedral annex in Lund. Precise, watchful, a little sad. She remembers the region's small tragedies. She will talk about the past if approached with respect, but she does not know who the stranger really is and won't speculate about the larger mystery."
+
+locations:
+  - id: lund-library
+    name: The Cathedral Library
+    cell: lund
+    description: "A book-lined annex beside the cathedral, lit by a single lamp."
+
+nodes:
+  - id: lund-library
+    arc: main
+    type: gate
+    location: lund-library
+    title: The Cathedral Library
+    gate: lund-inga
+    media: {image_theme: old-library, music_theme: cathedral-cold}
+    body: "Inside the cathedral annex, a night librarian shelves books beneath a single lamp. She glances up at you over her glasses, unsurprised."
+    edges:
+      - id: e-library-square
+        to: lund-square
+        label: Back out to the square
+        effects: {log: "You left the library."}
+        sort_order: 9
+
+edges:
+  - id: e-square-library
+    from: lund-square
+    to: lund-library
+    label: Try the door to the cathedral library
+    effects: {progress_points: 5, log: "You found the cathedral library."}
+    sort_order: 2
+
+gates:
+  - id: lund-inga
+    location: lund-library
+    character: inga
+    intent: Get the night librarian to talk about the school and what happened in 1998.
+    criteria:
+      - {id: civil, desc: "Player is polite or curious, or explains they are trying to understand something."}
+      - {id: asked_about_past, desc: "Player asks about the school, the year 1998, a fire or accident, or the memorial."}
+    success_rule: "civil AND asked_about_past"
+    knowledge_boundary:
+      knows:
+        - "there was a fire at Killebäckskolan in 1998 and a child was lost"
+        - "the caretaker, Arne, has never spoken of it since that night"
+      refuses:
+        - "who the stranger really is"
+        - "the larger mystery of why the stranger is here"
+      tone: "soft-spoken night librarian, precise, a little sad"
+    hint_ladder:
+      - "She keeps shelving books, watching you over her glasses."
+      - "She sets a book down. \"You're asking about the school, aren't you.\""
+      - "She says quietly: \"There was a fire. 1998. A child was lost. Arne — the caretaker — never spoke of it again.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_inga
+      story_node_next: lund-library
+      log: "Inga told you about the 1998 fire at the school."
+      write_memory: {owner: inga, content: "Told a stranger about the 1998 fire at the school and the child who was lost.", leakable: true}

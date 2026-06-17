@@ -1,0 +1,68 @@
+# OneLife content — Malmö, a new city cell west of Lund, with a word-lock puzzle.
+# Shows the world growing (fog-of-war reveals it when you reach Lund) and a
+# `set`-solution puzzle (several accepted answers) beyond the school.
+
+cells:
+  - id: malmo
+    grid_x: 1
+    grid_y: 3
+    name: Malmö
+    kind: city
+    region: "Malmö, Skåne"
+    arrival_node: malmo-harbor
+
+locations:
+  - id: malmo-harbor
+    name: The Harbour
+    cell: malmo
+    description: "Malmö's old harbour, cranes black against the Öresund."
+  - id: malmo-locker
+    name: Harbour Lockers
+    cell: malmo
+    description: "A row of dented harbour storage lockers, salt-rusted."
+
+nodes:
+  - id: malmo-harbor
+    arc: main
+    type: location
+    location: malmo-harbor
+    title: The Harbour
+    world_access: true
+    media: {image_theme: harbor-night, music_theme: distant-trains}
+    body: "Malmö's old harbour. Cranes stand black against the Öresund and the water slaps at the quay. A road runs back inland toward Lund."
+    edges:
+      - id: e-harbor-lockers
+        to: malmo-locker
+        label: Search the harbour lockers
+        effects: {progress_points: 5, log: "You went to the harbour lockers."}
+
+  - id: malmo-locker
+    arc: main
+    type: puzzle
+    location: malmo-locker
+    title: Harbour Lockers
+    puzzle: harbor-locker
+    media: {image_theme: harbor-night, music_theme: low-dread}
+    body: "Most lockers hang open and empty. One is held by a word-lock — five letter dials."
+    edges:
+      - id: e-locker-opened
+        to: malmo-harbor
+        label: Take what's inside and go
+        conditions: {all: [{puzzle_solved: harbor-locker}]}
+        effects: {progress_points: 20, log: "Inside the locker: a child's photograph you almost recognize."}
+      - id: e-locker-back
+        to: malmo-harbor
+        label: Step back to the quay
+        effects: {log: "You stepped back to the quay."}
+        sort_order: 9
+
+puzzles:
+  - id: harbor-locker
+    type: set
+    prompt: "A five-letter word-lock. What word fits?"
+    solution: {kind: set, set: [SANDBY, SKANE, SKÅNE]}
+    hint_ladder:
+      - "A place name. Five letters."
+      - "Somewhere this all began."
+      - "Try SANDBY."
+    on_solve: {progress_points: 30, set_flag: opened_harbor_locker, log: "The word-lock springs open."}
