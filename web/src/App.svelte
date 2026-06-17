@@ -1,5 +1,5 @@
 <script>
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import { api } from './lib/api.js';
   import * as spotify from './lib/spotify.js';
 
@@ -32,8 +32,7 @@
   let board = $state([]);
   let gateInput = $state('');
   let puzzleInput = $state('');
-  let showBoard = $state(false);
-  let actions = 0;
+  let gateEl = $state(null);
 
   // world map
   let world = $state(null);
@@ -161,6 +160,8 @@
     finally { busy = false; }
   }
 
+  function authSubmit() { if (authMode === 'register') doRegister(); else doLogin(); }
+
   function logout() {
     api.logout(); game = null; phase = 'auth'; authMode = 'login';
     email = ''; password = ''; code = ''; notice = '';
@@ -203,8 +204,6 @@
     }
   }
 
-  function tick() { actions += 1; if (actions % 5 === 0) showBoard = true; }
-
   async function openMap() {
     try { world = await api.world(); showMap = true; }
     catch (e) { error = e.message; }
@@ -214,18 +213,22 @@
     try {
       game = await api.travel(cellId);
       logEntries = (await api.log()).entries;
-      showMap = false; tick();
+      showMap = false;
     } catch (e) { error = e.message; } finally { busy = false; }
   }
 
   async function onEdge(id) {
     busy = true;
-    try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; tick(); }
+    try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
   async function onGate() {
     if (!gateInput.trim()) return; busy = true;
-    try { const r = await api.gate(gateInput.trim()); gateInput = ''; game = r.state; logEntries = (await api.log()).entries; tick(); }
+    try {
+      const r = await api.gate(gateInput.trim());
+      gateInput = ''; game = r.state; logEntries = (await api.log()).entries;
+      await tick(); gateEl?.focus();   // keep focus so you can keep typing
+    }
     catch (e) { error = e.message; } finally { busy = false; }
   }
   async function onPuzzle() {
@@ -234,7 +237,7 @@
       const r = await api.puzzle(puzzleInput.trim());
       game = r.state; logEntries = (await api.log()).entries;
       error = (!r.result.solved && r.result.hint) ? `Hint: ${r.result.hint}` : '';
-      puzzleInput = ''; tick();
+      puzzleInput = '';
     } catch (e) { error = e.message; } finally { busy = false; }
   }
   async function onRollback(seq) {
@@ -256,14 +259,14 @@
   {:else if phase === 'auth'}
     <div class="panel narrow">
       <h2>{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
-      <input type="email" bind:value={email} placeholder="Email" />
-      <input type="password" bind:value={password} placeholder="Password (min 8 chars)" />
+      <input type="email" bind:value={email} placeholder="Email" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
+      <input type="password" bind:value={password} placeholder="Password (min 8 chars)" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       {#if authMode==='register'}
-        <input bind:value={displayName} placeholder="Display name" />
+        <input bind:value={displayName} placeholder="Display name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
         <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>
       {:else}
-        <input bind:value={code} placeholder="Authenticator code (or a recovery code)" />
+        <input bind:value={code} placeholder="Authenticator code (or a recovery code)" onkeydown={(e) => e.key === 'Enter' && doLogin()} />
         <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
         <p class="switch">No account yet? <button class="link" onclick={() => { authMode='register'; error=''; }}>Register</button></p>
       {/if}
@@ -275,7 +278,7 @@
       <p>Scan this with Google Authenticator, Authy, 1Password, etc. — then enter a code to confirm.</p>
       <div class="qr">{@html qrSvg}</div>
       <p class="sub">Can't scan? Secret: <code>{secret}</code></p>
-      <input bind:value={code} placeholder="6-digit code" inputmode="numeric" />
+      <input bind:value={code} placeholder="6-digit code" inputmode="numeric" onkeydown={(e) => e.key === 'Enter' && doEnable()} />
       <button class="primary" onclick={doEnable} disabled={busy}>Enable 2FA &amp; continue</button>
     </div>
 
@@ -328,7 +331,7 @@
           </div>
           {#if !game.gate.satisfied}
             <div class="row">
-              <input bind:value={gateInput} placeholder="Say something..." onkeydown={(e) => e.key === 'Enter' && onGate()} />
+              <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." onkeydown={(e) => e.key === 'Enter' && onGate()} />
               <button onclick={onGate} disabled={busy}>Say</button>
             </div>
           {/if}
@@ -430,15 +433,6 @@
     </div>
   {/if}
 
-  {#if showBoard}
-    <div class="modal" onclick={() => (showBoard = false)}>
-      <div class="modal-card" onclick={(e) => e.stopPropagation()}>
-        <h2>🏆 Leaderboard</h2>
-        <ol>{#each board as r}<li>{r.display_name} — <b>{r.progress}</b></li>{/each}</ol>
-        <button onclick={() => (showBoard = false)}>Back to the dark</button>
-      </div>
-    </div>
-  {/if}
 </main>
 
 <style>
