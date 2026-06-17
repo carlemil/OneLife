@@ -1,6 +1,7 @@
 <script>
   import { onMount } from 'svelte';
   import { api } from './lib/api.js';
+  import * as spotify from './lib/spotify.js';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -41,6 +42,8 @@
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
   let spotifyOn = $state(false);
+  let spConfig = $state(null);    // {client_id, configured}
+  let spConnected = $state(false); // Web Playback SDK connected (full tracks)
   let _players = [];
   let _active = 0;
   let _curUrl = '';
@@ -73,18 +76,26 @@
   async function loadAtmosphere() {
     try {
       atmo = await api.atmosphere(spotifyOn);
-      if (spotifyOn) {
-        const t = (atmo.tracks || []).find((x) => x.preview_url);
-        if (t) crossfade(t.preview_url);
-      } else stopAudio();
+      if (!spotifyOn) { stopAudio(); spotify.pause(); return; }
+      const full = (atmo.tracks || []).find((x) => x.uri);
+      const prev = (atmo.tracks || []).find((x) => x.preview_url);
+      if (spConnected && full) {
+        // Full-track playback via the Web Playback SDK (Premium).
+        stopAudio();
+        spotify.playWithFade(full.uri, () => spotify.token(spConfig.client_id));
+      } else if (prev) {
+        crossfade(prev.preview_url);   // 30s-preview fallback
+      }
     } catch { /* atmosphere is non-critical */ }
   }
   function toggleSpotify() {
     spotifyOn = !spotifyOn;
     localStorage.setItem('onelife_spotify', spotifyOn ? '1' : '0');
-    if (!spotifyOn) stopAudio();
+    if (!spotifyOn) { stopAudio(); spotify.pause(); }
     loadAtmosphere();
   }
+  function connectSpotify() { if (spConfig?.client_id) spotify.connect(spConfig.client_id); }
+  function disconnectSpotify() { spotify.disconnect(); spConnected = false; }
 
   // Reload atmosphere whenever the location (node) changes.
   $effect(() => {
@@ -94,6 +105,13 @@
 
   onMount(async () => {
     spotifyOn = localStorage.getItem('onelife_spotify') === '1';
+    try {
+      spConfig = await api.spotifyConfig();
+      if (spConfig.configured) {
+        const justReturned = await spotify.handleRedirect(spConfig.client_id);
+        spConnected = justReturned || spotify.isConnected();
+      }
+    } catch { /* spotify is optional */ }
     if (!api.hasToken()) { phase = 'auth'; return; }
     try {
       await loadGame();
@@ -294,7 +312,9 @@
     <div class="topbar"><button class="link" onclick={logout}>log out</button></div>
     <div class="layout">
       <section class="story">
-        {#if atmo?.image_svg}
+        {#if atmo?.image_url}
+          <div class="banner"><img src={atmo.image_url} alt="" /><span class="setting">{atmo.setting}</span></div>
+        {:else if atmo?.image_svg}
           <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
         {/if}
         <h2>{game.node.title}</h2>
@@ -346,6 +366,14 @@
           <h3>Atmosphere</h3>
           <button class="primary" onclick={toggleSpotify}>🎵 Spotify: {spotifyOn ? 'on' : 'off'}</button>
           {#if spotifyOn}
+            {#if spConfig?.configured}
+              {#if spConnected}
+                <p class="sub">▶ Full tracks via your Spotify (Premium). <button class="link" onclick={disconnectSpotify}>disconnect</button></p>
+              {:else}
+                <button class="primary" onclick={connectSpotify}>Connect Spotify for full tracks</button>
+                <p class="sub">Otherwise you'll hear 30s previews.</p>
+              {/if}
+            {/if}
             {#if atmo && !atmo.spotify_configured}<p class="sub">No Spotify keys set — these are the game's picks (no playback).</p>{/if}
             <ul class="tracks">
               {#each atmo?.tracks || [] as t}
@@ -423,7 +451,7 @@
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
   .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
-  .banner :global(svg) { display:block; width:100%; height:140px; }
+  .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
   .tracks { list-style:none; padding:0; font-size:.8rem; margin:.6rem 0 0; }
   .tracks li { display:flex; gap:.5rem; margin:.55rem 0; align-items:center; }

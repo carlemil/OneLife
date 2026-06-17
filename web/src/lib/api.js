@@ -54,6 +54,7 @@ export const api = {
 
   // atmosphere
   atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
+  spotifyConfig: () => req('/api/spotify/config', { auth: false }),
 
   // game
   state: () => req('/api/state'),

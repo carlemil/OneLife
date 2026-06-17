@@ -19,3 +19,11 @@ CREATE TABLE agent_memories (
 
 -- Small data in the slice → sequential scan is fine; add an hnsw index for scale.
 CREATE INDEX agent_memories_char_idx ON agent_memories (character_id);
+
+-- Cache of generated location images, keyed by media theme (reused across
+-- similar locations). image_url may be a remote URL or a data: URI.
+CREATE TABLE generated_images (
+    theme      TEXT PRIMARY KEY,
+    image_url  TEXT NOT NULL,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
+);

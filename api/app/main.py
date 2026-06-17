@@ -482,6 +482,13 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
+@app.get("/api/spotify/config")
+async def spotify_config():
+    """Public client id for the browser PKCE flow (Web Playback SDK)."""
+    cid = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
+    return {"client_id": cid, "configured": bool(cid)}
+
+
 @app.get("/api/atmosphere")
 async def get_atmosphere(spotify: int = 0,
                          authorization: str | None = Header(default=None)):
@@ -501,14 +508,15 @@ async def get_atmosphere(spotify: int = 0,
         if loc and loc["cell_id"]:
             cell = await conn.fetchrow(
                 "SELECT region FROM world_cells WHERE id=$1", loc["cell_id"])
-    theme = json.loads(node["media"]).get("image_theme", "") if node else ""
-    setting = atmosphere.setting_for(loc, cell)
+        theme = json.loads(node["media"]).get("image_theme", "") if node else ""
+        setting = atmosphere.setting_for(loc, cell)
+        image_url = await atmosphere.image_for(conn, theme, loc, setting)
     tracks = []
     if spotify and loc is not None:
         tracks = await atmosphere.tracks_for(
             loc["id"], loc["name"], loc["description"], theme, setting)
-    return {"image_svg": atmosphere.image_svg(theme), "setting": setting,
-            "theme": theme, "tracks": tracks,
+    return {"image_svg": atmosphere.image_svg(theme), "image_url": image_url,
+            "setting": setting, "theme": theme, "tracks": tracks,
             "spotify_configured": atmosphere.SPOTIFY_CONFIGURED}
 
 

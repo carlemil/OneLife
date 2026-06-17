@@ -16,7 +16,7 @@ import hashlib
 
 import httpx
 
-from . import llm
+from . import llm, imagegen
 
 YEAR = 1992
 REGION = "southern Sweden"
@@ -67,6 +67,27 @@ def setting_for(loc, cell=None) -> str:
     place = loc["name"] if loc else "Unknown"
     region = cell["region"] if cell and cell["region"] else REGION
     return f"{place} · {region} · {YEAR}"
+
+
+async def image_for(conn, theme, loc, setting) -> str | None:
+    """A real generated image for this theme (cached), or None to use the SVG."""
+    if not imagegen.CONFIGURED or loc is None:
+        return None
+    row = await conn.fetchrow("SELECT image_url FROM generated_images WHERE theme=$1", theme)
+    if row:
+        return row["image_url"]
+    prompt = (
+        f"Atmospheric establishing shot. {loc['name']}: {loc['description']} "
+        f"Setting: {setting}. Mood: {theme}. Cinematic, desaturated, moody "
+        f"lighting, film grain, no text, no people."
+    )
+    url = await imagegen.generate(prompt)
+    if url:
+        await conn.execute(
+            """INSERT INTO generated_images (theme, image_url) VALUES ($1,$2)
+               ON CONFLICT (theme) DO UPDATE SET image_url=EXCLUDED.image_url""",
+            theme, url)
+    return url
 
 
 # --------------------------------------------------------------------------- #

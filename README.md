@@ -13,6 +13,7 @@ with AI-driven agents. See the design docs:
 - [ACCOUNTS_AND_ONBOARDING.md](ACCOUNTS_AND_ONBOARDING.md) — auth (email/password + TOTP 2FA) & onboarding
 - [ATMOSPHERE.md](ATMOSPHERE.md) — per-location generated image + LLM-picked Spotify soundtrack
 - [WORLD_AND_MAPS.md](WORLD_AND_MAPS.md) — the cell grid, world map, and travel
+- [MEDIA_PROVIDERS.md](MEDIA_PROVIDERS.md) — real image generation + Spotify Web Playback SDK
 
 ## Vertical slice (this repo, runnable)
 
