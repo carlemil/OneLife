@@ -61,7 +61,8 @@ export const api = {
   // game
   state: () => req('/api/state'),
   log: () => req('/api/log'),
-  leaderboard: () => req('/api/leaderboard'),
+  leaderboard: ({ offset = 0, limit = 20, q = '' } = {}) =>
+    req(`/api/leaderboard?offset=${offset}&limit=${limit}&q=${encodeURIComponent(q)}`),
   takeEdge: (edge_id) => req('/api/edge', { method: 'POST', body: { edge_id } }),
   gate: (text) => req('/api/gate/message', { method: 'POST', body: { text } }),
   puzzle: (answer) => req('/api/puzzle/submit', { method: 'POST', body: { answer } }),

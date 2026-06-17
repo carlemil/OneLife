@@ -58,6 +58,16 @@
   let showHelp = $state(false);
   let helpText = $state('');
 
+  // leaderboard page
+  const LB_LIMIT = 20;
+  let showLb = $state(false);
+  let lbRows = $state([]);
+  let lbMe = $state(null);
+  let lbTotal = $state(0);
+  let lbOffset = $state(0);
+  let lbQuery = $state('');
+  let lbPos = $state('');
+
   // admin (hidden export/import)
   let isAdmin = $state(false);
   let showAdmin = $state(false);
@@ -223,6 +233,21 @@
     error = ''; notice = ''; phase = 'game';
     try { isAdmin = (await api.adminMe()).is_admin; } catch { isAdmin = false; }
   }
+
+  // ---------- leaderboard page ----------
+  async function loadLb() {
+    try {
+      const r = await api.leaderboard({ offset: lbOffset, limit: LB_LIMIT, q: lbQuery });
+      lbRows = r.rows; lbMe = r.me; lbTotal = r.total;
+    } catch (e) { error = e.message; }
+  }
+  async function openLeaderboard() { lbQuery = ''; lbOffset = 0; lbPos = ''; await loadLb(); showLb = true; }
+  function searchLb() { lbOffset = 0; loadLb(); }
+  function clearSearch() { lbQuery = ''; lbOffset = 0; loadLb(); }
+  function jumpToMe() { if (lbMe) { lbQuery = ''; lbOffset = Math.max(0, lbMe.rank - Math.ceil(LB_LIMIT / 2)); loadLb(); } }
+  function goToPos() { const p = parseInt(lbPos, 10); if (p > 0) { lbQuery = ''; lbOffset = Math.max(0, p - 1); loadLb(); } }
+  function lbPrev() { lbOffset = Math.max(0, lbOffset - LB_LIMIT); loadLb(); }
+  function lbNext() { if (lbOffset + LB_LIMIT < lbTotal) { lbOffset += LB_LIMIT; loadLb(); } }
 
   async function openHelp() {
     if (!helpText) {
@@ -473,8 +498,8 @@
           {/if}
         </div>
         <div class="panel">
-          <h3>Leaderboard</h3>
-          <ol>{#each board as r}<li>{r.display_name} — <b>{r.progress}</b></li>{/each}</ol>
+          <h3><button class="link paneltitle" onclick={openLeaderboard}>Leaderboard ↗</button></h3>
+          <ul class="lbside">{#each board as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span> {r.display_name} — <b>{r.progress}</b></li>{/each}</ul>
         </div>
         {#if game.notes.length}
           <div class="panel">
@@ -516,6 +541,40 @@
           {/each}
         </div>
         <button onclick={() => (showMap = false)}>Close</button>
+      </div>
+    </div>
+  {/if}
+
+  {#if showLb}
+    <div class="modal" onclick={() => (showLb = false)}>
+      <div class="modal-card lb" onclick={(e) => e.stopPropagation()}>
+        <h2>🏆 Leaderboard <span class="sub">— {lbTotal} players</span></h2>
+        {#if lbMe}
+          <p>You are <b>#{lbMe.rank}</b> — {lbMe.progress} <button class="link" onclick={jumpToMe}>jump to me</button></p>
+        {/if}
+        <div class="row">
+          <input bind:value={lbQuery} placeholder="search a name…" onkeydown={(e) => e.key === 'Enter' && searchLb()} />
+          <button onclick={searchLb}>Search</button>
+          {#if lbQuery}<button class="link" onclick={clearSearch}>clear</button>{/if}
+        </div>
+        <div class="row">
+          <input bind:value={lbPos} placeholder="go to position #" inputmode="numeric" onkeydown={(e) => e.key === 'Enter' && goToPos()} />
+          <button onclick={goToPos}>Go</button>
+        </div>
+        <ul class="lblist">
+          {#each lbRows as r}
+            <li class:me={r.is_me}><span class="rank">#{r.rank}</span> {r.display_name} <b>{r.progress}</b></li>
+          {/each}
+          {#if lbRows.length === 0}<li class="sub">no matches</li>{/if}
+        </ul>
+        {#if !lbQuery}
+          <div class="row lbnav">
+            <button onclick={lbPrev} disabled={lbOffset === 0}>← Prev</button>
+            <span class="sub">{lbTotal ? lbOffset + 1 : 0}–{Math.min(lbOffset + LB_LIMIT, lbTotal)} of {lbTotal}</span>
+            <button onclick={lbNext} disabled={lbOffset + LB_LIMIT >= lbTotal}>Next →</button>
+          </div>
+        {/if}
+        <button onclick={() => (showLb = false)}>Close</button>
       </div>
     </div>
   {/if}
@@ -629,6 +688,14 @@
   .modal-card { background:#1a1d28; border:1px solid #3a456a; border-radius:10px; padding:1.5rem 2rem; min-width:300px; }
   .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
   .modal-card.help { width:560px; max-width:92vw; max-height:85vh; overflow:auto; }
+  .modal-card.lb { width:420px; max-width:92vw; max-height:85vh; overflow:auto; }
+  .paneltitle { background:none; border:none; color:#e8e8f0; font:inherit; padding:0; cursor:pointer; }
+  .paneltitle:hover { color:#7fa8d8; }
+  .lblist, .lbside { list-style:none; padding:0; }
+  .lblist li, .lbside li { padding:.12rem 0; }
+  .lblist .rank, .lbside .rank { color:#5a5a72; }
+  .lblist li.me, .lbside li.me { color:#cdbb9a; }
+  .lbnav { align-items:center; justify-content:space-between; }
   .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }
   .admin-sec h3 { margin:.2rem 0; }
   .admin-sec button, .admin-sec .filebtn, .admin-sec select { margin:.2rem .4rem .2rem 0; }

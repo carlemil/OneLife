@@ -643,9 +643,31 @@ async def admin_player_import(body: DataImportBody,
 
 
 @app.get("/api/leaderboard")
-async def leaderboard(authorization: str | None = Header(default=None)):
-    await _session(authorization)
+async def leaderboard(offset: int = 0, limit: int = 20, q: str = "",
+                      authorization: str | None = Header(default=None)):
+    """Ranked leaderboard with the caller's own position. `q` searches names;
+    otherwise returns the window starting at rank `offset`+1 (for jump-to-position)."""
+    sess = await _session(authorization)
+    offset = max(0, offset)
+    limit = max(1, min(limit, 100))
+    pid = sess["player_id"]
+    cte = ("WITH ranked AS (SELECT player_id, display_name, progress, "
+           "ROW_NUMBER() OVER (ORDER BY progress DESC, display_name) AS rank FROM leaderboard) ")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        rows = await conn.fetch("SELECT display_name, progress FROM leaderboard LIMIT 20")
-    return {"rows": [{"display_name": r["display_name"], "progress": r["progress"]} for r in rows]}
+        total = await conn.fetchval(cte + "SELECT count(*) FROM ranked")
+        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress FROM ranked WHERE player_id=$1", pid)
+        if q.strip():
+            rows = await conn.fetch(
+                cte + "SELECT player_id, rank, display_name, progress FROM ranked "
+                "WHERE display_name ILIKE '%'||$1||'%' ORDER BY rank LIMIT $2", q.strip(), limit)
+        else:
+            rows = await conn.fetch(
+                cte + "SELECT player_id, rank, display_name, progress FROM ranked "
+                "ORDER BY rank OFFSET $1 LIMIT $2", offset, limit)
+    return {
+        "total": total,
+        "me": ({"rank": me["rank"], "display_name": me["display_name"], "progress": me["progress"]} if me else None),
+        "rows": [{"rank": r["rank"], "display_name": r["display_name"], "progress": r["progress"],
+                  "is_me": r["player_id"] == pid} for r in rows],
+    }
