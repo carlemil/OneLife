@@ -333,10 +333,10 @@
 
         {#if game.node.type === 'gate' && game.gate}
           {#if !game.gate.satisfied}
-            <div class="row">
-              <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." onkeydown={(e) => e.key === 'Enter' && onGate()} />
-              <button onclick={onGate} disabled={busy}>Say</button>
-            </div>
+            <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
+              <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." />
+              <button type="submit" disabled={busy}>Say</button>
+            </form>
           {/if}
           <div class="chat">
             {#each gateMsgs.slice(0, gateShown) as m}
@@ -349,10 +349,10 @@
         {/if}
 
         {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
-          <div class="row">
-            <input bind:value={puzzleInput} placeholder="Enter the code..." onkeydown={(e) => e.key === 'Enter' && onPuzzle()} />
-            <button onclick={onPuzzle} disabled={busy}>Try</button>
-          </div>
+          <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
+            <input bind:value={puzzleInput} placeholder="Enter the code..." />
+            <button type="submit" disabled={busy}>Try</button>
+          </form>
         {/if}
 
         <div class="edges">
