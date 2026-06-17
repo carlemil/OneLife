@@ -29,7 +29,7 @@
   // game
   let game = $state(null);
   let logEntries = $state([]);
-  let board = $state([]);
+  let myRank = $state(null);
   let gateInput = $state('');
   let puzzleInput = $state('');
   let gateEl = $state(null);
@@ -231,7 +231,7 @@
   async function loadGame() {
     game = await api.state();
     logEntries = (await api.log()).entries;
-    board = (await api.leaderboard()).rows;
+    myRank = (await api.leaderboard({ limit: 1 })).me;
     error = ''; notice = ''; phase = 'game';
     try { isAdmin = (await api.adminMe()).is_admin; } catch { isAdmin = false; }
   }
@@ -298,7 +298,7 @@
     try {
       game = await api.state();
       logEntries = (await api.log()).entries;
-      board = (await api.leaderboard()).rows;
+      myRank = (await api.leaderboard({ limit: 1 })).me;
     } catch (e) {
       if (e.unauthorized) logout(); else error = e.message;
     }
@@ -344,7 +344,7 @@
   async function onRollback(seq) {
     if (!confirm(`Roll the log back to step ${seq}? You will lose all progress after it.`)) return;
     busy = true;
-    try { game = await api.rollback(seq); logEntries = (await api.log()).entries; board = (await api.leaderboard()).rows; }
+    try { game = await api.rollback(seq); logEntries = (await api.log()).entries; myRank = (await api.leaderboard({ limit: 1 })).me; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
 </script>
@@ -501,7 +501,11 @@
         </div>
         <div class="panel">
           <h3><button class="link paneltitle" onclick={openLeaderboard}>Leaderboard ↗</button></h3>
-          <ul class="lbside">{#each board as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>{/each}</ul>
+          {#if myRank}
+            <ul class="lbside"><li class="me"><span class="rank">#{myRank.rank}</span><span class="nm">{myRank.display_name}</span><span class="score">{myRank.progress}</span></li></ul>
+          {:else}
+            <p class="sub">no ranking yet</p>
+          {/if}
         </div>
         {#if game.notes.length}
           <div class="panel">
