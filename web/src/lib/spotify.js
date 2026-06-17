@@ -9,7 +9,11 @@ const SCOPES = 'streaming user-read-email user-read-private user-modify-playback
 const AUTH = 'https://accounts.spotify.com/authorize';
 const TOKEN = 'https://accounts.spotify.com/api/token';
 
-function redirectUri() { return location.origin + location.pathname; }
+// Use the server-configured redirect URI when set (so it can match exactly what
+// Spotify accepts); otherwise derive it from where the app is running.
+function redirectUri(override) {
+  return (override && override.trim()) ? override.trim() : location.origin + location.pathname;
+}
 function rand(n) {
   const a = new Uint8Array(n); crypto.getRandomValues(a);
   return Array.from(a, (b) => ('0' + b.toString(16)).slice(-2)).join('');
@@ -33,29 +37,30 @@ export function disconnect() {
   try { _player && _player.pause(); } catch {}
 }
 
-export async function connect(clientId) {
+export async function connect(clientId, redirect) {
   const verifier = rand(48);
   sessionStorage.setItem('sp_verifier', verifier);
   const challenge = await s256(verifier);
   const p = new URLSearchParams({
     response_type: 'code', client_id: clientId, scope: SCOPES,
-    code_challenge_method: 'S256', code_challenge: challenge, redirect_uri: redirectUri(),
+    code_challenge_method: 'S256', code_challenge: challenge, redirect_uri: redirectUri(redirect),
   });
   location.href = `${AUTH}?${p}`;
 }
 
 // Call on load — if we're returning from Spotify with ?code, exchange it.
-export async function handleRedirect(clientId) {
+export async function handleRedirect(clientId, redirect) {
   const u = new URL(location.href);
   const code = u.searchParams.get('code');
   if (!code) return false;
   const verifier = sessionStorage.getItem('sp_verifier');
   const body = new URLSearchParams({
-    grant_type: 'authorization_code', code, redirect_uri: redirectUri(),
+    grant_type: 'authorization_code', code, redirect_uri: redirectUri(redirect),
     client_id: clientId, code_verifier: verifier || '',
   });
   const r = await fetch(TOKEN, { method: 'POST', headers: { 'Content-Type': 'application/x-www-form-urlencoded' }, body });
-  history.replaceState({}, '', redirectUri());
+  // Strip the ?code from the URL without forcing the configured redirect path.
+  history.replaceState({}, '', location.origin + location.pathname);
   if (!r.ok) return false;
   store(await r.json());
   return true;

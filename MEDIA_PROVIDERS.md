@@ -47,8 +47,12 @@ Flow:
 4. Tokens are refreshed via the PKCE refresh token.
 
 Setup: set `SPOTIFY_CLIENT_ID` (and `SPOTIFY_CLIENT_SECRET` for server-side
-search), and **register the app URL** (e.g. `http://localhost:5173/`) as a
-redirect URI in the Spotify dashboard.
+search), and **register a redirect URI** in the Spotify dashboard. Set
+`SPOTIFY_REDIRECT_URI` in `.env` to that **exact** value so the browser flow
+matches it — `/api/spotify/config` hands it to the client, which falls back to
+its own origin + path when the var is empty. Spotify may require a loopback IP
+(`http://127.0.0.1:5173/`) rather than `http://localhost:5173/`; whichever you
+register, set the same value here and open the game at that origin.
 
 Degradation:
 - Not connected / no Premium → **30s preview crossfade** (if previews exist).

@@ -94,7 +94,7 @@
     if (!spotifyOn) { stopAudio(); spotify.pause(); }
     loadAtmosphere();
   }
-  function connectSpotify() { if (spConfig?.client_id) spotify.connect(spConfig.client_id); }
+  function connectSpotify() { if (spConfig?.client_id) spotify.connect(spConfig.client_id, spConfig.redirect_uri); }
   function disconnectSpotify() { spotify.disconnect(); spConnected = false; }
 
   // Reload atmosphere whenever the location (node) changes.
@@ -108,7 +108,7 @@
     try {
       spConfig = await api.spotifyConfig();
       if (spConfig.configured) {
-        const justReturned = await spotify.handleRedirect(spConfig.client_id);
+        const justReturned = await spotify.handleRedirect(spConfig.client_id, spConfig.redirect_uri);
         spConnected = justReturned || spotify.isConnected();
       }
     } catch { /* spotify is optional */ }

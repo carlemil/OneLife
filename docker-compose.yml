@@ -35,6 +35,9 @@ services:
       # Without these, the LLM still suggests tracks (shown as text, no playback).
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
+      # The exact redirect URI registered in your Spotify app (must match the
+      # browser origin). Leave empty to use the app's own origin + path.
+      SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
       # Optional: real location image generation (OpenAI-compatible images API).
       # Without IMAGE_API_KEY the game uses the procedural SVG banner.
       IMAGE_API_KEY: ${IMAGE_API_KEY:-}

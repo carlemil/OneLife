@@ -484,9 +484,12 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
 
 @app.get("/api/spotify/config")
 async def spotify_config():
-    """Public client id for the browser PKCE flow (Web Playback SDK)."""
+    """Public client id + optional redirect URI for the browser PKCE flow.
+    redirect_uri lets you match exactly what Spotify accepts; empty = the client
+    uses its own origin + path."""
     cid = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
-    return {"client_id": cid, "configured": bool(cid)}
+    return {"client_id": cid, "configured": bool(cid),
+            "redirect_uri": os.environ.get("SPOTIFY_REDIRECT_URI", "").strip()}
 
 
 @app.get("/api/atmosphere")
