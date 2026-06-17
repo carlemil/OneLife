@@ -12,15 +12,17 @@ async function req(path, { method = 'GET', body, auth = true } = {}) {
     headers,
     body: body ? JSON.stringify(body) : undefined,
   });
-  if (res.status === 401) {
-    // Stale/invalid session — drop it so the UI can fall back to the login screen.
+  const data = await res.json().catch(() => ({}));
+  // Only treat 401/403 specially for AUTHENTICATED requests (an expired token /
+  // onboarding gate). For auth endpoints (login etc.) these mean bad credentials
+  // or 2FA-not-set-up, so surface the real message instead.
+  if (res.status === 401 && auth) {
     localStorage.removeItem('onelife_token');
     const err = new Error('session expired');
     err.unauthorized = true;
     throw err;
   }
-  const data = await res.json().catch(() => ({}));
-  if (res.status === 403) {
+  if (res.status === 403 && auth) {
     const err = new Error(data.detail || 'forbidden');
     err.forbidden = true;
     throw err;

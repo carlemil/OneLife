@@ -255,18 +255,17 @@
 
   {:else if phase === 'auth'}
     <div class="panel narrow">
-      <div class="tabs">
-        <button class:active={authMode==='login'} onclick={() => { authMode='login'; error=''; }}>Log in</button>
-        <button class:active={authMode==='register'} onclick={() => { authMode='register'; error=''; }}>Register</button>
-      </div>
+      <h2>{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
       <input type="email" bind:value={email} placeholder="Email" />
       <input type="password" bind:value={password} placeholder="Password (min 8 chars)" />
       {#if authMode==='register'}
         <input bind:value={displayName} placeholder="Display name" />
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
+        <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>
       {:else}
         <input bind:value={code} placeholder="Authenticator code (or a recovery code)" />
         <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
+        <p class="switch">No account yet? <button class="link" onclick={() => { authMode='register'; error=''; }}>Register</button></p>
       {/if}
     </div>
 
@@ -461,6 +460,7 @@
   .tabs { display:flex; gap:.5rem; margin-bottom:1rem; }
   .tabs button { flex:1; background:#15171f; }
   .tabs button.active { background:#34416a; }
+  .switch { margin-top:.7rem; font-size:.85rem; color:#9aa; }
   .chat { background:#15171f; border-radius:8px; padding:.75rem; margin:.5rem 0; }
   .chat .me { color:#9fd3ff; } .chat .npc { color:#cdbb9a; }
   .row { display:flex; gap:.5rem; margin:.5rem 0; }
