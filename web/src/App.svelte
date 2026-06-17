@@ -201,6 +201,8 @@
 
   function authSubmit() { if (authMode === 'register') doRegister(); else doLogin(); }
 
+  function confirmLogout() { if (confirm('Log out? Your progress is saved — log back in any time.')) logout(); }
+
   function logout() {
     api.logout(); game = null; phase = 'auth'; authMode = 'login';
     email = ''; password = ''; code = ''; notice = '';
@@ -413,7 +415,7 @@
     <div class="topbar">
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title="Admin" onclick={openAdmin}>⚙</button>{/if}
-      <button class="link" onclick={logout}>log out</button>
+      <button class="link" onclick={confirmLogout}>log out</button>
     </div>
     <div class="layout">
       <section class="story">
