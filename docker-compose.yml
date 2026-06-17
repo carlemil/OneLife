@@ -28,8 +28,9 @@ services:
       CONTENT_DIR: /content
       # Encrypts TOTP secrets at rest; set a strong value in production.
       ONELIFE_SECRET_KEY: ${ONELIFE_SECRET_KEY:-}
-      # Browser origin allowed by CORS.
-      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
+      # Allowed browser origins for CORS (comma-separated; localhost and the
+      # 127.0.0.1 loopback are distinct origins, so allow both for local dev).
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173,http://127.0.0.1:5173}
       # Optional: enables real Spotify track resolution (search + previews + art)
       # and the Web Playback SDK connect flow (client id only is enough for the SDK).
       # Without these, the LLM still suggests tracks (shown as text, no playback).

@@ -14,12 +14,15 @@ from pydantic import BaseModel
 from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere, security
 from .dsl import evaluate
 
-WEB_ORIGIN = os.environ.get("WEB_ORIGIN", "http://localhost:5173")
+# Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
+# loopback are different origins, so allow both for local dev).
+WEB_ORIGIN = os.environ.get("WEB_ORIGIN", "http://localhost:5173,http://127.0.0.1:5173")
+_origins = [o.strip() for o in WEB_ORIGIN.split(",") if o.strip()]
 SESSION_TTL = "7 days"
 
 app = FastAPI(title="OneLife API")
 app.add_middleware(
-    CORSMiddleware, allow_origins=[WEB_ORIGIN], allow_methods=["*"], allow_headers=["*"],
+    CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"],
 )
 
 
