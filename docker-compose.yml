@@ -35,9 +35,6 @@ services:
       # Without these, the LLM still suggests tracks (shown as text, no playback).
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}
       SPOTIFY_CLIENT_SECRET: ${SPOTIFY_CLIENT_SECRET:-}
-      # Set false to disable the "Connect Spotify" OAuth flow (e.g. debug builds);
-      # track search/embeds still work, only the full-track SDK login is hidden.
-      SPOTIFY_OAUTH_ENABLED: ${SPOTIFY_OAUTH_ENABLED:-true}
       # The exact redirect URI registered in your Spotify app (must match the
       # browser origin). Leave empty to use the app's own origin + path.
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}

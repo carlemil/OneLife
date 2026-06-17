@@ -488,11 +488,8 @@ async def spotify_config():
     redirect_uri lets you match exactly what Spotify accepts; empty = the client
     uses its own origin + path."""
     cid = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
-    oauth = os.environ.get("SPOTIFY_OAUTH_ENABLED", "true").strip().lower() \
-        not in ("0", "false", "no", "off", "")
     return {"client_id": cid, "configured": bool(cid),
-            "redirect_uri": os.environ.get("SPOTIFY_REDIRECT_URI", "").strip(),
-            "oauth_enabled": oauth}
+            "redirect_uri": os.environ.get("SPOTIFY_REDIRECT_URI", "").strip()}
 
 
 @app.get("/api/atmosphere")
