@@ -54,6 +54,10 @@
   let world = $state(null);
   let showMap = $state(false);
 
+  // in-game help
+  let showHelp = $state(false);
+  let helpText = $state('');
+
   // admin (hidden export/import)
   let isAdmin = $state(false);
   let showAdmin = $state(false);
@@ -220,6 +224,13 @@
     try { isAdmin = (await api.adminMe()).is_admin; } catch { isAdmin = false; }
   }
 
+  async function openHelp() {
+    if (!helpText) {
+      try { helpText = (await api.onboarding()).manual; } catch { helpText = 'Help is unavailable right now.'; }
+    }
+    showHelp = true;
+  }
+
   // ---------- admin ----------
   async function openAdmin() {
     adminMsg = ''; showAdmin = true;
@@ -375,6 +386,7 @@
 
   {:else if phase === 'game' && game}
     <div class="topbar">
+      <button class="link" title="How to play" onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title="Admin" onclick={openAdmin}>⚙</button>{/if}
       <button class="link" onclick={logout}>log out</button>
     </div>
@@ -508,6 +520,16 @@
     </div>
   {/if}
 
+  {#if showHelp}
+    <div class="modal" onclick={() => (showHelp = false)}>
+      <div class="modal-card help" onclick={(e) => e.stopPropagation()}>
+        <h2>How to play</h2>
+        <pre class="manual">{helpText}</pre>
+        <button onclick={() => (showHelp = false)}>Close</button>
+      </div>
+    </div>
+  {/if}
+
   {#if showAdmin}
     <div class="modal" onclick={() => (showAdmin = false)}>
       <div class="modal-card admin" onclick={(e) => e.stopPropagation()}>
@@ -606,6 +628,7 @@
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
   .modal-card { background:#1a1d28; border:1px solid #3a456a; border-radius:10px; padding:1.5rem 2rem; min-width:300px; }
   .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
+  .modal-card.help { width:560px; max-width:92vw; max-height:85vh; overflow:auto; }
   .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }
   .admin-sec h3 { margin:.2rem 0; }
   .admin-sec button, .admin-sec .filebtn, .admin-sec select { margin:.2rem .4rem .2rem 0; }

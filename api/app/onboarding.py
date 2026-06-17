@@ -20,6 +20,8 @@ HOW IT WORKS
   open up. There's no single magic phrase; be human about it.
 • Puzzles are hidden in the world. Pay attention to what people say and what
   you read — the clues are there.
+• Keep a pen and paper handy. Noting down names, numbers, and stray details will
+  help you piece things together.
 
 DEATH & ROLLBACK
 • You can die. When you're stuck or dead, you can ROLL BACK your log to an
