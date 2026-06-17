@@ -5,10 +5,10 @@ CREATE EXTENSION IF NOT EXISTS vector;
 
 CREATE TABLE agent_memories (
     id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    character_id     TEXT NOT NULL REFERENCES characters(id),
+    character_id     TEXT NOT NULL REFERENCES characters(id) ON DELETE CASCADE,
     content          TEXT NOT NULL,
     embedding        vector(256),
-    location_id      TEXT REFERENCES locations(id),
+    location_id      TEXT REFERENCES locations(id) ON DELETE SET NULL,
     story_time       BIGINT NOT NULL DEFAULT 0,
     source           TEXT NOT NULL DEFAULT 'told',   -- observed | told | leaked
     -- SET NULL so deleting a player doesn't fail; their leaked memories persist
