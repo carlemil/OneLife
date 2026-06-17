@@ -15,8 +15,7 @@ wrong moves can get you killed.
 HOW IT WORKS
 • The game is a stream of text. You act by choosing what to do, talking to the
   people (and places) you meet, and solving the puzzles woven into them.
-• There is no inventory. Instead, the game keeps a LOG of everything that
-  happens. Your log IS your progress.
+• The game keeps a LOG of everything that happens. Your log IS your progress.
 • Some characters must be TALKED THROUGH — say the right kind of thing and they
   open up. There's no single magic phrase; be human about it.
 • Puzzles are hidden in the world. Pay attention to what people say and what
