@@ -359,6 +359,10 @@
           {/if}
         </div>
 
+        {#if game.notes.length}
+          <div class="notes"><h3>Notes</h3><ul>{#each game.notes as n}<li>{n}</li>{/each}</ul></div>
+        {/if}
+
         {#if game.node.type === 'gate' && game.gate}
           <div class="chat">
             {#each gateMsgs.slice(0, gateShown) as m}
@@ -368,10 +372,6 @@
               <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
             {/if}
           </div>
-        {/if}
-
-        {#if game.notes.length}
-          <div class="notes"><h3>Notes</h3><ul>{#each game.notes as n}<li>{n}</li>{/each}</ul></div>
         {/if}
       </section>
 
