@@ -475,6 +475,7 @@
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
+  .notes { margin-top:1.5rem; }
   button { background:#2a3550; color:#e8e8f0; border:1px solid #3a456a; padding:.55rem .8rem; border-radius:6px; cursor:pointer; text-align:left; }
   button:hover { background:#34416a; }
   button.primary { background:#34416a; text-align:center; width:100%; }
