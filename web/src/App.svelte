@@ -34,6 +34,14 @@
   let puzzleInput = $state('');
   let gateEl = $state(null);
 
+  // Newest-on-top with "More" pagination, for the dialog and the log.
+  const GATE_PAGE = 12;
+  const LOG_PAGE = 10;
+  let gateShown = $state(GATE_PAGE);
+  let logShown = $state(LOG_PAGE);
+  let gateMsgs = $derived(game?.gate?.messages ? [...game.gate.messages].reverse() : []);
+  let logRev = $derived(logEntries ? [...logEntries].reverse() : []);
+
   // world map
   let world = $state(null);
   let showMap = $state(false);
@@ -99,7 +107,7 @@
   // Reload atmosphere whenever the location (node) changes.
   $effect(() => {
     const id = game?.node?.id;
-    if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; loadAtmosphere(); }
+    if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; gateShown = GATE_PAGE; loadAtmosphere(); }
   });
 
   onMount(async () => {
@@ -324,17 +332,20 @@
         <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
         {#if game.node.type === 'gate' && game.gate}
-          <div class="chat">
-            {#each game.gate.messages as m}
-              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : 'NPC'}:</b> {m.content}</p>
-            {/each}
-          </div>
           {#if !game.gate.satisfied}
             <div class="row">
               <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." onkeydown={(e) => e.key === 'Enter' && onGate()} />
               <button onclick={onGate} disabled={busy}>Say</button>
             </div>
           {/if}
+          <div class="chat">
+            {#each gateMsgs.slice(0, gateShown) as m}
+              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : 'NPC'}:</b> {m.content}</p>
+            {/each}
+            {#if gateMsgs.length > gateShown}
+              <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
+            {/if}
+          </div>
         {/if}
 
         {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
@@ -401,12 +412,15 @@
         <div class="panel">
           <h3>Log <span class="sub">(your progress)</span></h3>
           <ul class="log">
-            {#each logEntries as l}
+            {#each logRev.slice(0, logShown) as l}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0}<button class="link" onclick={() => onRollback(l.seq)}>roll back here</button>{/if}
+                {#if l.seq > 0}<button class="link rollback" title="Roll back to here" aria-label="Roll back to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
               </li>
             {/each}
           </ul>
+          {#if logRev.length > logShown}
+            <button class="link more" onclick={() => (logShown += LOG_PAGE)}>more ({logRev.length - logShown} earlier)</button>
+          {/if}
         </div>
       </aside>
     </div>
@@ -477,6 +491,8 @@
   button.link { background:none; border:none; color:#7fa8d8; padding:0 0 0 .4rem; width:auto; cursor:pointer; font-size:.8rem; }
   .dead { color:#c98; }
   .log { list-style:none; padding:0; font-size:.85rem; } .log .seq { color:#5a5a72; }
+  .more { display:inline-block; margin-top:.5rem; }
+  .rollback { font-size:1rem; line-height:1; }
   .error { background:#3a2330; border:1px solid #6a3346; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .notice { background:#23323a; border:1px solid #356a5a; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
