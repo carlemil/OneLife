@@ -33,6 +33,7 @@
   let gateInput = $state('');
   let puzzleInput = $state('');
   let gateEl = $state(null);
+  let puzzleEl = $state(null);
 
   // Newest-on-top with "More" pagination, for the dialog and the log.
   const GATE_PAGE = 12;
@@ -288,9 +289,9 @@
     try {
       const r = await api.gate(gateInput.trim());
       gateInput = ''; game = r.state; logEntries = (await api.log()).entries;
-      await tick(); gateEl?.focus();   // keep focus so you can keep typing
     }
-    catch (e) { error = e.message; } finally { busy = false; }
+    catch (e) { error = e.message; }
+    finally { busy = false; await tick(); gateEl?.focus(); }   // refocus after re-enable
   }
   async function onPuzzle() {
     if (!puzzleInput.trim()) return; busy = true;
@@ -299,7 +300,8 @@
       game = r.state; logEntries = (await api.log()).entries;
       error = (!r.result.solved && r.result.hint) ? `Hint: ${r.result.hint}` : '';
       puzzleInput = '';
-    } catch (e) { error = e.message; } finally { busy = false; }
+    } catch (e) { error = e.message; }
+    finally { busy = false; await tick(); puzzleEl?.focus(); }
   }
   async function onRollback(seq) {
     if (!confirm(`Roll the log back to step ${seq}? You will lose all progress after it.`)) return;
@@ -396,7 +398,7 @@
 
         {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
           <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
-            <input bind:value={puzzleInput} placeholder="Enter the code..." disabled={busy} />
+            <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter the code..." disabled={busy} />
             <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
           </form>
         {/if}
