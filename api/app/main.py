@@ -643,10 +643,11 @@ async def admin_player_import(body: DataImportBody,
 
 
 @app.get("/api/leaderboard")
-async def leaderboard(offset: int = 0, limit: int = 20, q: str = "",
+async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int = 0,
                       authorization: str | None = Header(default=None)):
     """Ranked leaderboard with the caller's own position. `q` searches names;
-    otherwise returns the window starting at rank `offset`+1 (for jump-to-position)."""
+    `around=N` returns the caller +/- N neighbours; otherwise the window starting
+    at rank `offset`+1 (for jump-to-position)."""
     sess = await _session(authorization)
     offset = max(0, offset)
     limit = max(1, min(limit, 100))
@@ -657,6 +658,10 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "",
     async with pool.acquire() as conn:
         total = await conn.fetchval(cte + "SELECT count(*) FROM ranked")
         me = await conn.fetchrow(cte + "SELECT rank, display_name, progress FROM ranked WHERE player_id=$1", pid)
+        if around > 0 and me:
+            offset = max(0, me["rank"] - around - 1)
+            limit = min(2 * around + 1, 100)
+            q = ""
         if q.strip():
             rows = await conn.fetch(
                 cte + "SELECT player_id, rank, display_name, progress FROM ranked "
