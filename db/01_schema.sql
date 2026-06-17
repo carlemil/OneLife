@@ -57,9 +57,10 @@ CREATE TABLE locations (
 );
 
 CREATE TABLE characters (
-    id        TEXT PRIMARY KEY,
-    name      TEXT NOT NULL,
-    persona   TEXT NOT NULL
+    id          TEXT PRIMARY KEY,
+    name        TEXT NOT NULL,
+    persona     TEXT NOT NULL,
+    reveal_name TEXT          -- personal name shown once revealed/guessed in chat
 );
 
 -- ---------- Story graph ----------

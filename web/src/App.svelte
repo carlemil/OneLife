@@ -41,6 +41,13 @@
   let logShown = $state(LOG_PAGE);
   let gateMsgs = $derived(game?.gate?.messages ? [...game.gate.messages].reverse() : []);
   let logRev = $derived(logEntries ? [...logEntries].reverse() : []);
+  // Show the NPC's name once it has been revealed/guessed in the conversation.
+  let npcLabel = $derived.by(() => {
+    const g = game?.gate;
+    const rn = g?.reveal_name;
+    if (rn && (g.messages || []).some((m) => (m.content || '').toLowerCase().includes(rn.toLowerCase()))) return rn;
+    return 'NPC';
+  });
 
   // world map
   let world = $state(null);
@@ -199,7 +206,7 @@
     game = await api.state();
     logEntries = (await api.log()).entries;
     board = (await api.leaderboard()).rows;
-    error = ''; phase = 'game';
+    error = ''; notice = ''; phase = 'game';
   }
 
   async function refresh() {
@@ -333,15 +340,15 @@
 
         {#if game.node.type === 'gate' && game.gate && !game.gate.satisfied}
           <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
-            <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." />
-            <button type="submit" disabled={busy}>Say</button>
+            <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." disabled={busy} />
+            <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
           </form>
         {/if}
 
         {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
           <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
-            <input bind:value={puzzleInput} placeholder="Enter the code..." />
-            <button type="submit" disabled={busy}>Try</button>
+            <input bind:value={puzzleInput} placeholder="Enter the code..." disabled={busy} />
+            <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
           </form>
         {/if}
 
@@ -359,14 +366,10 @@
           {/if}
         </div>
 
-        {#if game.notes.length}
-          <div class="notes"><h3>Notes</h3><ul>{#each game.notes as n}<li>{n}</li>{/each}</ul></div>
-        {/if}
-
         {#if game.node.type === 'gate' && game.gate}
           <div class="chat">
             {#each gateMsgs.slice(0, gateShown) as m}
-              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : 'NPC'}:</b> {m.content}</p>
+              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : npcLabel}:</b> {m.content}</p>
             {/each}
             {#if gateMsgs.length > gateShown}
               <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
@@ -410,6 +413,12 @@
           <h3>Leaderboard</h3>
           <ol>{#each board as r}<li>{r.display_name} — <b>{r.progress}</b></li>{/each}</ol>
         </div>
+        {#if game.notes.length}
+          <div class="panel">
+            <h3>Notes</h3>
+            <ul class="notelist">{#each game.notes as n}<li>{n}</li>{/each}</ul>
+          </div>
+        {/if}
         <div class="panel">
           <h3>Log <span class="sub">(your progress)</span></h3>
           <ul class="log">
@@ -494,6 +503,9 @@
   .log { list-style:none; padding:0; font-size:.85rem; } .log .seq { color:#5a5a72; }
   .more { display:inline-block; margin-top:.5rem; }
   .rollback { font-size:1rem; line-height:1; }
+  .notelist { list-style:disc; padding-left:1.1rem; margin:.3rem 0 0; font-size:.82rem; color:#cdbb9a; }
+  .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#e8e8f0; border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
+  @keyframes spin { to { transform: rotate(360deg); } }
   .error { background:#3a2330; border:1px solid #6a3346; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .notice { background:#23323a; border:1px solid #356a5a; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }

@@ -9,6 +9,7 @@ arcs:
 characters:
   - id: the-janitor
     name: The Janitor
+    reveal_name: Arne
     persona: "A wary old caretaker. Speaks in short, clipped sentences. Suspicious of strangers, but softens if treated with kindness or pity. He has worked here for decades and knows the building's secrets. He does NOT know anything about the world outside Sandby or the larger mystery, and deflects such questions."
 
 locations:

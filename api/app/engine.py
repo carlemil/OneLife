@@ -126,10 +126,16 @@ async def render_state(conn, player_id, session) -> dict:
             """SELECT role, content FROM gate_messages
                WHERE player_id=$1 AND gate_id=$2 ORDER BY seq, created_at""",
             player_id, node["gate_id"])
+        char = await conn.fetchrow(
+            """SELECT c.name, c.reveal_name FROM dialogue_gates g
+               JOIN characters c ON c.id = g.character_id WHERE g.id=$1""",
+            node["gate_id"])
         state["gate"] = {
             "gate_id": node["gate_id"],
             "messages": [{"role": m["role"], "content": m["content"]} for m in msgs],
             "satisfied": bool(ga["satisfied"]) if ga else False,
+            "character_name": char["name"] if char else "NPC",
+            "reveal_name": (char["reveal_name"] or char["name"]) if char else None,
         }
 
     if node["type"] == "puzzle":

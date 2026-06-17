@@ -9,10 +9,10 @@ on and the game crossfades between tracks as you move.
 
 ## Setting
 
-The world is set in **southern Sweden, 1992**. The **year is fixed at 1992**;
-**location** is what varies (today: Killebäckskolan; later, traveling the world
-map will change the place). The music director is given
-`"<location> · southern Sweden · 1992"` so its picks fit place *and* era.
+The world is set in **southern Sweden**. **Location** is what varies (today:
+Killebäckskolan; traveling the world map changes the place). The music director is
+given `"<location> · <region>"` so its picks fit the place. (Time/era is no longer
+pinned — it was forced to 1992 previously.)
 
 ---
 

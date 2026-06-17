@@ -175,9 +175,10 @@ async def seed_content(conn, data: dict):
                 l["id"], l["name"], l.get("description", ""), l.get("cell"))
         for c in data["characters"]:
             await conn.execute(
-                """INSERT INTO characters (id,name,persona) VALUES ($1,$2,$3)
-                   ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, persona=EXCLUDED.persona""",
-                c["id"], c["name"], c["persona"])
+                """INSERT INTO characters (id,name,persona,reveal_name) VALUES ($1,$2,$3,$4)
+                   ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,
+                     persona=EXCLUDED.persona, reveal_name=EXCLUDED.reveal_name""",
+                c["id"], c["name"], c["persona"], c.get("reveal_name"))
         for p in data["puzzles"]:
             await conn.execute(
                 """INSERT INTO puzzles (id,type,prompt,solution,required_clues,hint_ladder,on_solve)

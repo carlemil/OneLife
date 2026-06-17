@@ -18,7 +18,6 @@ import httpx
 
 from . import llm, imagegen
 
-YEAR = 1992
 REGION = "southern Sweden"
 
 _SP_ID = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
@@ -66,7 +65,7 @@ def image_svg(theme: str) -> str:
 def setting_for(loc, cell=None) -> str:
     place = loc["name"] if loc else "Unknown"
     region = cell["region"] if cell and cell["region"] else REGION
-    return f"{place} · {region} · {YEAR}"
+    return f"{place} · {region}"
 
 
 async def image_for(conn, theme, loc, setting) -> str | None:
