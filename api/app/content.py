@@ -14,8 +14,8 @@ from collections import defaultdict, deque
 import yaml
 
 DEFAULT_DIR = os.environ.get("CONTENT_DIR", "/content")
-_LIST_KEYS = ["arcs", "characters", "locations", "nodes", "gates", "puzzles", "clues", "edges"]
-_ID_KEYS = ["nodes", "gates", "puzzles", "clues", "characters", "locations", "arcs"]
+_LIST_KEYS = ["arcs", "cells", "characters", "locations", "nodes", "gates", "puzzles", "clues", "edges"]
+_ID_KEYS = ["nodes", "gates", "puzzles", "clues", "characters", "locations", "arcs", "cells"]
 
 
 def load_dir(path: str = DEFAULT_DIR):
@@ -85,6 +85,12 @@ def validate(data: dict):
             elif not puzzles[n["puzzle"]].get("hint_ladder"):
                 warnings.append(f"puzzle {n['puzzle']} has no hint_ladder (difficulty risk)")
 
+    for l in data["locations"]:
+        if l.get("cell") and l["cell"] not in ids["cells"]:
+            errors.append(f"location {l['id']} references unknown cell {l['cell']}")
+    for c in data["cells"]:
+        if c.get("arrival_node") and c["arrival_node"] not in nodes:
+            errors.append(f"cell {c['id']} arrival_node references unknown node {c['arrival_node']}")
     for g in data["gates"]:
         if g.get("character") and g["character"] not in ids["characters"]:
             errors.append(f"gate {g['id']} references unknown character {g['character']}")
@@ -112,6 +118,15 @@ def validate(data: dict):
             if e.get("from") in nodes and e.get("to") in nodes:
                 adj[e["from"]].append(e["to"])
                 radj[e["to"]].append(e["from"])
+        # Travel: a world-access node can reach every cell's arrival node, and
+        # from any arrival node you can travel onward — model that so the lint
+        # sees cross-cell content as reachable and trap-free.
+        arrivals = [c["arrival_node"] for c in data["cells"]
+                    if c.get("arrival_node") in nodes]
+        for wa in [n["id"] for n in data["nodes"] if n.get("world_access")]:
+            for an in arrivals:
+                adj[wa].append(an)
+                radj[an].append(wa)
 
         def bfs(starts, graph):
             seen, dq = set(), deque(starts)
@@ -143,11 +158,21 @@ async def seed_content(conn, data: dict):
                 """INSERT INTO story_arcs (id,title,is_spine) VALUES ($1,$2,$3)
                    ON CONFLICT (id) DO UPDATE SET title=EXCLUDED.title, is_spine=EXCLUDED.is_spine""",
                 a["id"], a["title"], bool(a.get("is_spine", False)))
+        for c in data["cells"]:
+            await conn.execute(
+                """INSERT INTO world_cells (id,grid_x,grid_y,name,kind,region,arrival_node)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7)
+                   ON CONFLICT (id) DO UPDATE SET grid_x=EXCLUDED.grid_x,grid_y=EXCLUDED.grid_y,
+                     name=EXCLUDED.name,kind=EXCLUDED.kind,region=EXCLUDED.region,
+                     arrival_node=EXCLUDED.arrival_node""",
+                c["id"], int(c.get("grid_x", 0)), int(c.get("grid_y", 0)), c["name"],
+                c.get("kind", "town"), c.get("region", ""), c.get("arrival_node"))
         for l in data["locations"]:
             await conn.execute(
-                """INSERT INTO locations (id,name,description) VALUES ($1,$2,$3)
-                   ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name, description=EXCLUDED.description""",
-                l["id"], l["name"], l.get("description", ""))
+                """INSERT INTO locations (id,name,description,cell_id) VALUES ($1,$2,$3,$4)
+                   ON CONFLICT (id) DO UPDATE SET name=EXCLUDED.name,
+                     description=EXCLUDED.description, cell_id=EXCLUDED.cell_id""",
+                l["id"], l["name"], l.get("description", ""), l.get("cell"))
         for c in data["characters"]:
             await conn.execute(
                 """INSERT INTO characters (id,name,persona) VALUES ($1,$2,$3)
@@ -165,15 +190,16 @@ async def seed_content(conn, data: dict):
                 json.dumps(p.get("on_solve", {})))
         for n in data["nodes"]:
             await conn.execute(
-                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,is_entry,is_death,gate_id,puzzle_id,media)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11::jsonb)
+                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,is_entry,is_death,world_access,gate_id,puzzle_id,media)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
                    ON CONFLICT (id) DO UPDATE SET arc_id=EXCLUDED.arc_id,type=EXCLUDED.type,
                      location_id=EXCLUDED.location_id,title=EXCLUDED.title,body=EXCLUDED.body,
-                     is_entry=EXCLUDED.is_entry,is_death=EXCLUDED.is_death,gate_id=EXCLUDED.gate_id,
-                     puzzle_id=EXCLUDED.puzzle_id,media=EXCLUDED.media""",
+                     is_entry=EXCLUDED.is_entry,is_death=EXCLUDED.is_death,world_access=EXCLUDED.world_access,
+                     gate_id=EXCLUDED.gate_id,puzzle_id=EXCLUDED.puzzle_id,media=EXCLUDED.media""",
                 n["id"], n.get("arc", "main"), n["type"], n.get("location"), n.get("title", ""),
                 n.get("body", ""), bool(n.get("entry", False)),
                 bool(n.get("is_death", n.get("type") == "death")),
+                bool(n.get("world_access", False)),
                 n.get("gate"), n.get("puzzle"), json.dumps(n.get("media", {})))
         for g in data["gates"]:
             spec = {k: v for k, v in g.items() if k not in ("id", "location", "character")}

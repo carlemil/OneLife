@@ -1,0 +1,104 @@
+# OneLife world — the cell grid and travel between places (WORLD_AND_MAPS.md).
+# Setting is southern Sweden, 1992. The year is fixed; traveling changes the
+# place (and therefore the atmosphere soundtrack), never the year.
+
+cells:
+  - id: sandby
+    grid_x: 2
+    grid_y: 2
+    name: Södra Sandby
+    kind: village
+    region: "Södra Sandby, Skåne"
+    arrival_node: sandby-street
+  - id: lund
+    grid_x: 1
+    grid_y: 2
+    name: Lund
+    kind: city
+    region: "Lund, Skåne"
+    arrival_node: lund-square
+  - id: skane-woods
+    grid_x: 2
+    grid_y: 1
+    name: Skåne Woods
+    kind: wilderness
+    region: "the Skåne countryside"
+    arrival_node: woods-path
+
+locations:
+  - id: sandby-street
+    name: Sandby Street
+    cell: sandby
+    description: "The quiet main street of Södra Sandby."
+  - id: lund-square
+    name: Cathedral Square
+    cell: lund
+    description: "The old square below Lund Cathedral."
+  - id: lund-station
+    name: Lund Station
+    cell: lund
+    description: "The town's small railway station."
+  - id: skane-woods
+    name: Forest Path
+    cell: skane-woods
+    description: "A track winding into the Skåne woods."
+
+nodes:
+  - id: sandby-street
+    arc: main
+    type: location
+    location: sandby-street
+    title: Sandby Street
+    world_access: true
+    media: {image_theme: village-street-dusk, music_theme: hushed-village}
+    body: "You step out the front doors onto Sandby's main street. Streetlamps buzz against the dark. The village is silent, but roads lead away into the wider night — toward Lund, and toward the black line of the woods."
+    edges:
+      - id: e-street-inside
+        to: kbk-entrance-hall
+        label: Go back inside the school
+        effects: {log: "You went back into the school."}
+
+  - id: lund-square
+    arc: main
+    type: location
+    location: lund-square
+    title: Cathedral Square
+    world_access: true
+    media: {image_theme: city-square-dusk, music_theme: cathedral-cold}
+    body: "Lund's cathedral looms over the empty square, its twin towers lost in low cloud. Cobblestones glisten. A side street leads down toward the railway station."
+    edges:
+      - id: e-square-station
+        to: lund-station
+        label: Walk down to the station
+        effects: {progress_points: 5, log: "You walked to Lund station."}
+
+  - id: lund-station
+    arc: main
+    type: location
+    location: lund-station
+    title: Lund Station
+    media: {image_theme: station-night, music_theme: distant-trains}
+    body: "The station is shuttered for the night. A single departures board flickers a timetable for trains that have long since gone. The square is back up the hill."
+    edges:
+      - id: e-station-square
+        to: lund-square
+        label: Back up to the cathedral square
+        effects: {log: "You returned to the square."}
+
+  - id: woods-path
+    arc: main
+    type: location
+    location: skane-woods
+    title: Forest Path
+    world_access: true
+    media: {image_theme: forest-dark, music_theme: low-dread}
+    body: "The track gives way to close-pressed pines. Something about the dark here feels older than the rest. You do not want to leave the path. The way back out is the world beyond the trees."
+
+# Standalone edge: leave the school for the village street (a world-access node).
+edges:
+  - id: e-hall-street
+    from: kbk-entrance-hall
+    to: sandby-street
+    label: Step out the front doors
+    effects: {progress_points: 5, log: "You stepped out into Södra Sandby."}
+    sort_order: 5

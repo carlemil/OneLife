@@ -63,9 +63,10 @@ def image_svg(theme: str) -> str:
     return svg
 
 
-def setting_for(loc) -> str:
+def setting_for(loc, cell=None) -> str:
     place = loc["name"] if loc else "Unknown"
-    return f"{place} · {REGION} · {YEAR}"
+    region = cell["region"] if cell and cell["region"] else REGION
+    return f"{place} · {region} · {YEAR}"
 
 
 # --------------------------------------------------------------------------- #

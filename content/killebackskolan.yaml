@@ -14,6 +14,7 @@ characters:
 locations:
   - id: killebackskolan
     name: Killebäckskolan
+    cell: sandby
     description: "A school in Södra Sandby. It should be empty at this hour."
 
 nodes:

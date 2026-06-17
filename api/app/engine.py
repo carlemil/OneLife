@@ -110,6 +110,7 @@ async def render_state(conn, player_id, session) -> dict:
         "node": {
             "id": node["id"], "type": node["type"], "title": node["title"],
             "body": node["body"], "is_death": node["is_death"],
+            "world_access": node["world_access"],
             "media": json.loads(node["media"]),
         },
         "edges": visible,

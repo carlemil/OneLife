@@ -33,6 +33,10 @@
   let showBoard = $state(false);
   let actions = 0;
 
+  // world map
+  let world = $state(null);
+  let showMap = $state(false);
+
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
   let spotifyOn = $state(false);
@@ -181,6 +185,19 @@
 
   function tick() { actions += 1; if (actions % 5 === 0) showBoard = true; }
 
+  async function openMap() {
+    try { world = await api.world(); showMap = true; }
+    catch (e) { error = e.message; }
+  }
+  async function onTravel(cellId) {
+    busy = true;
+    try {
+      game = await api.travel(cellId);
+      logEntries = (await api.log()).entries;
+      showMap = false; tick();
+    } catch (e) { error = e.message; } finally { busy = false; }
+  }
+
   async function onEdge(id) {
     busy = true;
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; tick(); }
@@ -304,6 +321,9 @@
           {#if game.edges.length === 0 && game.node.is_death}
             <p class="dead">You are dead. Roll the log back from the panel on the right to escape — at a cost.</p>
           {/if}
+          {#if game.node.world_access}
+            <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
+          {/if}
         </div>
 
         {#if game.notes.length}
@@ -349,6 +369,26 @@
           </ul>
         </div>
       </aside>
+    </div>
+  {/if}
+
+  {#if showMap && world}
+    <div class="modal" onclick={() => (showMap = false)}>
+      <div class="modal-card" onclick={(e) => e.stopPropagation()}>
+        <h2>🗺 World map <span class="sub">— southern Sweden, 1992</span></h2>
+        <div class="worldgrid">
+          {#each world.cells as c}
+            <button class="cell {c.kind}" class:current={c.id === world.current_cell_id}
+              style={`grid-column:${c.grid_x};grid-row:${c.grid_y}`}
+              disabled={busy || c.id === world.current_cell_id || !world.can_travel}
+              onclick={() => onTravel(c.id)}>
+              <b>{c.name}</b><br><span class="sub">{c.kind}</span>
+              {#if c.id === world.current_cell_id}<br><span class="here">you are here</span>{/if}
+            </button>
+          {/each}
+        </div>
+        <button onclick={() => (showMap = false)}>Close</button>
+      </div>
     </div>
   {/if}
 
@@ -405,5 +445,12 @@
   .notice { background:#23323a; border:1px solid #356a5a; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }
   .modal { position:fixed; inset:0; background:rgba(0,0,0,.7); display:flex; align-items:center; justify-content:center; }
   .modal-card { background:#1a1d28; border:1px solid #3a456a; border-radius:10px; padding:1.5rem 2rem; min-width:300px; }
+  .worldgrid { display:grid; gap:.6rem; margin:1rem 0; }
+  .cell { text-align:center; min-width:110px; min-height:64px; border-radius:8px; }
+  .cell.city { background:#2c2f4a; } .cell.village { background:#2a3a2f; }
+  .cell.wilderness { background:#2a2620; } .cell.town { background:#2a3550; }
+  .cell.current { outline:2px solid #cdbb9a; }
+  .cell .here { color:#cdbb9a; font-size:.7rem; }
+  .cell:disabled { cursor:default; opacity:.85; }
   code { color:#cdbb9a; }
 </style>

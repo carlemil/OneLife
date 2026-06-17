@@ -12,6 +12,7 @@ with AI-driven agents. See the design docs:
 - [AUTHORING.md](AUTHORING.md) — how to write game content (YAML → DB, with a spine lint)
 - [ACCOUNTS_AND_ONBOARDING.md](ACCOUNTS_AND_ONBOARDING.md) — auth (email/password + TOTP 2FA) & onboarding
 - [ATMOSPHERE.md](ATMOSPHERE.md) — per-location generated image + LLM-picked Spotify soundtrack
+- [WORLD_AND_MAPS.md](WORLD_AND_MAPS.md) — the cell grid, world map, and travel
 
 ## Vertical slice (this repo, runnable)
 

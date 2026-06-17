@@ -126,6 +126,9 @@ class PuzzleBody(BaseModel):
 class RollbackBody(BaseModel):
     to_seq: int
 
+class TravelBody(BaseModel):
+    cell_id: str
+
 
 @app.get("/api/health")
 async def health():
@@ -325,6 +328,59 @@ async def memories(character: str = "the-janitor",
          "voided": r["voided"], "origin": r["origin"]} for r in rows]}
 
 
+@app.get("/api/world")
+async def get_world(authorization: str | None = Header(default=None)):
+    """The cell grid + the player's current cell (for the world map)."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        cells = await conn.fetch(
+            "SELECT id, grid_x, grid_y, name, kind, region FROM world_cells ORDER BY grid_y, grid_x")
+        cur = await conn.fetchrow(
+            """SELECT l.cell_id FROM story_nodes n
+               JOIN locations l ON l.id = n.location_id
+               WHERE n.id=$1""", sess["current_node"])
+        node = await conn.fetchrow(
+            "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
+    return {
+        "current_cell_id": cur["cell_id"] if cur else None,
+        "can_travel": bool(node and node["world_access"]),
+        "cells": [{"id": c["id"], "grid_x": c["grid_x"], "grid_y": c["grid_y"],
+                   "name": c["name"], "kind": c["kind"], "region": c["region"]}
+                  for c in cells],
+    }
+
+
+@app.post("/api/travel")
+async def travel(body: TravelBody, authorization: str | None = Header(default=None)):
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            node = await conn.fetchrow(
+                "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
+            if not node or not node["world_access"]:
+                raise HTTPException(400, "you can't travel from here")
+            cell = await conn.fetchrow(
+                "SELECT name, arrival_node FROM world_cells WHERE id=$1", body.cell_id)
+            if cell is None or not cell["arrival_node"]:
+                raise HTTPException(404, "no such destination")
+            arrival = cell["arrival_node"]
+            seq, story_time = await engine.apply_action(
+                conn, sess["player_id"], sess["log_id"], node_id=arrival,
+                effects={"progress_points": 5, "log": f"You traveled to {cell['name']}."},
+                story_time=sess["story_time"], kind="action")
+            await conn.execute(
+                "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
+                arrival, story_time, sess["token"])
+            sess["current_node"] = arrival
+            sess["story_time"] = story_time
+            await engine.discover_clues(conn, sess["player_id"], sess["log_id"], story_time, seq)
+        return await engine.render_state(conn, sess["player_id"], sess)
+
+
 @app.get("/api/atmosphere")
 async def get_atmosphere(spotify: int = 0,
                          authorization: str | None = Header(default=None)):
@@ -336,12 +392,16 @@ async def get_atmosphere(spotify: int = 0,
     async with pool.acquire() as conn:
         node = await conn.fetchrow(
             "SELECT location_id, media FROM story_nodes WHERE id=$1", sess["current_node"])
-        loc = None
+        loc = cell = None
         if node and node["location_id"]:
             loc = await conn.fetchrow(
-                "SELECT id, name, description FROM locations WHERE id=$1", node["location_id"])
+                "SELECT id, name, description, cell_id FROM locations WHERE id=$1",
+                node["location_id"])
+        if loc and loc["cell_id"]:
+            cell = await conn.fetchrow(
+                "SELECT region FROM world_cells WHERE id=$1", loc["cell_id"])
     theme = json.loads(node["media"]).get("image_theme", "") if node else ""
-    setting = atmosphere.setting_for(loc)
+    setting = atmosphere.setting_for(loc, cell)
     tracks = []
     if spotify and loc is not None:
         tracks = await atmosphere.tracks_for(

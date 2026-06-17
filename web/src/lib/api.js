@@ -48,6 +48,10 @@ export const api = {
   onboarding: () => req('/api/onboarding'),
   submitOnboarding: (answers) => req('/api/onboarding/submit', { method: 'POST', body: { answers } }),
 
+  // world & maps
+  world: () => req('/api/world'),
+  travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),
+
   // atmosphere
   atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
 

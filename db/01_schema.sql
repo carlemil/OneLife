@@ -27,10 +27,23 @@ CREATE TABLE player_sessions (
 );
 
 -- ---------- World ----------
+-- A grid of cells (villages, cities, wilderness). Locations live inside a cell;
+-- traveling the world map moves between cells, arriving at the cell's arrival_node.
+CREATE TABLE world_cells (
+    id           TEXT PRIMARY KEY,
+    grid_x       INTEGER NOT NULL,
+    grid_y       INTEGER NOT NULL,
+    name         TEXT NOT NULL,
+    kind         TEXT NOT NULL DEFAULT 'town',  -- city | town | village | wilderness
+    region       TEXT NOT NULL DEFAULT '',      -- used by atmosphere ("<place> · <region> · 1992")
+    arrival_node TEXT                            -- node you arrive at when traveling here
+);
+
 CREATE TABLE locations (
     id          TEXT PRIMARY KEY,
     name        TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT ''
+    description TEXT NOT NULL DEFAULT '',
+    cell_id     TEXT REFERENCES world_cells(id)
 );
 
 CREATE TABLE characters (
@@ -55,6 +68,7 @@ CREATE TABLE story_nodes (
     body        TEXT NOT NULL,
     is_entry    BOOLEAN NOT NULL DEFAULT FALSE,
     is_death    BOOLEAN NOT NULL DEFAULT FALSE,
+    world_access BOOLEAN NOT NULL DEFAULT FALSE, -- can open the world map from here
     gate_id     TEXT,
     puzzle_id   TEXT,
     media       JSONB NOT NULL DEFAULT '{}'
