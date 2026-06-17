@@ -11,7 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere, security, admin
+from . import db, engine, gates, puzzles, llm, memory, content, content_edit, auth, onboarding, atmosphere, security, admin
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -190,6 +190,15 @@ class ContentImportBody(BaseModel):
 class DataImportBody(BaseModel):
     data: dict
     confirm: str = ""
+
+class ContentEntityBody(BaseModel):
+    kind: str
+    entity: dict
+
+class ContentDeleteBody(BaseModel):
+    kind: str
+    id: str
+    force: bool = False
 
 
 @app.get("/api/health")
@@ -583,6 +592,80 @@ async def admin_content_import(body: ContentImportBody,
         await content.seed_content(conn, data)
     return {"ok": True, "warnings": warnings,
             "counts": {k: len(data[k]) for k in content._LIST_KEYS}}
+
+
+# ---------- Admin: in-UI content editor (structured CRUD) ----------
+@app.get("/api/admin/content/all")
+async def admin_content_all(authorization: str | None = Header(default=None)):
+    """The full authored set in the editable dict shape — the editor loads it once."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await content.export_content(conn)
+
+
+@app.post("/api/admin/content/entity")
+async def admin_content_entity(body: ContentEntityBody,
+                               authorization: str | None = Header(default=None)):
+    """Upsert one entity: merge into the current set, validate the whole set, seed."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        full = await content.export_content(conn)
+        try:
+            merged = content_edit.upsert_entity(full, body.kind, body.entity)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        errors, warnings = content.validate(merged)
+        if errors:
+            raise HTTPException(400, "; ".join(errors[:10]))
+        await content.seed_content(conn, merged)
+    return {"ok": True, "warnings": warnings,
+            "counts": {k: len(merged[k]) for k in content._LIST_KEYS}}
+
+
+@app.post("/api/admin/content/check")
+async def admin_content_check(body: ContentDeleteBody,
+                              authorization: str | None = Header(default=None)):
+    """Dry-run delete: report what references this entity so the UI can confirm."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        try:
+            return await content_edit.coupling_check(conn, body.kind, body.id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+
+
+@app.post("/api/admin/content/delete")
+async def admin_content_delete(body: ContentDeleteBody,
+                               authorization: str | None = Header(default=None)):
+    """Delete one entity. Blocks on content/live references unless force; always
+    re-validates the remaining set (so you can't strand the spine — force can't
+    bypass that). Re-seed + physical delete share one transaction."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        try:
+            chk = await content_edit.coupling_check(conn, body.kind, body.id)
+        except ValueError as e:
+            raise HTTPException(400, str(e))
+        def _summ(refs):
+            return ", ".join(f"{r['count']} {r['label']}" for r in refs)
+        if chk["content_refs"]:
+            # Removing it would dangle authored references; validate would fail anyway.
+            raise HTTPException(409, f"referenced by other content — remove first: {_summ(chk['content_refs'])}")
+        if chk["live_refs"] and not body.force:
+            raise HTTPException(409, f"in use by live players ({_summ(chk['live_refs'])}); use force to delete anyway")
+        full = await content.export_content(conn)
+        remaining = content_edit.remove_entity(full, body.kind, body.id)
+        errors, warnings = content.validate(remaining)
+        if errors:
+            raise HTTPException(400, "; ".join(errors[:10]))
+        async with conn.transaction():
+            await content.seed_content(conn, remaining)
+            await content_edit.delete_one(conn, body.kind, body.id)
+    return {"ok": True, "warnings": warnings, "erased": chk["cascade"]}
 
 
 @app.get("/api/admin/db/export")

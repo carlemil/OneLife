@@ -77,6 +77,17 @@
   let dbConfirm = $state('');
   let savConfirm = $state('');
 
+  // admin content editor (structured CRUD)
+  let showEditor = $state(false);
+  let content = $state(null);       // full authored set, loaded once
+  let editKind = $state('nodes');
+  let selId = $state(null);         // null = creating a new entity
+  let form = $state({});            // working copy; json fields held as strings
+  let jsonErrors = $state({});      // field key -> parse error message
+  let editorMsg = $state('');
+  let checkInfo = $state(null);     // delete coupling-check result
+  let canSave = $derived(Object.keys(jsonErrors).length === 0 && !!String(form?.id ?? '').trim());
+
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
   let spotifyOn = $state(false);
@@ -292,6 +303,128 @@
   async function importPlayerFile(ev) {
     try { const data = await readJson(ev); await api.importPlayer(data, savConfirm); adminMsg = 'Player save restored.'; savConfirm = ''; }
     catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
+  }
+
+  // ---------- admin content editor ----------
+  const KINDS = ['nodes', 'edges', 'gates', 'puzzles', 'clues', 'characters', 'locations', 'cells', 'arcs'];
+  // t: text | longtext | number | bool | select | json. ref -> select from content[ref].
+  const FIELDS = {
+    arcs: [{ key: 'id', t: 'text' }, { key: 'title', t: 'text' }, { key: 'is_spine', t: 'bool' }],
+    cells: [{ key: 'id', t: 'text' }, { key: 'grid_x', t: 'number' }, { key: 'grid_y', t: 'number' },
+            { key: 'name', t: 'text' }, { key: 'kind', t: 'select', options: ['city', 'town', 'village', 'wilderness'] },
+            { key: 'region', t: 'text' }, { key: 'arrival_node', t: 'select', ref: 'nodes' }],
+    characters: [{ key: 'id', t: 'text' }, { key: 'name', t: 'text' }, { key: 'persona', t: 'longtext' }, { key: 'reveal_name', t: 'text' }],
+    locations: [{ key: 'id', t: 'text' }, { key: 'name', t: 'text' }, { key: 'description', t: 'longtext' }, { key: 'cell', t: 'select', ref: 'cells' }],
+    puzzles: [{ key: 'id', t: 'text' }, { key: 'type', t: 'select', options: ['combination', 'riddle', 'assembly', 'semantic'] },
+              { key: 'prompt', t: 'longtext' }, { key: 'solution', t: 'json' }, { key: 'required_clues', t: 'json' },
+              { key: 'hint_ladder', t: 'json' }, { key: 'on_solve', t: 'json' }],
+    clues: [{ key: 'id', t: 'text' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'placement', t: 'json' },
+            { key: 'reveal_text', t: 'longtext' }, { key: 'discover_conditions', t: 'json' }],
+    nodes: [{ key: 'id', t: 'text' }, { key: 'arc', t: 'select', ref: 'arcs' },
+            { key: 'type', t: 'select', options: ['narration', 'choice', 'gate', 'puzzle', 'location', 'death', 'ending'] },
+            { key: 'location', t: 'select', ref: 'locations' }, { key: 'title', t: 'text' }, { key: 'body', t: 'longtext' },
+            { key: 'entry', t: 'bool' }, { key: 'is_death', t: 'bool' }, { key: 'world_access', t: 'bool' },
+            { key: 'gate', t: 'select', ref: 'gates' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'media', t: 'json' }],
+    gates: [{ key: 'id', t: 'text' }, { key: 'location', t: 'select', ref: 'locations' },
+            { key: 'character', t: 'select', ref: 'characters' }, { key: 'spec', t: 'json' }],
+    edges: [{ key: 'id', t: 'text' }, { key: 'from', t: 'select', ref: 'nodes' }, { key: 'to', t: 'select', ref: 'nodes' },
+            { key: 'label', t: 'text' }, { key: 'conditions', t: 'json' }, { key: 'effects', t: 'json' },
+            { key: 'danger', t: 'number' }, { key: 'sort_order', t: 'number' }],
+  };
+  // Blank starting entities. Gates are kept FLAT (spec fields at top level) — the
+  // backend collapses non-id/location/character keys into `spec`, and loadForm()
+  // gathers them back into the single `spec` JSON editor.
+  const DEFAULTS = {
+    arcs: { id: '', title: '', is_spine: false },
+    cells: { id: '', grid_x: 0, grid_y: 0, name: '', kind: 'town', region: '', arrival_node: '' },
+    characters: { id: '', name: '', persona: '', reveal_name: '' },
+    locations: { id: '', name: '', description: '', cell: '' },
+    puzzles: { id: '', type: 'riddle', prompt: '', solution: {}, required_clues: [], hint_ladder: [], on_solve: {} },
+    clues: { id: '', puzzle: '', placement: {}, reveal_text: '', discover_conditions: { all: [] } },
+    nodes: { id: '', arc: 'main', type: 'narration', location: '', title: '', body: '', entry: false, is_death: false, world_access: false, gate: '', puzzle: '', media: {} },
+    gates: { id: '', location: '', character: '', intent: '', criteria: [], success_rule: '', knowledge_boundary: { knows: [], refuses: [], tone: '' }, hint_ladder: [], mercy_after_attempts: 3, on_success: {} },
+    edges: { id: '', from: '', to: '', label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 },
+  };
+  const singular = (k) => k.replace(/s$/, '');
+  const optionsFor = (f) => f.options ?? (content?.[f.ref] ?? []).map((x) => x.id);
+
+  function loadForm(ent) {
+    const k = editKind, f = {};
+    if (k === 'gates') {
+      const spec = {};
+      for (const [key, val] of Object.entries(ent || {}))
+        if (!['id', 'location', 'character'].includes(key)) spec[key] = val;
+      f.id = ent?.id ?? ''; f.location = ent?.location ?? ''; f.character = ent?.character ?? '';
+      f.spec = JSON.stringify(spec, null, 2);
+    } else {
+      for (const fld of FIELDS[k]) {
+        let v = ent ? ent[fld.key] : undefined;
+        if (fld.t === 'json') f[fld.key] = JSON.stringify(v ?? DEFAULTS[k][fld.key] ?? {}, null, 2);
+        else if (fld.t === 'bool') f[fld.key] = !!v;
+        else if (fld.t === 'number') f[fld.key] = v ?? 0;
+        else f[fld.key] = v ?? '';
+      }
+    }
+    form = f; jsonErrors = {};
+  }
+  function buildEntity() {
+    const k = editKind, e = {};
+    for (const fld of FIELDS[k]) {
+      if (fld.t === 'json') e[fld.key] = JSON.parse(form[fld.key]);
+      else if (fld.t === 'number') e[fld.key] = Number(form[fld.key]) || 0;
+      else if (fld.t === 'bool') e[fld.key] = !!form[fld.key];
+      else {
+        const v = (form[fld.key] ?? '').trim?.() ?? form[fld.key];
+        if (fld.ref && v === '') continue;   // drop empty optional reference
+        e[fld.key] = v;
+      }
+    }
+    if (k === 'gates') { const spec = e.spec || {}; delete e.spec; Object.assign(e, spec); }
+    return e;
+  }
+  function setJson(key, val) {
+    form[key] = val;
+    try { JSON.parse(val); delete jsonErrors[key]; } catch (err) { jsonErrors[key] = err.message; }
+    jsonErrors = { ...jsonErrors };
+  }
+  function newEntity() {
+    selId = null; editorMsg = ''; checkInfo = null;
+    loadForm(structuredClone(DEFAULTS[editKind]));
+  }
+  function selectKind(k) { editKind = k; newEntity(); }
+  function pickEntity(id) {
+    selId = id; editorMsg = ''; checkInfo = null;
+    loadForm(content[editKind].find((x) => x.id === id));
+  }
+  async function openEditor() {
+    editorMsg = ''; checkInfo = null; showEditor = true;
+    try { content = await api.contentAll(); editKind = 'nodes'; newEntity(); }
+    catch (e) { editorMsg = e.message; }
+  }
+  async function saveEntity() {
+    if (!canSave) return;
+    let entity;
+    try { entity = buildEntity(); } catch (e) { editorMsg = 'JSON error: ' + e.message; return; }
+    busy = true; editorMsg = '';
+    try {
+      const r = await api.saveEntity(editKind, entity);
+      content = await api.contentAll(); selId = entity.id;
+      editorMsg = 'Saved.' + (r.warnings?.length ? ` ${r.warnings.length} warning(s).` : '');
+    } catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  async function askDelete() {
+    if (selId === null) return;
+    editorMsg = '';
+    try { checkInfo = await api.checkDelete(editKind, selId); } catch (e) { editorMsg = e.message; }
+  }
+  async function confirmDelete(force) {
+    busy = true; editorMsg = '';
+    try {
+      const r = await api.deleteEntity(editKind, selId, force);
+      content = await api.contentAll(); checkInfo = null;
+      const erased = r.erased?.length ? ` Erased: ${r.erased.map((x) => x.label).join(', ')}.` : '';
+      newEntity(); editorMsg = 'Deleted.' + erased;
+    } catch (e) { editorMsg = e.message; checkInfo = null; } finally { busy = false; }
   }
 
   async function refresh() {
@@ -606,6 +739,7 @@
           <p class="sub">World, NPCs, story, puzzles. Import is validated + non-destructive (upsert).</p>
           <button onclick={exportContent}>Export YAML</button>
           <label class="filebtn">Import YAML/JSON<input type="file" accept=".yaml,.yml,.json" onchange={importContentFile} /></label>
+          <button onclick={openEditor}>Edit content…</button>
         </div>
 
         <div class="admin-sec">
@@ -635,6 +769,85 @@
         </div>
 
         <button onclick={() => (showAdmin = false)}>Close</button>
+      </div>
+    </div>
+  {/if}
+
+  {#if showEditor}
+    <div class="modal" onclick={() => (showEditor = false)}>
+      <div class="modal-card editor" onclick={(e) => e.stopPropagation()}>
+        <h2>⚙ Edit content</h2>
+        {#if editorMsg}<div class="notice">{editorMsg}</div>{/if}
+        <div class="kindtabs">
+          {#each KINDS as k}
+            <button class="link" class:active={k === editKind} onclick={() => selectKind(k)}>{k}</button>
+          {/each}
+        </div>
+        <div class="editor-grid">
+          <div class="idlist">
+            <button class:sel={selId === null} onclick={newEntity}>+ New {singular(editKind)}</button>
+            {#each (content?.[editKind] ?? []) as x}
+              <button class:sel={x.id === selId} onclick={() => pickEntity(x.id)}>{x.id}</button>
+            {/each}
+          </div>
+          <div class="form">
+            {#each FIELDS[editKind] as f (f.key)}
+              <div class="field">
+                <label>{f.key}{#if f.ref} <span class="sub">→ {f.ref}</span>{/if}</label>
+                {#if f.t === 'bool'}
+                  <input type="checkbox" class="chk" bind:checked={form[f.key]} />
+                {:else if f.t === 'number'}
+                  <input type="number" bind:value={form[f.key]} />
+                {:else if f.t === 'longtext'}
+                  <textarea rows="4" bind:value={form[f.key]}></textarea>
+                {:else if f.t === 'json'}
+                  <textarea rows="5" class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
+                  {#if jsonErrors[f.key]}<div class="json-err">{jsonErrors[f.key]}</div>{/if}
+                {:else if f.t === 'select'}
+                  <select bind:value={form[f.key]}>
+                    {#if f.ref}<option value="">—</option>{/if}
+                    {#each optionsFor(f) as o}<option value={o}>{o}</option>{/each}
+                  </select>
+                {:else}
+                  <input type="text" bind:value={form[f.key]} readonly={f.key === 'id' && selId !== null} />
+                {/if}
+              </div>
+            {/each}
+            <div class="row">
+              <button class="primary" onclick={saveEntity} disabled={!canSave || busy}>Save</button>
+              {#if selId !== null}<button class="danger" onclick={askDelete} disabled={busy}>Delete…</button>{/if}
+            </div>
+            {#if checkInfo}
+              <div class="delconfirm">
+                {#if checkInfo.content_refs.length}
+                  <p class="warn">Can't delete — referenced by other content:</p>
+                  <ul>{#each checkInfo.content_refs as r}<li>{r.count} {r.label}</li>{/each}</ul>
+                  <button onclick={() => (checkInfo = null)}>OK</button>
+                {:else}
+                  {#if checkInfo.cascade.length}
+                    <p class="warn">This will also erase:</p>
+                    <ul>{#each checkInfo.cascade as r}<li>{r.count} {r.label}</li>{/each}</ul>
+                  {/if}
+                  {#if checkInfo.live_refs.length}
+                    <p class="warn">In use by live players:</p>
+                    <ul>{#each checkInfo.live_refs as r}<li>{r.count} {r.label}</li>{/each}</ul>
+                    <div class="row">
+                      <button onclick={() => (checkInfo = null)}>Cancel</button>
+                      <button class="danger" onclick={() => confirmDelete(true)} disabled={busy}>Force delete</button>
+                    </div>
+                  {:else}
+                    <p>Delete <code>{selId}</code>?</p>
+                    <div class="row">
+                      <button onclick={() => (checkInfo = null)}>Cancel</button>
+                      <button class="danger" onclick={() => confirmDelete(false)} disabled={busy}>Delete</button>
+                    </div>
+                  {/if}
+                {/if}
+              </div>
+            {/if}
+          </div>
+        </div>
+        <button onclick={() => (showEditor = false)}>Close</button>
       </div>
     </div>
   {/if}
@@ -695,6 +908,24 @@
   .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
   .modal-card.help { width:560px; max-width:92vw; max-height:85vh; overflow:auto; }
   .modal-card.lb { width:420px; max-width:92vw; max-height:85vh; overflow:auto; }
+  .modal-card.editor { width:920px; max-width:95vw; max-height:90vh; overflow:auto; }
+  .kindtabs { display:flex; flex-wrap:wrap; gap:.2rem; border-bottom:1px solid #2a2e3e; padding-bottom:.5rem; margin:.4rem 0 .6rem; }
+  .kindtabs .link { padding:.2rem .5rem; }
+  .kindtabs .link.active { color:#cdbb9a; font-weight:bold; }
+  .editor-grid { display:grid; grid-template-columns:220px 1fr; gap:1rem; }
+  .idlist { max-height:62vh; overflow:auto; display:flex; flex-direction:column; gap:.15rem; }
+  .idlist button { width:100%; font-size:.8rem; padding:.3rem .5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .idlist button.sel { background:#34416a; color:#cdbb9a; }
+  .form .field { margin-bottom:.5rem; }
+  .form .field label { display:block; font-size:.78rem; color:#9a9ab0; margin-bottom:.1rem; }
+  .form textarea, .form select { width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; font:inherit; }
+  .form textarea.json { font-family:monospace; font-size:.8rem; }
+  .form input[readonly] { opacity:.55; }
+  .form .chk { width:auto; display:inline-block; }
+  .json-err { color:#e06c75; font-size:.78rem; margin-top:.15rem; }
+  .delconfirm { border:1px solid #6a3346; background:#2a1a22; border-radius:6px; padding:.6rem .8rem; margin-top:.6rem; }
+  .delconfirm .warn { color:#e0a05c; margin:.2rem 0; }
+  .delconfirm ul { margin:.2rem 0 .5rem 1.1rem; font-size:.85rem; }
   .paneltitle { background:none; border:none; color:#e8e8f0; font:inherit; padding:0; cursor:pointer; }
   .paneltitle:hover { color:#7fa8d8; }
   .lblist, .lbside { list-style:none; padding:0; }

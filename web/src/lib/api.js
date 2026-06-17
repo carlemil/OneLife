@@ -77,6 +77,12 @@ export const api = {
   listPlayers: () => req('/api/admin/players'),
   exportPlayer: (id) => req(`/api/admin/player/${id}/export`),
   importPlayer: (data, confirm) => req('/api/admin/player/import', { method: 'POST', body: { data, confirm } }),
+
+  // admin content editor (structured CRUD)
+  contentAll: () => req('/api/admin/content/all'),
+  saveEntity: (kind, entity) => req('/api/admin/content/entity', { method: 'POST', body: { kind, entity } }),
+  checkDelete: (kind, id) => req('/api/admin/content/check', { method: 'POST', body: { kind, id } }),
+  deleteEntity: (kind, id, force = false) => req('/api/admin/content/delete', { method: 'POST', body: { kind, id, force } }),
 };
 
 // Trigger a browser download of a text body.
