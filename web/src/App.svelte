@@ -114,7 +114,7 @@
     spotifyOn = localStorage.getItem('onelife_spotify') === '1';
     try {
       spConfig = await api.spotifyConfig();
-      if (spConfig.configured) {
+      if (spConfig.configured && spConfig.oauth_enabled) {
         const justReturned = await spotify.handleRedirect(spConfig.client_id, spConfig.redirect_uri);
         spConnected = justReturned || spotify.isConnected();
       }
@@ -380,7 +380,7 @@
           <h3>Atmosphere</h3>
           <button class="primary" onclick={toggleSpotify}>🎵 Spotify: {spotifyOn ? 'on' : 'off'}</button>
           {#if spotifyOn}
-            {#if spConfig?.configured}
+            {#if spConfig?.configured && spConfig?.oauth_enabled}
               {#if spConnected}
                 <p class="sub">▶ Full tracks via your Spotify (Premium). <button class="link" onclick={disconnectSpotify}>disconnect</button></p>
               {:else}
