@@ -501,7 +501,7 @@
         </div>
         <div class="panel">
           <h3><button class="link paneltitle" onclick={openLeaderboard}>Leaderboard ↗</button></h3>
-          <ul class="lbside">{#each board as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span> {r.display_name} — <b>{r.progress}</b></li>{/each}</ul>
+          <ul class="lbside">{#each board as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>{/each}</ul>
         </div>
         {#if game.notes.length}
           <div class="panel">
@@ -565,9 +565,9 @@
         </div>
         <ul class="lblist">
           {#each lbRows as r}
-            <li class:me={r.is_me}><span class="rank">#{r.rank}</span> {r.display_name} <b>{r.progress}</b></li>
+            <li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>
           {/each}
-          {#if lbRows.length === 0}<li class="sub">no matches</li>{/if}
+          {#if lbRows.length === 0}<li class="empty sub">no matches</li>{/if}
         </ul>
         {#if !lbQuery}
           <div class="row lbnav">
@@ -694,9 +694,13 @@
   .paneltitle { background:none; border:none; color:#e8e8f0; font:inherit; padding:0; cursor:pointer; }
   .paneltitle:hover { color:#7fa8d8; }
   .lblist, .lbside { list-style:none; padding:0; }
-  .lblist li, .lbside li { padding:.12rem 0; }
-  .lblist .rank, .lbside .rank { color:#5a5a72; }
-  .lblist li.me, .lbside li.me { color:#cdbb9a; }
+  .lblist li, .lbside li { display:grid; grid-template-columns:2.6rem 1fr auto; gap:.5rem; align-items:baseline; padding:.2rem .45rem; border-radius:4px; }
+  .lblist li:nth-child(even), .lbside li:nth-child(even) { background:#15171f; }
+  .lblist .rank, .lbside .rank { color:#5a5a72; text-align:right; }
+  .lblist .nm, .lbside .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .lblist .score, .lbside .score { text-align:right; font-weight:bold; font-variant-numeric:tabular-nums; }
+  .lblist li.me, .lbside li.me { color:#cdbb9a; background:#2a3550; }
+  .lblist li.empty, .lbside li.empty { display:block; background:none; }
   .lbnav { align-items:center; justify-content:space-between; }
   .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }
   .admin-sec h3 { margin:.2rem 0; }
