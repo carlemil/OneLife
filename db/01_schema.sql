@@ -23,7 +23,17 @@ CREATE TABLE player_sessions (
     current_node TEXT,
     story_time   BIGINT NOT NULL DEFAULT 0,
     log_id       UUID,
+    expires_at   TIMESTAMPTZ,                 -- session TTL; null = never (legacy)
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- One-time 2FA backup codes (bcrypt-hashed).
+CREATE TABLE recovery_codes (
+    id         UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    player_id  UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    code_hash  TEXT NOT NULL,
+    used       BOOLEAN NOT NULL DEFAULT FALSE,
+    created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- ---------- World ----------
@@ -154,6 +164,14 @@ CREATE TABLE player_clues (
     clue_id      TEXT NOT NULL REFERENCES puzzle_clues(id),
     found_at_seq BIGINT NOT NULL,
     PRIMARY KEY (player_id, clue_id)
+);
+
+-- Fog-of-war: which world cells a player has discovered (rollback-safe).
+CREATE TABLE player_cells (
+    player_id    UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    cell_id      TEXT NOT NULL REFERENCES world_cells(id),
+    found_at_seq BIGINT NOT NULL,
+    PRIMARY KEY (player_id, cell_id)
 );
 
 CREATE TABLE puzzle_progress (

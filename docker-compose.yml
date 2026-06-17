@@ -26,6 +26,10 @@ services:
       ACTOR_MODEL: claude-haiku-4-5
       REFEREE_MODEL: claude-haiku-4-5
       CONTENT_DIR: /content
+      # Encrypts TOTP secrets at rest; set a strong value in production.
+      ONELIFE_SECRET_KEY: ${ONELIFE_SECRET_KEY:-}
+      # Browser origin allowed by CORS.
+      WEB_ORIGIN: ${WEB_ORIGIN:-http://localhost:5173}
       # Optional: enables real Spotify track resolution (search + previews + art).
       # Without these, the LLM still suggests tracks (shown as text, no playback).
       SPOTIFY_CLIENT_ID: ${SPOTIFY_CLIENT_ID:-}

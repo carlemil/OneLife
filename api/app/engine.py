@@ -170,6 +170,8 @@ async def rollback(conn, player_id, session, to_seq: int) -> dict:
     await conn.execute(
         "DELETE FROM player_clues WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
     await conn.execute(
+        "DELETE FROM player_cells WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
+    await conn.execute(
         """UPDATE puzzle_progress SET solved=FALSE, solved_at_seq=NULL
            WHERE player_id=$1 AND solved_at_seq>$2""", player_id, to_seq)
     await conn.execute(

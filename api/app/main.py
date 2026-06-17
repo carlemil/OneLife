@@ -4,23 +4,43 @@ Auth is simplified to a bearer session token (no password/2FA yet — see
 DATA_MODEL.md §players for the real plan). Every mutating endpoint runs inside a
 transaction so a failed action leaves no partial state.
 """
+import os
 import json
 import uuid
-from fastapi import FastAPI, Header, HTTPException
+from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere
+from . import db, engine, gates, puzzles, llm, memory, content, auth, onboarding, atmosphere, security
 from .dsl import evaluate
+
+WEB_ORIGIN = os.environ.get("WEB_ORIGIN", "http://localhost:5173")
+SESSION_TTL = "7 days"
 
 app = FastAPI(title="OneLife API")
 app.add_middleware(
-    CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"],
+    CORSMiddleware, allow_origins=[WEB_ORIGIN], allow_methods=["*"], allow_headers=["*"],
 )
+
+
+@app.middleware("http")
+async def _security_headers(request: Request, call_next):
+    resp = await call_next(request)
+    resp.headers["X-Content-Type-Options"] = "nosniff"
+    resp.headers["X-Frame-Options"] = "DENY"
+    resp.headers["Referrer-Policy"] = "no-referrer"
+    return resp
+
+
+def _client_ip(request: Request) -> str:
+    return request.client.host if request and request.client else "unknown"
 
 
 @app.on_event("startup")
 async def _startup():
+    if security.INSECURE_DEFAULT:
+        print("[security] WARNING: ONELIFE_SECRET_KEY unset — using an insecure dev "
+              "key for TOTP encryption. Set ONELIFE_SECRET_KEY for production.")
     pool = await db.get_pool()
     # Load authored content from YAML (idempotent upsert) so `docker compose up`
     # yields a playable game. Validate first; skip seeding on errors rather than
@@ -64,9 +84,10 @@ async def _session(authorization: str | None):
             """SELECT s.token, s.player_id, s.current_node, s.story_time, s.log_id,
                       p.display_name, p.onboarded
                FROM player_sessions s JOIN players p ON p.id = s.player_id
-               WHERE s.token=$1""", token)
+               WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
+            token)
     if row is None:
-        raise HTTPException(401, "invalid token")
+        raise HTTPException(401, "invalid or expired token")
     return dict(row)
 
 
@@ -93,6 +114,25 @@ async def _start_game(conn, sess: dict):
     sess["current_node"] = entry["id"]
     sess["log_id"] = log_id
     await engine.discover_clues(conn, pid, log_id, 0, 0)
+    await _reveal_cells_around(conn, pid, entry["id"], 0)
+
+
+async def _reveal_cells_around(conn, player_id, node_id, seq):
+    """Fog-of-war: discover the node's cell + orthogonally adjacent cells."""
+    cell = await conn.fetchrow(
+        """SELECT w.grid_x, w.grid_y FROM story_nodes n
+           JOIN locations l ON l.id = n.location_id
+           JOIN world_cells w ON w.id = l.cell_id
+           WHERE n.id=$1""", node_id)
+    if cell is None:
+        return
+    near = await conn.fetch(
+        "SELECT id FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
+        cell["grid_x"], cell["grid_y"])
+    for c in near:
+        await conn.execute(
+            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
+               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], seq)
 
 
 # --------------------------------------------------------------------------- #
@@ -137,7 +177,9 @@ async def health():
 
 # ---------- Auth ----------
 @app.post("/api/auth/register")
-async def register(body: RegisterBody):
+async def register(body: RegisterBody, request: Request):
+    if not security.allow(f"register:{_client_ip(request)}", 10, 3600):
+        raise HTTPException(429, "too many registrations — try again later")
     email = body.email.strip().lower()
     name = body.display_name.strip()
     if "@" not in email:
@@ -157,14 +199,16 @@ async def register(body: RegisterBody):
             await conn.execute(
                 """INSERT INTO players (email, password_hash, display_name, totp_secret)
                    VALUES ($1,$2,$3,$4)""",
-                email, auth.hash_password(body.password), name, secret)
+                email, auth.hash_password(body.password), name, security.encrypt(secret))
     uri = auth.totp_uri(secret, email)
     # Account exists but 2FA must be set up before login; hand back the QR.
     return {"otpauth_uri": uri, "secret": secret, "qr_svg": auth.qr_svg(uri)}
 
 
 @app.post("/api/auth/totp/enable")
-async def totp_enable(body: TotpBody):
+async def totp_enable(body: TotpBody, request: Request):
+    if not security.allow(f"totp:{_client_ip(request)}", 20, 3600):
+        raise HTTPException(429, "too many attempts — try again later")
     email = body.email.strip().lower()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
@@ -172,32 +216,64 @@ async def totp_enable(body: TotpBody):
             "SELECT id, password_hash, totp_secret FROM players WHERE email=$1", email)
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
             raise HTTPException(401, "invalid email or password")
-        if not auth.verify_totp(p["totp_secret"], body.code):
+        if not auth.verify_totp(security.decrypt(p["totp_secret"]), body.code):
             raise HTTPException(400, "invalid authenticator code")
-        await conn.execute("UPDATE players SET totp_enabled=TRUE WHERE id=$1", p["id"])
-    return {"ok": True}
+        # Issue one-time recovery codes (shown once, stored hashed).
+        codes = auth.generate_recovery_codes()
+        async with conn.transaction():
+            await conn.execute("UPDATE players SET totp_enabled=TRUE WHERE id=$1", p["id"])
+            await conn.execute("DELETE FROM recovery_codes WHERE player_id=$1", p["id"])
+            for c in codes:
+                await conn.execute(
+                    "INSERT INTO recovery_codes (player_id, code_hash) VALUES ($1,$2)",
+                    p["id"], auth.hash_password(c))
+    return {"ok": True, "recovery_codes": codes}
+
+
+async def _check_recovery(conn, player_id, code: str) -> bool:
+    """Consume a matching unused recovery code; True if one matched."""
+    rows = await conn.fetch(
+        "SELECT id, code_hash FROM recovery_codes WHERE player_id=$1 AND NOT used", player_id)
+    for r in rows:
+        if auth.verify_password(code, r["code_hash"]):
+            await conn.execute("UPDATE recovery_codes SET used=TRUE WHERE id=$1", r["id"])
+            return True
+    return False
 
 
 @app.post("/api/auth/login")
-async def login(body: LoginBody):
+async def login(body: LoginBody, request: Request):
+    ip = _client_ip(request)
     email = body.email.strip().lower()
+    if not security.allow(f"login:{ip}", 30, 60):
+        raise HTTPException(429, "too many requests — slow down")
+    if security.locked(f"loginfail:{email}", 5, 300):
+        raise HTTPException(429, "too many failed attempts — wait 5 minutes")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         p = await conn.fetchrow(
             """SELECT id, password_hash, totp_secret, totp_enabled, onboarded
                FROM players WHERE email=$1""", email)
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
+            security.record_fail(f"loginfail:{email}")
             raise HTTPException(401, "invalid email or password")
         if not p["totp_enabled"]:
             raise HTTPException(403, "two-factor setup not complete")
-        if not auth.verify_totp(p["totp_secret"], body.code):
-            raise HTTPException(401, "invalid authenticator code")
-        # One session per player: rotate the token, preserve game state.
+        code = auth.normalize_code(body.code)
+        ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
+            or await _check_recovery(conn, p["id"], code)
+        if not ok:
+            security.record_fail(f"loginfail:{email}")
+            raise HTTPException(401, "invalid authenticator or recovery code")
+        security.clear_fails(f"loginfail:{email}")
+        # One session per player: rotate the token + TTL, preserve game state.
         token = await conn.fetchval(
-            """INSERT INTO player_sessions (player_id) VALUES ($1)
-               ON CONFLICT (player_id)
-               DO UPDATE SET token=gen_random_uuid(), created_at=now()
-               RETURNING token""", p["id"])
+            f"""INSERT INTO player_sessions (player_id, expires_at)
+                VALUES ($1, now() + interval '{SESSION_TTL}')
+                ON CONFLICT (player_id)
+                DO UPDATE SET token=gen_random_uuid(), created_at=now(),
+                  expires_at=now() + interval '{SESSION_TTL}'
+                RETURNING token""", p["id"])
     return {"token": str(token), "onboarded": p["onboarded"]}
 
 
@@ -328,28 +404,43 @@ async def memories(character: str = "the-janitor",
          "voided": r["voided"], "origin": r["origin"]} for r in rows]}
 
 
+async def _current_cell(conn, current_node):
+    return await conn.fetchrow(
+        """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
+           JOIN locations l ON l.id = n.location_id
+           JOIN world_cells w ON w.id = l.cell_id
+           WHERE n.id=$1""", current_node)
+
+
+def _adjacent(a, b) -> bool:
+    return abs(a["grid_x"] - b["grid_x"]) + abs(a["grid_y"] - b["grid_y"]) == 1
+
+
 @app.get("/api/world")
 async def get_world(authorization: str | None = Header(default=None)):
-    """The cell grid + the player's current cell (for the world map)."""
+    """The DISCOVERED cells (fog-of-war) + which are currently reachable."""
     sess = await _session(authorization)
     _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        cells = await conn.fetch(
-            "SELECT id, grid_x, grid_y, name, kind, region FROM world_cells ORDER BY grid_y, grid_x")
-        cur = await conn.fetchrow(
-            """SELECT l.cell_id FROM story_nodes n
-               JOIN locations l ON l.id = n.location_id
-               WHERE n.id=$1""", sess["current_node"])
         node = await conn.fetchrow(
             "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
-    return {
-        "current_cell_id": cur["cell_id"] if cur else None,
-        "can_travel": bool(node and node["world_access"]),
-        "cells": [{"id": c["id"], "grid_x": c["grid_x"], "grid_y": c["grid_y"],
-                   "name": c["name"], "kind": c["kind"], "region": c["region"]}
-                  for c in cells],
-    }
+        cur = await _current_cell(conn, sess["current_node"])
+        cells = await conn.fetch(
+            """SELECT w.id, w.grid_x, w.grid_y, w.name, w.kind, w.region
+               FROM world_cells w
+               JOIN player_cells pc ON pc.cell_id = w.id AND pc.player_id = $1
+               ORDER BY w.grid_y, w.grid_x""", sess["player_id"])
+    can_travel = bool(node and node["world_access"])
+    out = []
+    for c in cells:
+        is_current = cur and c["id"] == cur["id"]
+        reachable = can_travel and not is_current and cur is not None and _adjacent(cur, c)
+        out.append({"id": c["id"], "grid_x": c["grid_x"], "grid_y": c["grid_y"],
+                    "name": c["name"], "kind": c["kind"], "region": c["region"],
+                    "reachable": reachable})
+    return {"current_cell_id": cur["id"] if cur else None,
+            "can_travel": can_travel, "cells": out}
 
 
 @app.post("/api/travel")
@@ -363,14 +454,23 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
                 "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
             if not node or not node["world_access"]:
                 raise HTTPException(400, "you can't travel from here")
-            cell = await conn.fetchrow(
-                "SELECT name, arrival_node FROM world_cells WHERE id=$1", body.cell_id)
-            if cell is None or not cell["arrival_node"]:
+            cur = await _current_cell(conn, sess["current_node"])
+            dest = await conn.fetchrow(
+                "SELECT id, grid_x, grid_y, name, arrival_node FROM world_cells WHERE id=$1",
+                body.cell_id)
+            if dest is None or not dest["arrival_node"]:
                 raise HTTPException(404, "no such destination")
-            arrival = cell["arrival_node"]
+            discovered = await conn.fetchval(
+                "SELECT 1 FROM player_cells WHERE player_id=$1 AND cell_id=$2",
+                sess["player_id"], dest["id"])
+            if not discovered:
+                raise HTTPException(400, "you don't know the way there yet")
+            if cur is None or not _adjacent(cur, dest):
+                raise HTTPException(400, "that's too far to travel in one step")
+            arrival = dest["arrival_node"]
             seq, story_time = await engine.apply_action(
                 conn, sess["player_id"], sess["log_id"], node_id=arrival,
-                effects={"progress_points": 5, "log": f"You traveled to {cell['name']}."},
+                effects={"progress_points": 5, "log": f"You traveled to {dest['name']}."},
                 story_time=sess["story_time"], kind="action")
             await conn.execute(
                 "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
@@ -378,6 +478,7 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
             sess["current_node"] = arrival
             sess["story_time"] = story_time
             await engine.discover_clues(conn, sess["player_id"], sess["log_id"], story_time, seq)
+            await _reveal_cells_around(conn, sess["player_id"], arrival, seq)
         return await engine.render_state(conn, sess["player_id"], sess)
 
 

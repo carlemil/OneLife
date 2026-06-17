@@ -17,6 +17,7 @@
   // 2fa setup
   let qrSvg = $state('');
   let secret = $state('');
+  let recoveryCodes = $state([]);
 
   // onboarding
   let manual = $state('');
@@ -118,17 +119,18 @@
   async function doEnable() {
     error = ''; busy = true;
     try {
-      await api.enableTotp(email.trim(), password, code.trim());
-      // Try to log straight in with the same code (still valid in its window).
-      try {
-        const r = await api.login(email.trim(), password, code.trim());
-        code = '';
-        if (r.onboarded) await loadGame(); else await loadOnboarding();
-      } catch {
-        notice = '2FA enabled. Please log in.'; authMode = 'login'; phase = 'auth'; code = '';
-      }
+      const r = await api.enableTotp(email.trim(), password, code.trim());
+      recoveryCodes = r.recovery_codes || [];
+      code = '';
+      phase = 'recovery';   // show backup codes once before continuing
     } catch (e) { error = e.message; }
     finally { busy = false; }
+  }
+
+  function recoveryDone() {
+    recoveryCodes = [];
+    notice = '2FA enabled. Log in with your authenticator code.';
+    authMode = 'login'; phase = 'auth';
   }
 
   async function doLogin() {
@@ -245,7 +247,7 @@
         <input bind:value={displayName} placeholder="Display name" />
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
       {:else}
-        <input bind:value={code} placeholder="6-digit authenticator code" inputmode="numeric" />
+        <input bind:value={code} placeholder="Authenticator code (or a recovery code)" />
         <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
       {/if}
     </div>
@@ -258,6 +260,14 @@
       <p class="sub">Can't scan? Secret: <code>{secret}</code></p>
       <input bind:value={code} placeholder="6-digit code" inputmode="numeric" />
       <button class="primary" onclick={doEnable} disabled={busy}>Enable 2FA &amp; continue</button>
+    </div>
+
+  {:else if phase === 'recovery'}
+    <div class="panel narrow">
+      <h2>Save your recovery codes</h2>
+      <p>If you lose your authenticator, each code below logs you in <b>once</b>. Store them somewhere safe — they won't be shown again.</p>
+      <ul class="codes">{#each recoveryCodes as c}<li><code>{c}</code></li>{/each}</ul>
+      <button class="primary" onclick={recoveryDone}>I've saved them — continue</button>
     </div>
 
   {:else if phase === 'onboarding'}
@@ -380,10 +390,11 @@
           {#each world.cells as c}
             <button class="cell {c.kind}" class:current={c.id === world.current_cell_id}
               style={`grid-column:${c.grid_x};grid-row:${c.grid_y}`}
-              disabled={busy || c.id === world.current_cell_id || !world.can_travel}
+              disabled={busy || !c.reachable}
               onclick={() => onTravel(c.id)}>
               <b>{c.name}</b><br><span class="sub">{c.kind}</span>
-              {#if c.id === world.current_cell_id}<br><span class="here">you are here</span>{/if}
+              {#if c.id === world.current_cell_id}<br><span class="here">you are here</span>
+              {:else if !c.reachable}<br><span class="sub">too far</span>{/if}
             </button>
           {/each}
         </div>
@@ -433,6 +444,8 @@
   .quiz-q { margin:.8rem 0; } .quiz-q .q { font-weight:bold; margin-bottom:.3rem; }
   .opt { display:block; cursor:pointer; padding:.15rem 0; }
   .opt input { display:inline; width:auto; margin-right:.5rem; }
+  .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
+  .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
   button { background:#2a3550; color:#e8e8f0; border:1px solid #3a456a; padding:.55rem .8rem; border-radius:6px; cursor:pointer; text-align:left; }
   button:hover { background:#34416a; }

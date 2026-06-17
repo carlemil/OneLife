@@ -76,11 +76,20 @@ unreachable or as a trap, while still proving an ending is always reachable.
 
 ---
 
+## Travel gating (implemented)
+
+- **Adjacency** — you can only travel to an orthogonally adjacent cell
+  (`|dx|+|dy| == 1`). Non-adjacent cells show as "too far" and `/api/travel`
+  rejects them (400). Sandby is the hub; Lund↔Woods is diagonal, so you route
+  through Sandby.
+- **Fog-of-war** — `player_cells` tracks discovered cells (rollback-safe, seq-
+  stamped). The world map shows only discovered cells; arriving somewhere reveals
+  its neighbors. (In this small map all three are discovered at the start.)
+
 ## Deferred
 
 - A richer **city map** UI (clickable locations within a cell) — today intra-cell
   movement uses the normal choice buttons.
-- Travel **gating** (distance, time, conditions) — today any world-access node can
-  reach any cell. Discovery/fog-of-war (only show visited/known cells).
+- Travel **cost** (time/conditions) beyond adjacency.
 - World scale: the design targets ~100 locations for a big city and ~10 for a
   village; the slice ships a handful to prove the structure.

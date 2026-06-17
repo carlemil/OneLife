@@ -58,11 +58,24 @@ the YAML content pipeline, since it isn't story-graph content).
 
 ---
 
-## Security notes / deferred
+## Hardening (implemented)
 
-This is prototype-grade and good enough to be honest about:
-- No email verification, password reset, rate limiting, or account lockout yet.
-- TOTP secret is stored plaintext in the DB (encrypt at rest for production).
-- Sessions are opaque UUID bearer tokens with no expiry/refresh; add TTL + refresh
-  and httpOnly cookies + CSRF for a real deployment (see TECH_STACK.md §Auth).
-- No recovery codes for a lost authenticator.
+- **Encryption at rest** — the TOTP secret is encrypted with Fernet
+  (`security.py`), keyed by `ONELIFE_SECRET_KEY` (a dev key + warning if unset).
+- **Rate limiting & lockout** — in-memory sliding windows on register/2FA/login;
+  login locks an email after 5 failed attempts for 5 minutes (429).
+- **Session TTL** — bearer tokens carry `expires_at` (7 days); expired tokens are
+  rejected (401), and the client falls back to login.
+- **Recovery codes** — 8 one-time backup codes issued at 2FA setup (shown once,
+  stored bcrypt-hashed). Login accepts a recovery code in place of a TOTP code;
+  each is single-use.
+- **CORS + headers** — CORS restricted to `WEB_ORIGIN`; `X-Content-Type-Options`,
+  `X-Frame-Options`, `Referrer-Policy` set on every response.
+
+## Still deferred
+
+- Email verification and password reset (need outbound email).
+- Token **refresh** (today login re-issues), httpOnly cookies + CSRF (today it's a
+  bearer token in localStorage).
+- Rate-limit state is in-process — use Redis for multi-instance.
+- User-enumeration: registration still distinguishes "email taken".

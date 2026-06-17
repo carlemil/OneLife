@@ -1,11 +1,13 @@
 """Password hashing + TOTP 2FA helpers (ACCOUNTS_AND_ONBOARDING.md)."""
 import io
+import secrets
 
 import bcrypt
 import pyotp
 import segno
 
 ISSUER = "OneLife"
+_RECOVERY_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"  # no ambiguous chars
 
 
 def hash_password(pw: str) -> str:
@@ -39,3 +41,16 @@ def qr_svg(uri: str) -> str:
     buf = io.BytesIO()
     segno.make(uri).save(buf, kind="svg", scale=4, border=2)
     return buf.getvalue().decode()
+
+
+def generate_recovery_codes(n: int = 8) -> list[str]:
+    """One-time backup codes shown once at 2FA setup (format XXXX-XXXX)."""
+    def one():
+        raw = "".join(secrets.choice(_RECOVERY_ALPHABET) for _ in range(8))
+        return f"{raw[:4]}-{raw[4:]}"
+    return [one() for _ in range(n)]
+
+
+def normalize_code(code: str) -> str:
+    return code.strip().upper().replace(" ", "")
+
