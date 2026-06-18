@@ -207,6 +207,35 @@ CREATE TABLE gate_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- ---------- Authoring event log (admin content editor) ----------
+-- The authored world is canonical as: baseline #0 (the YAML seed) + replay of
+-- these events up to `head`. The content tables above are a materialized cache
+-- kept in sync on every apply/undo/redo. See the admin content editor.
+CREATE TABLE IF NOT EXISTS content_events (
+    seq         BIGSERIAL PRIMARY KEY,
+    op          TEXT NOT NULL,                 -- create | update | delete | move
+    kind        TEXT NOT NULL,                 -- nodes | edges | gates | ... (content kind)
+    entity_id   TEXT NOT NULL,
+    before      JSONB,                         -- prior value (for undo); null for create
+    after       JSONB,                         -- new value; null for delete
+    admin_email TEXT,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Single-row HEAD pointer: events with seq <= head are applied, > head are redoable.
+CREATE TABLE IF NOT EXISTS content_log_state (
+    id   INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
+    head BIGINT NOT NULL DEFAULT 0
+);
+INSERT INTO content_log_state (id, head) VALUES (1, 0) ON CONFLICT (id) DO NOTHING;
+
+-- Editor layout for the graph view. NOT content, NOT exported to YAML.
+CREATE TABLE IF NOT EXISTS node_positions (
+    node_id TEXT PRIMARY KEY,
+    x       DOUBLE PRECISION NOT NULL,
+    y       DOUBLE PRECISION NOT NULL
+);
+
 CREATE VIEW leaderboard AS
 SELECT p.id AS player_id,
        p.display_name,

@@ -8,9 +8,12 @@
     "build": "vite build",
     "preview": "vite preview --host 0.0.0.0 --port 5173"
   },
+  "dependencies": {
+    "@xyflow/svelte": "^1.6.0"
+  },
   "devDependencies": {
     "@sveltejs/vite-plugin-svelte": "^4.0.0",
-    "svelte": "^5.1.0",
+    "svelte": "^5.25.0",
     "vite": "^5.4.0"
   }
 }

@@ -2,6 +2,9 @@
   import { onMount, tick } from 'svelte';
   import { api, download } from './lib/api.js';
   import * as spotify from './lib/spotify.js';
+  import { SvelteFlow, Background, Controls } from '@xyflow/svelte';
+  import '@xyflow/svelte/dist/style.css';
+  import StoryNode from './lib/StoryNode.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -85,8 +88,16 @@
   let form = $state({});            // working copy; json fields held as strings
   let jsonErrors = $state({});      // field key -> parse error message
   let editorMsg = $state('');
-  let checkInfo = $state(null);     // delete coupling-check result
   let canSave = $derived(Object.keys(jsonErrors).length === 0 && !!String(form?.id ?? '').trim());
+  // graph view + canonical event log
+  let editorView = $state('list');  // 'list' | 'graph'
+  let flowNodes = $state.raw([]);
+  let flowEdges = $state.raw([]);
+  let hover = $state(null);         // {kind:'node'|'edge', rec, x, y}
+  let logRows = $state([]);
+  let logHead = $state(0);
+  let canRedo = $derived(logRows.some((e) => e.seq > logHead));
+  const nodeTypes = { story: StoryNode };
 
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
@@ -388,17 +399,17 @@
     jsonErrors = { ...jsonErrors };
   }
   function newEntity() {
-    selId = null; editorMsg = ''; checkInfo = null;
+    selId = null; editorMsg = '';
     loadForm(structuredClone(DEFAULTS[editKind]));
   }
   function selectKind(k) { editKind = k; newEntity(); }
   function pickEntity(id) {
-    selId = id; editorMsg = ''; checkInfo = null;
+    selId = id; editorMsg = '';
     loadForm(content[editKind].find((x) => x.id === id));
   }
   async function openEditor() {
-    editorMsg = ''; checkInfo = null; showEditor = true;
-    try { content = await api.contentAll(); editKind = 'nodes'; newEntity(); }
+    editorMsg = ''; editorView = 'list'; showEditor = true;
+    try { content = await api.contentAll(); editKind = 'nodes'; newEntity(); await loadLog(); }
     catch (e) { editorMsg = e.message; }
   }
   async function saveEntity() {
@@ -408,24 +419,138 @@
     busy = true; editorMsg = '';
     try {
       const r = await api.saveEntity(editKind, entity);
-      content = await api.contentAll(); selId = entity.id;
+      await afterMutation(r.head);
+      selId = entity.id;
       editorMsg = 'Saved.' + (r.warnings?.length ? ` ${r.warnings.length} warning(s).` : '');
     } catch (e) { editorMsg = e.message; } finally { busy = false; }
   }
-  async function askDelete() {
+  // No confirmation dialog: delete applies immediately; integrity is enforced
+  // server-side (validate + node→edge cascade) and undo is the recovery net.
+  async function deleteCurrent() {
     if (selId === null) return;
-    editorMsg = '';
-    try { checkInfo = await api.checkDelete(editKind, selId); } catch (e) { editorMsg = e.message; }
-  }
-  async function confirmDelete(force) {
     busy = true; editorMsg = '';
     try {
-      const r = await api.deleteEntity(editKind, selId, force);
-      content = await api.contentAll(); checkInfo = null;
-      const erased = r.erased?.length ? ` Erased: ${r.erased.map((x) => x.label).join(', ')}.` : '';
-      newEntity(); editorMsg = 'Deleted.' + erased;
-    } catch (e) { editorMsg = e.message; checkInfo = null; } finally { busy = false; }
+      const r = await api.deleteEntity(editKind, selId);
+      await afterMutation(r.head);
+      newEntity();
+      editorMsg = 'Deleted (undo to restore).';
+    } catch (e) { editorMsg = e.message; } finally { busy = false; }
   }
+
+  // ---------- event log: undo / redo / history ----------
+  async function loadLog() {
+    try { const r = await api.contentLog(); logRows = r.events; logHead = r.head; }
+    catch (e) { editorMsg = e.message; }
+  }
+  async function afterMutation(head) {
+    content = await api.contentAll();
+    if (head != null) logHead = head;
+    await loadLog();
+    if (editorView === 'graph') buildFlow();
+  }
+  async function doUndo() {
+    busy = true; editorMsg = '';
+    try { const r = await api.contentUndo(); await afterMutation(r.head); afterHistoryJump(); }
+    catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  async function doRedo() {
+    busy = true; editorMsg = '';
+    try { const r = await api.contentRedo(); await afterMutation(r.head); afterHistoryJump(); }
+    catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  async function gotoSeq(seq) {
+    busy = true; editorMsg = '';
+    try { const r = await api.contentUndoTo(seq); await afterMutation(r.head); afterHistoryJump(); }
+    catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  // After moving HEAD, the selected entity may no longer exist — refresh the form.
+  function afterHistoryJump() {
+    if (selId !== null && !(content?.[editKind] ?? []).some((x) => x.id === selId)) newEntity();
+    else if (selId !== null) loadForm(content[editKind].find((x) => x.id === selId));
+  }
+
+  // ---------- graph view ----------
+  function autoLayout(nodes, edges) {
+    // Layered by BFS depth from the entry node; fallback grid for the rest.
+    const byId = Object.fromEntries(nodes.map((n) => [n.id, n]));
+    const adj = {};
+    for (const e of edges) (adj[e.from] ??= []).push(e.to);
+    const entry = nodes.find((n) => n.entry)?.id ?? nodes[0]?.id;
+    const depth = {};
+    const q = entry ? [entry] : [];
+    if (entry) depth[entry] = 0;
+    while (q.length) {
+      const x = q.shift();
+      for (const t of adj[x] ?? []) if (byId[t] && depth[t] === undefined) { depth[t] = depth[x] + 1; q.push(t); }
+    }
+    let orphan = 0;
+    const rows = {};
+    const pos = {};
+    for (const n of nodes) {
+      const d = depth[n.id] ?? (8 + orphan++ % 1);   // unreached: push to a far column
+      const col = depth[n.id] !== undefined ? d : 8;
+      rows[col] = (rows[col] ?? 0) + 1;
+      pos[n.id] = { x: col * 230, y: (rows[col] - 1) * 95 };
+    }
+    return pos;
+  }
+  function buildFlow() {
+    if (!content) return;
+    const auto = autoLayout(content.nodes, content.edges);
+    const stored = content.positions ?? {};
+    flowNodes = content.nodes.map((n) => ({
+      id: n.id, type: 'story',
+      position: stored[n.id] ?? auto[n.id] ?? { x: 0, y: 0 },
+      data: { ntype: n.type, rec: n },
+    }));
+    flowEdges = content.edges.map((e) => ({
+      id: e.id, source: e.from, target: e.to, label: e.label || '',
+      markerEnd: { type: 'arrowclosed' },
+      style: e.danger ? 'stroke:#c0563a;stroke-width:2' : '',
+      data: { rec: e },
+    }));
+  }
+  async function setGraphView() {
+    editorView = 'graph';
+    if (!content) { try { content = await api.contentAll(); } catch (e) { editorMsg = e.message; return; } }
+    buildFlow();
+  }
+  function onNodeClick({ node }) { editKind = 'nodes'; pickEntity(node.id); }
+  function onEdgeClick({ edge }) { editKind = 'edges'; pickEntity(edge.id); }
+  async function onNodeDragStop({ targetNode }) {
+    if (!targetNode) return;
+    try { const r = await api.moveNode(targetNode.id, targetNode.position.x, targetNode.position.y); logHead = r.head; await loadLog(); }
+    catch (e) { editorMsg = e.message; }
+  }
+  async function onConnect(conn) {
+    if (!conn.source || !conn.target) return;
+    let id = `e-${conn.source}-${conn.target}`;
+    const existing = new Set((content?.edges ?? []).map((e) => e.id));
+    if (existing.has(id)) { let i = 2; while (existing.has(`${id}-${i}`)) i++; id = `${id}-${i}`; }
+    const entity = { id, from: conn.source, to: conn.target, label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 };
+    busy = true; editorMsg = '';
+    try {
+      const r = await api.saveEntity('edges', entity);
+      await afterMutation(r.head);
+      editKind = 'edges'; pickEntity(id);
+      editorMsg = 'Edge created — set its label/conditions.';
+    } catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  async function addNode() {
+    const ids = new Set((content?.nodes ?? []).map((n) => n.id));
+    let n = 1; while (ids.has(`node-${n}`)) n++;
+    const id = `node-${n}`;
+    const entity = { ...structuredClone(DEFAULTS.nodes), id };
+    busy = true; editorMsg = '';
+    try {
+      const r = await api.saveEntity('nodes', entity);
+      await api.moveNode(id, 60, 60).catch(() => {});
+      await afterMutation(r.head);
+      editKind = 'nodes'; pickEntity(id);
+      editorMsg = 'Node created.';
+    } catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
+  function showHover(kind, rec, ev) { hover = { kind, rec, x: ev.clientX, y: ev.clientY }; }
 
   async function refresh() {
     try {
@@ -773,83 +898,131 @@
     </div>
   {/if}
 
+  {#snippet formFields()}
+    {#each FIELDS[editKind] as f (f.key)}
+      <div class="field">
+        <label>{f.key}{#if f.ref} <span class="sub">→ {f.ref}</span>{/if}</label>
+        {#if f.t === 'bool'}
+          <input type="checkbox" class="chk" bind:checked={form[f.key]} />
+        {:else if f.t === 'number'}
+          <input type="number" bind:value={form[f.key]} />
+        {:else if f.t === 'longtext'}
+          <textarea rows="4" bind:value={form[f.key]}></textarea>
+        {:else if f.t === 'json'}
+          <textarea rows="5" class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
+          {#if jsonErrors[f.key]}<div class="json-err">{jsonErrors[f.key]}</div>{/if}
+        {:else if f.t === 'select'}
+          <select bind:value={form[f.key]}>
+            {#if f.ref}<option value="">—</option>{/if}
+            {#each optionsFor(f) as o}<option value={o}>{o}</option>{/each}
+          </select>
+        {:else}
+          <input type="text" bind:value={form[f.key]} readonly={f.key === 'id' && selId !== null} />
+        {/if}
+      </div>
+    {/each}
+    <div class="row">
+      <button class="primary" onclick={saveEntity} disabled={!canSave || busy}>Save</button>
+      {#if selId !== null}<button class="danger" onclick={deleteCurrent} disabled={busy}>Delete</button>{/if}
+    </div>
+  {/snippet}
+
   {#if showEditor}
     <div class="modal" onclick={() => (showEditor = false)}>
       <div class="modal-card editor" onclick={(e) => e.stopPropagation()}>
-        <h2>⚙ Edit content</h2>
+        <div class="editor-head">
+          <h2>⚙ Edit content</h2>
+          <div class="viewtabs">
+            <button class:active={editorView === 'list'} onclick={() => (editorView = 'list')}>List</button>
+            <button class:active={editorView === 'graph'} onclick={setGraphView}>Graph</button>
+          </div>
+          <div class="undobar">
+            <button onclick={doUndo} disabled={logHead <= 0 || busy} title="Undo">↶</button>
+            <span class="sub">#{logHead}</span>
+            <button onclick={doRedo} disabled={!canRedo || busy} title="Redo">↷</button>
+          </div>
+        </div>
         {#if editorMsg}<div class="notice">{editorMsg}</div>{/if}
-        <div class="kindtabs">
-          {#each KINDS as k}
-            <button class="link" class:active={k === editKind} onclick={() => selectKind(k)}>{k}</button>
-          {/each}
-        </div>
-        <div class="editor-grid">
-          <div class="idlist">
-            <button class:sel={selId === null} onclick={newEntity}>+ New {singular(editKind)}</button>
-            {#each (content?.[editKind] ?? []) as x}
-              <button class:sel={x.id === selId} onclick={() => pickEntity(x.id)}>{x.id}</button>
+
+        {#if editorView === 'list'}
+          <div class="kindtabs">
+            {#each KINDS as k}
+              <button class="link" class:active={k === editKind} onclick={() => selectKind(k)}>{k}</button>
             {/each}
           </div>
-          <div class="form">
-            {#each FIELDS[editKind] as f (f.key)}
-              <div class="field">
-                <label>{f.key}{#if f.ref} <span class="sub">→ {f.ref}</span>{/if}</label>
-                {#if f.t === 'bool'}
-                  <input type="checkbox" class="chk" bind:checked={form[f.key]} />
-                {:else if f.t === 'number'}
-                  <input type="number" bind:value={form[f.key]} />
-                {:else if f.t === 'longtext'}
-                  <textarea rows="4" bind:value={form[f.key]}></textarea>
-                {:else if f.t === 'json'}
-                  <textarea rows="5" class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
-                  {#if jsonErrors[f.key]}<div class="json-err">{jsonErrors[f.key]}</div>{/if}
-                {:else if f.t === 'select'}
-                  <select bind:value={form[f.key]}>
-                    {#if f.ref}<option value="">—</option>{/if}
-                    {#each optionsFor(f) as o}<option value={o}>{o}</option>{/each}
-                  </select>
-                {:else}
-                  <input type="text" bind:value={form[f.key]} readonly={f.key === 'id' && selId !== null} />
-                {/if}
-              </div>
-            {/each}
-            <div class="row">
-              <button class="primary" onclick={saveEntity} disabled={!canSave || busy}>Save</button>
-              {#if selId !== null}<button class="danger" onclick={askDelete} disabled={busy}>Delete…</button>{/if}
+          <div class="editor-grid">
+            <div class="idlist">
+              <button class:sel={selId === null} onclick={newEntity}>+ New {singular(editKind)}</button>
+              {#each (content?.[editKind] ?? []) as x}
+                <button class:sel={x.id === selId} onclick={() => pickEntity(x.id)}>{x.id}</button>
+              {/each}
             </div>
-            {#if checkInfo}
-              <div class="delconfirm">
-                {#if checkInfo.content_refs.length}
-                  <p class="warn">Can't delete — referenced by other content:</p>
-                  <ul>{#each checkInfo.content_refs as r}<li>{r.count} {r.label}</li>{/each}</ul>
-                  <button onclick={() => (checkInfo = null)}>OK</button>
-                {:else}
-                  {#if checkInfo.cascade.length}
-                    <p class="warn">This will also erase:</p>
-                    <ul>{#each checkInfo.cascade as r}<li>{r.count} {r.label}</li>{/each}</ul>
-                  {/if}
-                  {#if checkInfo.live_refs.length}
-                    <p class="warn">In use by live players:</p>
-                    <ul>{#each checkInfo.live_refs as r}<li>{r.count} {r.label}</li>{/each}</ul>
-                    <div class="row">
-                      <button onclick={() => (checkInfo = null)}>Cancel</button>
-                      <button class="danger" onclick={() => confirmDelete(true)} disabled={busy}>Force delete</button>
-                    </div>
-                  {:else}
-                    <p>Delete <code>{selId}</code>?</p>
-                    <div class="row">
-                      <button onclick={() => (checkInfo = null)}>Cancel</button>
-                      <button class="danger" onclick={() => confirmDelete(false)} disabled={busy}>Delete</button>
-                    </div>
-                  {/if}
-                {/if}
-              </div>
-            {/if}
+            <div class="form">{@render formFields()}</div>
           </div>
-        </div>
+        {:else}
+          <div class="graphwrap">
+            <div class="canvas">
+              <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} fitView
+                onnodeclick={onNodeClick} onedgeclick={onEdgeClick}
+                onconnect={onConnect} onnodedragstop={onNodeDragStop}
+                onnodepointerenter={({ node, event }) => showHover('node', node.data.rec, event)}
+                onnodepointerleave={() => (hover = null)}
+                onedgepointerenter={({ edge, event }) => showHover('edge', edge.data.rec, event)}
+                onedgepointerleave={() => (hover = null)}>
+                <Background />
+                <Controls />
+              </SvelteFlow>
+              <div class="graphtools">
+                <button onclick={addNode} disabled={busy}>+ Node</button>
+                {#if selId !== null}<button class="danger" onclick={deleteCurrent} disabled={busy}>Delete {editKind === 'edges' ? 'edge' : 'node'}</button>{/if}
+                <span class="sub">drag a node to move · drag handle→node to connect · click to edit</span>
+              </div>
+            </div>
+            <div class="graphside">
+              {#if selId !== null}
+                <div class="sidehd">{editKind === 'edges' ? 'Edge' : 'Node'}: <code>{selId}</code></div>
+                {@render formFields()}
+              {:else}
+                <p class="sub">Select a node or edge to edit it, or use “+ Node”.</p>
+              {/if}
+            </div>
+          </div>
+        {/if}
+
+        <details class="history">
+          <summary>History — {logRows.length} action(s), at #{logHead}</summary>
+          <ul>
+            <li><button class="link" class:athead={logHead === 0} onclick={() => gotoSeq(0)}>#0 baseline (current world)</button></li>
+            {#each logRows as e (e.seq)}
+              <li><button class="link" class:athead={e.seq === logHead} class:undone={!e.applied} onclick={() => gotoSeq(e.seq)}>#{e.seq} {e.op} {e.kind} {e.entity_id}</button></li>
+            {/each}
+          </ul>
+        </details>
+
         <button onclick={() => (showEditor = false)}>Close</button>
       </div>
     </div>
+    {#if hover}
+      <div class="gtip" style={`left:${hover.x + 14}px; top:${hover.y + 12}px`}>
+        {#if hover.kind === 'node'}
+          <b>{hover.rec.id}</b> <span class="sub">{hover.rec.type}</span>
+          {#if hover.rec.title}<div>{hover.rec.title}</div>{/if}
+          {#if hover.rec.location}<div class="sub">location: {hover.rec.location}</div>{/if}
+          {#if hover.rec.gate}<div class="sub">gate: {hover.rec.gate}</div>{/if}
+          {#if hover.rec.puzzle}<div class="sub">puzzle: {hover.rec.puzzle}</div>{/if}
+          {#if hover.rec.entry}<div class="sub">· entry</div>{/if}
+          {#if hover.rec.is_death}<div class="sub">· death</div>{/if}
+          {#if hover.rec.world_access}<div class="sub">· world access</div>{/if}
+        {:else}
+          <b>{hover.rec.id}</b>
+          <div>{hover.rec.from} → {hover.rec.to}</div>
+          {#if hover.rec.label}<div class="sub">label: {hover.rec.label}</div>{/if}
+          {#if hover.rec.danger}<div class="sub">danger: {hover.rec.danger}</div>{/if}
+          <div class="sub">conditions: {JSON.stringify(hover.rec.conditions)}</div>
+          {#if hover.rec.effects && Object.keys(hover.rec.effects).length}<div class="sub">effects: {JSON.stringify(hover.rec.effects)}</div>{/if}
+        {/if}
+      </div>
+    {/if}
   {/if}
 
 </main>
@@ -908,7 +1081,14 @@
   .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
   .modal-card.help { width:560px; max-width:92vw; max-height:85vh; overflow:auto; }
   .modal-card.lb { width:420px; max-width:92vw; max-height:85vh; overflow:auto; }
-  .modal-card.editor { width:920px; max-width:95vw; max-height:90vh; overflow:auto; }
+  .modal-card.editor { width:1080px; max-width:96vw; max-height:92vh; overflow:auto; }
+  .editor-head { display:flex; align-items:center; gap:1rem; }
+  .editor-head h2 { flex:1; margin:.2rem 0; }
+  .viewtabs { display:flex; gap:.2rem; }
+  .viewtabs button { padding:.25rem .7rem; font-size:.85rem; }
+  .viewtabs button.active { background:#34416a; color:#cdbb9a; }
+  .undobar { display:flex; align-items:center; gap:.4rem; }
+  .undobar button { padding:.25rem .55rem; }
   .kindtabs { display:flex; flex-wrap:wrap; gap:.2rem; border-bottom:1px solid #2a2e3e; padding-bottom:.5rem; margin:.4rem 0 .6rem; }
   .kindtabs .link { padding:.2rem .5rem; }
   .kindtabs .link.active { color:#cdbb9a; font-weight:bold; }
@@ -923,9 +1103,22 @@
   .form input[readonly] { opacity:.55; }
   .form .chk { width:auto; display:inline-block; }
   .json-err { color:#e06c75; font-size:.78rem; margin-top:.15rem; }
-  .delconfirm { border:1px solid #6a3346; background:#2a1a22; border-radius:6px; padding:.6rem .8rem; margin-top:.6rem; }
-  .delconfirm .warn { color:#e0a05c; margin:.2rem 0; }
-  .delconfirm ul { margin:.2rem 0 .5rem 1.1rem; font-size:.85rem; }
+  /* graph view */
+  .graphwrap { display:grid; grid-template-columns:1fr 300px; gap:1rem; }
+  .canvas { position:relative; height:66vh; border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
+  .canvas :global(.svelte-flow) { background:#0d0e14; }
+  .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
+  .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
+  .graphside { max-height:66vh; overflow:auto; }
+  .graphside .sidehd { margin-bottom:.4rem; font-size:.9rem; }
+  .history { margin-top:.8rem; border-top:1px solid #2a2e3e; padding-top:.4rem; }
+  .history summary { cursor:pointer; color:#9a9ab0; font-size:.85rem; }
+  .history ul { list-style:none; padding:.3rem 0 0; max-height:24vh; overflow:auto; }
+  .history .link { font-size:.8rem; font-family:monospace; }
+  .history .athead { color:#cdbb9a; font-weight:bold; }
+  .history .undone { opacity:.45; text-decoration:line-through; }
+  .gtip { position:fixed; z-index:1000; pointer-events:none; max-width:320px; background:#1a1d28; border:1px solid #3a456a;
+          border-radius:6px; padding:.4rem .6rem; font-size:.8rem; box-shadow:0 2px 10px rgba(0,0,0,.5); word-break:break-word; }
   .paneltitle { background:none; border:none; color:#e8e8f0; font:inherit; padding:0; cursor:pointer; }
   .paneltitle:hover { color:#7fa8d8; }
   .lblist, .lbside { list-style:none; padding:0; }

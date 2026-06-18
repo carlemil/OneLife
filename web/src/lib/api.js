@@ -78,11 +78,15 @@ export const api = {
   exportPlayer: (id) => req(`/api/admin/player/${id}/export`),
   importPlayer: (data, confirm) => req('/api/admin/player/import', { method: 'POST', body: { data, confirm } }),
 
-  // admin content editor (structured CRUD)
+  // admin content editor (graph + canonical event log)
   contentAll: () => req('/api/admin/content/all'),
   saveEntity: (kind, entity) => req('/api/admin/content/entity', { method: 'POST', body: { kind, entity } }),
-  checkDelete: (kind, id) => req('/api/admin/content/check', { method: 'POST', body: { kind, id } }),
-  deleteEntity: (kind, id, force = false) => req('/api/admin/content/delete', { method: 'POST', body: { kind, id, force } }),
+  deleteEntity: (kind, id) => req('/api/admin/content/delete', { method: 'POST', body: { kind, id } }),
+  moveNode: (id, x, y) => req('/api/admin/content/move', { method: 'POST', body: { id, x, y } }),
+  contentLog: () => req('/api/admin/content/log'),
+  contentUndo: () => req('/api/admin/content/undo', { method: 'POST' }),
+  contentRedo: () => req('/api/admin/content/redo', { method: 'POST' }),
+  contentUndoTo: (seq) => req('/api/admin/content/undo_to', { method: 'POST', body: { seq } }),
 };
 
 // Trigger a browser download of a text body.

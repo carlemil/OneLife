@@ -11,7 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_edit, auth, onboarding, atmosphere, security, admin
+from . import db, engine, gates, puzzles, llm, memory, content, content_edit, content_log, auth, onboarding, atmosphere, security, admin
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -66,6 +66,15 @@ async def _startup():
             print(f"[content] seeded {len(data['nodes'])} nodes from {data and 'YAML'}")
     except Exception as e:  # noqa: BLE001
         print(f"[content] seed skipped: {e}")
+    # Authoring event-log: ensure its tables exist (non-fresh volumes), then replay
+    # the log over the just-seeded baseline so the content cache reaches HEAD.
+    async with pool.acquire() as conn:
+        try:
+            await content_log.ensure_tables(conn)
+            await content_log.replay(conn)
+            print(f"[content-log] replayed to head={await content_log._head(conn)}")
+        except Exception as e:  # noqa: BLE001
+            print(f"[content-log] replay failed (cache may be at baseline): {e}")
     # Self-heal any duplicate leaked memories left by pre-dedupe runs.
     async with pool.acquire() as conn:
         await memory.dedupe_existing(conn)
@@ -198,7 +207,14 @@ class ContentEntityBody(BaseModel):
 class ContentDeleteBody(BaseModel):
     kind: str
     id: str
-    force: bool = False
+
+class ContentMoveBody(BaseModel):
+    id: str
+    x: float
+    y: float
+
+class ContentSeqBody(BaseModel):
+    seq: int
 
 
 @app.get("/api/health")
@@ -594,21 +610,24 @@ async def admin_content_import(body: ContentImportBody,
             "counts": {k: len(data[k]) for k in content._LIST_KEYS}}
 
 
-# ---------- Admin: in-UI content editor (structured CRUD) ----------
+# ---------- Admin: in-UI content editor (graph + canonical event log) ----------
+# Every mutation is recorded as one event and applied to the materialized cache;
+# undo/redo walk the log. No blocking confirmation dialogs — integrity is kept by
+# programmatic validation only (game-breaking edits are rejected inline).
 @app.get("/api/admin/content/all")
 async def admin_content_all(authorization: str | None = Header(default=None)):
-    """The full authored set in the editable dict shape — the editor loads it once."""
+    """The full authored set (+ node positions) — the editor loads it once."""
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        return await content.export_content(conn)
+        return await content_log.current(conn)
 
 
 @app.post("/api/admin/content/entity")
 async def admin_content_entity(body: ContentEntityBody,
                                authorization: str | None = Header(default=None)):
-    """Upsert one entity: merge into the current set, validate the whole set, seed."""
-    await _admin_session(authorization)
+    """Create/update one entity: validate the resulting world, then log + apply."""
+    sess = await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         full = await content.export_content(conn)
@@ -619,53 +638,88 @@ async def admin_content_entity(body: ContentEntityBody,
         errors, warnings = content.validate(merged)
         if errors:
             raise HTTPException(400, "; ".join(errors[:10]))
-        await content.seed_content(conn, merged)
-    return {"ok": True, "warnings": warnings,
-            "counts": {k: len(merged[k]) for k in content._LIST_KEYS}}
-
-
-@app.post("/api/admin/content/check")
-async def admin_content_check(body: ContentDeleteBody,
-                              authorization: str | None = Header(default=None)):
-    """Dry-run delete: report what references this entity so the UI can confirm."""
-    await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        try:
-            return await content_edit.coupling_check(conn, body.kind, body.id)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
+        before = await content_log.find_entity(conn, body.kind, body.entity["id"])
+        op = "update" if before is not None else "create"
+        head = await content_log.record(conn, op, body.kind, body.entity["id"],
+                                         before, body.entity, sess.get("email"))
+    return {"ok": True, "warnings": warnings, "head": head}
 
 
 @app.post("/api/admin/content/delete")
 async def admin_content_delete(body: ContentDeleteBody,
                                authorization: str | None = Header(default=None)):
-    """Delete one entity. Blocks on content/live references unless force; always
-    re-validates the remaining set (so you can't strand the spine — force can't
-    bypass that). Re-seed + physical delete share one transaction."""
-    await _admin_session(authorization)
+    """Delete one entity (no confirmation). A node deletes its incident edges as one
+    compound event (restored together on undo). The remaining world is validated;
+    a game-breaking delete is rejected inline and nothing is logged."""
+    sess = await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        try:
-            chk = await content_edit.coupling_check(conn, body.kind, body.id)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
-        def _summ(refs):
-            return ", ".join(f"{r['count']} {r['label']}" for r in refs)
-        if chk["content_refs"]:
-            # Removing it would dangle authored references; validate would fail anyway.
-            raise HTTPException(409, f"referenced by other content — remove first: {_summ(chk['content_refs'])}")
-        if chk["live_refs"] and not body.force:
-            raise HTTPException(409, f"in use by live players ({_summ(chk['live_refs'])}); use force to delete anyway")
         full = await content.export_content(conn)
-        remaining = content_edit.remove_entity(full, body.kind, body.id)
+        if body.kind == "nodes":
+            before = await content_log.node_delete_before(conn, body.id)
+            if before["node"] is None:
+                raise HTTPException(404, "no such node")
+            remaining = content_edit.remove_entity(full, "nodes", body.id)
+            drop = {e["id"] for e in before["edges"]}
+            remaining["edges"] = [e for e in remaining["edges"] if e["id"] not in drop]
+        else:
+            before = await content_log.find_entity(conn, body.kind, body.id)
+            if before is None:
+                raise HTTPException(404, "no such entity")
+            remaining = content_edit.remove_entity(full, body.kind, body.id)
         errors, warnings = content.validate(remaining)
         if errors:
             raise HTTPException(400, "; ".join(errors[:10]))
-        async with conn.transaction():
-            await content.seed_content(conn, remaining)
-            await content_edit.delete_one(conn, body.kind, body.id)
-    return {"ok": True, "warnings": warnings, "erased": chk["cascade"]}
+        head = await content_log.record(conn, "delete", body.kind, body.id,
+                                         before, None, sess.get("email"))
+    return {"ok": True, "warnings": warnings, "head": head}
+
+
+@app.post("/api/admin/content/move")
+async def admin_content_move(body: ContentMoveBody,
+                             authorization: str | None = Header(default=None)):
+    """Persist a node's graph position as a move event (undoable)."""
+    sess = await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT x,y FROM node_positions WHERE node_id=$1", body.id)
+        before = {"x": row["x"], "y": row["y"]} if row else None
+        head = await content_log.record(conn, "move", "nodes", body.id,
+                                        before, {"x": body.x, "y": body.y}, sess.get("email"))
+    return {"ok": True, "head": head}
+
+
+@app.get("/api/admin/content/log")
+async def admin_content_log(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await content_log.log(conn)
+
+
+@app.post("/api/admin/content/undo")
+async def admin_content_undo(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await content_log.undo(conn)
+
+
+@app.post("/api/admin/content/redo")
+async def admin_content_redo(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await content_log.redo(conn)
+
+
+@app.post("/api/admin/content/undo_to")
+async def admin_content_undo_to(body: ContentSeqBody,
+                                authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await content_log.goto(conn, body.seq)
 
 
 @app.get("/api/admin/db/export")
