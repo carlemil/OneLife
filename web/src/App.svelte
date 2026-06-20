@@ -639,7 +639,7 @@
     finally { busy = false; await tick(); puzzleEl?.focus(); }
   }
   async function onRollback(seq) {
-    if (!confirm(`Roll the log back to step ${seq}? You will lose all progress after it.`)) return;
+    if (!confirm(`Cheat death — return to step ${seq}? You'll lose all progress made after it.`)) return;
     busy = true;
     try { game = await api.rollback(seq); logEntries = (await api.log()).entries; myWindow = (await api.leaderboard({ around: 1 })).rows; }
     catch (e) { error = e.message; } finally { busy = false; }
@@ -822,7 +822,7 @@
           </h3>
           {#if panelOpen.leaderboard}
           {#if myWindow.length}
-            <ul class="lbside">{#each myWindow as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>{/each}</ul>
+            <ul class="lbside">{#each myWindow as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}</span><span class="score">{r.progress}</span></li>{/each}</ul>
           {:else}
             <p class="sub">no ranking yet</p>
           {/if}
@@ -889,7 +889,7 @@
       <div class="modal-card lb" onclick={(e) => e.stopPropagation()}>
         <h2>🏆 Leaderboard <span class="sub">— {lbTotal} players</span></h2>
         {#if lbMe}
-          <p>You are <b>#{lbMe.rank}</b> — {lbMe.progress} <button class="link" onclick={jumpToMe}>jump to me</button></p>
+          <p>You are <b>#{lbMe.rank}</b> — {lbMe.progress}{#if lbMe.completed} <span class="done" title="You completed the game">★ completed</span>{/if} <button class="link" onclick={jumpToMe}>jump to me</button></p>
         {/if}
         <div class="row">
           <input bind:value={lbQuery} placeholder="search a name…" onkeydown={(e) => e.key === 'Enter' && searchLb()} />
@@ -902,7 +902,7 @@
         </div>
         <ul class="lblist">
           {#each lbRows as r}
-            <li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>
+            <li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}</span><span class="score">{r.progress}</span></li>
           {/each}
           {#if lbRows.length === 0}<li class="empty sub">no matches</li>{/if}
         </ul>
@@ -1229,6 +1229,7 @@
   .lblist .nm, .lbside .nm { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .lblist .score, .lbside .score { text-align:right; font-weight:bold; font-variant-numeric:tabular-nums; }
   .lblist li.me, .lbside li.me { color:#cdbb9a; background:#2a3550; }
+  .done { color:#e8c060; font-weight:bold; }
   .lblist li.empty, .lbside li.empty { display:block; background:none; }
   .lbnav { align-items:center; justify-content:space-between; }
   .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }

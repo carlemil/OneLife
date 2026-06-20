@@ -2,7 +2,7 @@
 
 A player must read the manual and pass the quiz before the game starts. The quiz
 is low-stakes (retryable) — its job is to make sure the player grasps the basics
-that the design depends on: the log IS your progress, rollback is a real cost,
+that the design depends on: the log IS your progress, cheating death is a real cost,
 and you advance by talking to characters and solving woven puzzles.
 """
 
@@ -23,11 +23,11 @@ HOW IT WORKS
 • Keep a pen and paper handy. Noting down names, numbers, and stray details will
   help you piece things together.
 
-DEATH & ROLLBACK
-• You can die. When you're stuck or dead, you can ROLL BACK your log to an
-  earlier point to escape.
-• Rollback is never free: it erases the progress you made after that point and
-  costs you positions on the LEADERBOARD. Use it, but spend it wisely.
+DEATH & CHEATING DEATH
+• You can die, and you can get stuck. When that happens you can CHEAT DEATH:
+  rewind your LOG to an earlier point and carry on from there.
+• Cheating death is never free: it erases the progress you made after that point
+  and costs you positions on the LEADERBOARD. Use it, but spend it wisely.
 
 THE LEADERBOARD
 • You earn Progress for actions, discoveries, and dialogue. The leaderboard
@@ -52,7 +52,7 @@ QUIZ = [
     },
     {
         "id": "q-rollback",
-        "prompt": "What happens when you roll back your log to escape a bad situation?",
+        "prompt": "What happens when you cheat death to escape a bad situation?",
         "options": [
             "Nothing — it's a free undo",
             "You lose progress made after that point and drop on the leaderboard",

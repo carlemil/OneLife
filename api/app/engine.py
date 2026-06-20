@@ -95,11 +95,28 @@ async def render_state(conn, player_id, session) -> dict:
 
     edges = await conn.fetch(
         "SELECT * FROM story_edges WHERE from_node=$1 ORDER BY sort_order", node["id"])
+    # Look up each choice's destination so we can hide alternatives already completed.
+    targets = {e["to_node"] for e in edges}
+    tinfo = {}
+    if targets:
+        trows = await conn.fetch(
+            "SELECT id, type, gate_id, puzzle_id FROM story_nodes WHERE id = ANY($1::text[])",
+            list(targets))
+        tinfo = {r["id"]: r for r in trows}
     visible = []
     for e in edges:
-        if evaluate(json.loads(e["conditions"]), ctx):
-            visible.append({"id": e["id"], "label": e["label"],
-                            "danger": e["danger"]})
+        if not evaluate(json.loads(e["conditions"]), ctx):
+            continue
+        # Hide a choice that leads into an interaction already finished — a gate
+        # you've passed or a puzzle you've solved. Navigation (location/narration/
+        # ending targets) is never hidden, so this can't soft-lock the player.
+        t = tinfo.get(e["to_node"])
+        if t is not None:
+            if t["type"] == "gate" and t["gate_id"] in ctx.passed_gates:
+                continue
+            if t["type"] == "puzzle" and t["puzzle_id"] in ctx.solved_puzzles:
+                continue
+        visible.append({"id": e["id"], "label": e["label"], "danger": e["danger"]})
 
     found = await conn.fetch(
         """SELECT pc.reveal_text FROM player_clues p

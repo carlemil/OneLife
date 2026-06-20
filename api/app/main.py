@@ -804,27 +804,36 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int
     offset = max(0, offset)
     limit = max(1, min(limit, 100))
     pid = sess["player_id"]
-    cte = ("WITH ranked AS (SELECT player_id, display_name, progress, "
-           "ROW_NUMBER() OVER (ORDER BY progress DESC, display_name) AS rank FROM leaderboard) ")
+    # `completed` = the player has reached an ending node on their live (non-rolled-back)
+    # timeline; rollback past the ending un-completes it, consistent with the log invariant.
+    cte = ("WITH done AS (SELECT DISTINCT g.player_id FROM log_entries le "
+           "  JOIN game_logs g ON g.id = le.log_id "
+           "  WHERE NOT le.rolled_back "
+           "    AND le.node_id IN (SELECT id FROM story_nodes WHERE type='ending')), "
+           "ranked AS (SELECT l.player_id, l.display_name, l.progress, "
+           "  (d.player_id IS NOT NULL) AS completed, "
+           "  ROW_NUMBER() OVER (ORDER BY l.progress DESC, l.display_name) AS rank "
+           "  FROM leaderboard l LEFT JOIN done d ON d.player_id = l.player_id) ")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         total = await conn.fetchval(cte + "SELECT count(*) FROM ranked")
-        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress FROM ranked WHERE player_id=$1", pid)
+        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress, completed FROM ranked WHERE player_id=$1", pid)
         if around > 0 and me:
             offset = max(0, me["rank"] - around - 1)
             limit = min(2 * around + 1, 100)
             q = ""
         if q.strip():
             rows = await conn.fetch(
-                cte + "SELECT player_id, rank, display_name, progress FROM ranked "
+                cte + "SELECT player_id, rank, display_name, progress, completed FROM ranked "
                 "WHERE display_name ILIKE '%'||$1||'%' ORDER BY rank LIMIT $2", q.strip(), limit)
         else:
             rows = await conn.fetch(
-                cte + "SELECT player_id, rank, display_name, progress FROM ranked "
+                cte + "SELECT player_id, rank, display_name, progress, completed FROM ranked "
                 "ORDER BY rank OFFSET $1 LIMIT $2", offset, limit)
     return {
         "total": total,
-        "me": ({"rank": me["rank"], "display_name": me["display_name"], "progress": me["progress"]} if me else None),
+        "me": ({"rank": me["rank"], "display_name": me["display_name"], "progress": me["progress"],
+                "completed": me["completed"]} if me else None),
         "rows": [{"rank": r["rank"], "display_name": r["display_name"], "progress": r["progress"],
-                  "is_me": r["player_id"] == pid} for r in rows],
+                  "completed": r["completed"], "is_me": r["player_id"] == pid} for r in rows],
     }
