@@ -36,6 +36,17 @@
   let gateInput = $state('');
   let gateReply = $state('');           // the NPC's last spoken line (Actor reply)
   let gatePassed = $state(false);       // did the last turn pass the gate?
+  // Side-panel accordions: per-panel expanded/collapsed state, persisted.
+  let panelOpen = $state(loadPanels());
+  function loadPanels() {
+    const def = { atmosphere: true, leaderboard: true, notes: true, log: true };
+    try { return { ...def, ...JSON.parse(localStorage.getItem('onelife_panels') || '{}') }; }
+    catch { return def; }
+  }
+  function togglePanel(key) {
+    panelOpen[key] = !panelOpen[key];
+    localStorage.setItem('onelife_panels', JSON.stringify(panelOpen));
+  }
   let puzzleInput = $state('');
   let gateEl = $state(null);
   let puzzleEl = $state(null);
@@ -761,8 +772,13 @@
       </section>
 
       <aside class="side">
-        <div class="panel">
-          <h3>Atmosphere</h3>
+        <div class="panel" class:collapsed={!panelOpen.atmosphere}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.atmosphere} onclick={() => togglePanel('atmosphere')}>
+              <span class="chev">{panelOpen.atmosphere ? '▾' : '▸'}</span> Atmosphere
+            </button>
+          </h3>
+          {#if panelOpen.atmosphere}
           <button class="primary" onclick={toggleSpotify}>🎵 Spotify: {spotifyOn ? 'on' : 'off'}</button>
           {#if spotifyOn}
             <label class="vol">🔈
@@ -795,23 +811,42 @@
                 width="100%" height="80" style="border:0;border-radius:8px" allow="autoplay; encrypted-media"></iframe>
             {/if}
           {/if}
+          {/if}
         </div>
-        <div class="panel">
-          <h3><button class="link paneltitle" onclick={openLeaderboard}>Leaderboard ↗</button></h3>
+        <div class="panel" class:collapsed={!panelOpen.leaderboard}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.leaderboard} onclick={() => togglePanel('leaderboard')}>
+              <span class="chev">{panelOpen.leaderboard ? '▾' : '▸'}</span> Leaderboard
+            </button>
+            <button class="link paneltitle" title="Open full leaderboard" aria-label="Open full leaderboard" onclick={openLeaderboard}>↗</button>
+          </h3>
+          {#if panelOpen.leaderboard}
           {#if myWindow.length}
             <ul class="lbside">{#each myWindow as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{r.display_name}</span><span class="score">{r.progress}</span></li>{/each}</ul>
           {:else}
             <p class="sub">no ranking yet</p>
           {/if}
+          {/if}
         </div>
         {#if game.notes.length}
-          <div class="panel">
-            <h3>Notes</h3>
+          <div class="panel" class:collapsed={!panelOpen.notes}>
+            <h3 class="acc-head">
+              <button class="paneltoggle" aria-expanded={panelOpen.notes} onclick={() => togglePanel('notes')}>
+                <span class="chev">{panelOpen.notes ? '▾' : '▸'}</span> Notes
+              </button>
+            </h3>
+            {#if panelOpen.notes}
             <ul class="notelist">{#each game.notes as n}<li>{n}</li>{/each}</ul>
+            {/if}
           </div>
         {/if}
-        <div class="panel">
-          <h3>Log <span class="sub">(your progress)</span></h3>
+        <div class="panel" class:collapsed={!panelOpen.log}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
+              <span class="chev">{panelOpen.log ? '▾' : '▸'}</span> Log <span class="sub">(your progress)</span>
+            </button>
+          </h3>
+          {#if panelOpen.log}
           <ul class="log">
             {#each logRev.slice(0, logShown) as l}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
@@ -821,6 +856,7 @@
           </ul>
           {#if logRev.length > logShown}
             <button class="link more" onclick={() => (logShown += LOG_PAGE)}>more ({logRev.length - logShown} earlier)</button>
+          {/if}
           {/if}
         </div>
       </aside>
@@ -1087,6 +1123,11 @@
   .tracks li { display:flex; gap:.5rem; margin:.55rem 0; align-items:center; }
   .tracks img { width:42px; height:42px; border-radius:4px; flex-shrink:0; }
   .panel, .notes { background:#1a1d28; border:1px solid #2a2e3e; border-radius:8px; padding:1rem; margin-bottom:1rem; }
+  .acc-head { display:flex; align-items:center; gap:.4rem; margin:0; }
+  .panel:not(.collapsed) .acc-head { margin-bottom:.7rem; }
+  .paneltoggle { flex:1; display:flex; align-items:center; gap:.5rem; min-width:0; background:none; border:none; color:inherit; font:inherit; padding:0; cursor:pointer; text-align:left; }
+  .paneltoggle:hover { color:#7fa8d8; }
+  .paneltoggle .chev { font-size:.7rem; color:#7a7a90; width:.9em; flex-shrink:0; }
   .narrow { max-width:420px; }
   .tabs { display:flex; gap:.5rem; margin-bottom:1rem; }
   .tabs button { flex:1; background:#15171f; }
