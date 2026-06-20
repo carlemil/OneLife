@@ -23,6 +23,27 @@ nodes:
         effects: {log: "You left the classroom."}
         sort_order: 9
 
+  # --- puzzle: the chalk letters on the classroom floor (marta-anagram) ---
+  - id: kbk-chalk-letters
+    arc: main
+    type: puzzle
+    location: killebackskolan
+    title: The Chalk Letters
+    puzzle: marta-anagram
+    media: {image_theme: dark-classroom, music_theme: fragile-quiet}
+    body: "Just inside an empty classroom, five chalk letters lie scattered across the floor as if dropped mid-word: A · R · T · M · Ä. They are waiting to be a name. (Rearrange them.)"
+    edges:
+      - id: e-chalk-solved
+        to: kbk-entrance-hall
+        label: Say the name aloud
+        conditions: {all: [{puzzle_solved: marta-anagram}]}
+        effects: {progress_points: 20, log: "You spoke the name, and the cold in the corridor eased a little."}
+      - id: e-chalk-back
+        to: kbk-entrance-hall
+        label: Leave the letters where they lie
+        effects: {log: "You left the chalk letters on the floor."}
+        sort_order: 9
+
 # Standalone edges attach to a node defined anywhere (here: the entrance hall).
 edges:
   - id: e-hall-classroom
@@ -31,6 +52,12 @@ edges:
     label: Follow the sound of crying into a classroom
     effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
     sort_order: 4
+  - id: e-hall-chalk
+    from: kbk-entrance-hall
+    to: kbk-chalk-letters
+    label: Look at the chalk letters scattered on a classroom floor
+    effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
+    sort_order: 6
 
 gates:
   - id: kbk-marta-calm

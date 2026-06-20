@@ -66,6 +66,69 @@ nodes:
         effects: {log: "You walked back to where the lamps still worked."}
         sort_order: 9
 
+  # --- puzzle: the riddle cut over the lych-gate (church-bell-riddle) ---
+  - id: sandby-church-bell
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: The Lych-Gate Riddle
+    puzzle: church-bell-riddle
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Words are cut into the lintel over the lych-gate, worn shallow by a century of weather. The tower bell hangs silent above the churchyard, waiting. (Answer what is carved.)"
+    edges:
+      - id: e-bell-solved
+        to: sandby-church
+        label: Speak the answer up at the tower
+        conditions: {all: [{puzzle_solved: church-bell-riddle}]}
+        effects: {progress_points: 15, log: "You spoke the answer; far above, the bell gave one soft, untouched note."}
+      - id: e-bell-back
+        to: sandby-church
+        label: Step back from the gate
+        effects: {log: "You left the carved riddle to the weather."}
+        sort_order: 8
+
+  # --- puzzle: Dödblek's wager (dodblek-games), offered once you've met him ---
+  - id: sandby-dodblek-count
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: Dödblek's Wager
+    puzzle: dodblek-games
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Dödblek gestures at the board between you without looking up. \"A small wager before we play,\" he says. \"Count my games honestly, and I will spot you a piece.\" (Give him the number.)"
+    edges:
+      - id: e-count-solved
+        to: sandby-church
+        label: Name the number
+        conditions: {all: [{puzzle_solved: dodblek-games}]}
+        effects: {progress_points: 15, log: "You counted true; Dödblek lifted a white knight from the board and set it aside for you."}
+      - id: e-count-back
+        to: sandby-church
+        label: Decline the wager
+        effects: {log: "You let the wager lie."}
+        sort_order: 7
+
+  # --- puzzle: Pippa's riddle-game (shadow-riddle), offered once you've met her ---
+  - id: sandby-pippa-shadow
+    arc: main
+    type: puzzle
+    location: sandby-crooked-house
+    title: Pippa's Riddle-Game
+    puzzle: shadow-riddle
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "Pippa hops down off the rail and plants herself in your path, delighted. \"Riddle-game, riddle-game!\" she sings. \"Half of my name is the answer — get it, and I'll tell you a secret.\" (Answer her riddle.)"
+    edges:
+      - id: e-shadow-solved
+        to: sandby-crooked-house
+        label: Give your answer
+        conditions: {all: [{puzzle_solved: shadow-riddle}]}
+        effects: {progress_points: 15, log: "Pippa clapped once, then leaned in and whispered something you weren't ready for."}
+      - id: e-shadow-back
+        to: sandby-crooked-house
+        label: Step out of her game
+        effects: {log: "You stepped out of Pippa's game."}
+        sort_order: 8
+
 # Standalone edges off the village hub (sandby-street, world.yaml).
 edges:
   - id: e-street-church
@@ -86,6 +149,26 @@ edges:
     label: Walk out to where the streetlamps end
     effects: {progress_points: 5, log: "You reached the crooked house at the village edge."}
     sort_order: 4
+  - id: e-church-bell
+    from: sandby-church
+    to: sandby-church-bell
+    label: Read the words cut over the lych-gate
+    effects: {progress_points: 5, log: "You found a riddle carved over the lych-gate."}
+    sort_order: 3
+  - id: e-church-count
+    from: sandby-church
+    to: sandby-dodblek-count
+    label: Take up Dödblek's wager
+    conditions: {all: [{flag_set: met_dodblek}]}
+    effects: {progress_points: 5, log: "Dödblek set you a wager of arithmetic."}
+    sort_order: 4
+  - id: e-crooked-shadow
+    from: sandby-crooked-house
+    to: sandby-pippa-shadow
+    label: Play Pippa's riddle-game
+    conditions: {all: [{flag_set: met_pippa}]}
+    effects: {progress_points: 5, log: "Pippa challenged you to a riddle."}
+    sort_order: 5
 
 gates:
   - id: sandby-dodblek

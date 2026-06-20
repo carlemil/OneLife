@@ -147,6 +147,69 @@ nodes:
         effects: {log: "You climbed back out of the crypt."}
         sort_order: 9
 
+  # --- puzzle: the stuck departures board at Lund station (last-train-time) ---
+  - id: lund-station-board
+    arc: main
+    type: puzzle
+    location: lund-station
+    title: The Departures Board
+    puzzle: last-train-time
+    media: {image_theme: station-night, music_theme: distant-trains}
+    body: "The departures board flickers, resets, and refuses to show a timetable — only a single line, over and over: the last train to Malmö leaves at the one hour tonight whose four digits are all the same. (Give the time.)"
+    edges:
+      - id: e-board-solved
+        to: lund-station
+        label: The board settles — a platform light comes on
+        conditions: {all: [{puzzle_solved: last-train-time}]}
+        effects: {progress_points: 15, log: "You read the time aloud; the board settled and a single platform light came on."}
+      - id: e-board-back
+        to: lund-station
+        label: Step back from the board
+        effects: {log: "You left the board to its flickering."}
+        sort_order: 9
+
+  # --- puzzle: Orlök's candle riddle (candle-riddle), once you've met him ---
+  - id: lund-orlok-candle
+    arc: main
+    type: puzzle
+    location: lund-manor
+    title: The Guttering Taper
+    puzzle: candle-riddle
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "Orlök lifts a guttering taper into the space between you, the flame leaning toward his words. \"Name the thing in my hand,\" he says, almost gently, \"before it names its own end.\" (Answer the count's riddle.)"
+    edges:
+      - id: e-candle-solved
+        to: lund-manor
+        label: Speak the answer
+        conditions: {all: [{puzzle_solved: candle-riddle}]}
+        effects: {progress_points: 15, log: "You named it; the count pinched the flame out himself, satisfied."}
+      - id: e-candle-back
+        to: lund-manor
+        label: Look away from the flame
+        effects: {log: "You left the riddle unanswered."}
+        sort_order: 8
+
+  # --- puzzle: von Vinné's specimen (elder-specimen), once you've met him ---
+  - id: lund-vinne-specimen
+    arc: main
+    type: puzzle
+    location: lund-botanical
+    title: Name the Specimen
+    puzzle: elder-specimen
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "Von Vinné thrusts a pinned sprig under your nose, eyes shining behind the magnifier. \"Sambucus nigra! Name it as the farmwives do, and I shall enter you in my catalogue.\" (Give the common name.)"
+    edges:
+      - id: e-specimen-solved
+        to: lund-botanical
+        label: Give the common name
+        conditions: {all: [{puzzle_solved: elder-specimen}]}
+        effects: {progress_points: 15, log: "He crowed with delight and inked a new species into his book — named, he said, after you."}
+      - id: e-specimen-back
+        to: lund-botanical
+        label: Leave the specimen unnamed
+        effects: {log: "You left the glasshouse without naming it."}
+        sort_order: 8
+
 edges:
   - id: e-square-library
     from: lund-square
@@ -189,6 +252,26 @@ edges:
     to: lund-crypt
     label: Take the worn steps down into the crypt
     effects: {progress_points: 5, log: "You descended into the cathedral crypt."}
+    sort_order: 4
+  - id: e-station-board
+    from: lund-station
+    to: lund-station-board
+    label: Read the stuck departures board
+    effects: {progress_points: 5, log: "The departures board was stuck on a riddle."}
+    sort_order: 2
+  - id: e-manor-candle
+    from: lund-manor
+    to: lund-orlok-candle
+    label: Answer the count's riddle
+    conditions: {all: [{flag_set: met_orlok}]}
+    effects: {progress_points: 5, log: "Orlök posed you a riddle by candlelight."}
+    sort_order: 4
+  - id: e-botanical-specimen
+    from: lund-botanical
+    to: lund-vinne-specimen
+    label: Name von Vinné's specimen
+    conditions: {all: [{flag_set: met_vinne}]}
+    effects: {progress_points: 5, log: "Von Vinné challenged you to name a specimen."}
     sort_order: 4
 
 gates:

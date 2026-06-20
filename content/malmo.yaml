@@ -247,6 +247,69 @@ nodes:
         effects: {log: "You climbed back up out of the tunnel."}
         sort_order: 9
 
+  # --- puzzle: the riddle scratched into the harbour wall (fog-riddle) ---
+  - id: malmo-harbor-fog
+    arc: main
+    type: puzzle
+    location: malmo-harbor
+    title: The Scratched Riddle
+    puzzle: fog-riddle
+    media: {image_theme: harbor-night, music_theme: distant-trains}
+    body: "Someone has scratched a riddle deep into the harbour wall, the letters furred with salt. As you read it the grey comes rolling in off the Öresund and the cranes begin to disappear. (Answer the riddle.)"
+    edges:
+      - id: e-harbor-fog-solved
+        to: malmo-harbor
+        label: The word hangs in the air — walk on
+        conditions: {all: [{puzzle_solved: fog-riddle}]}
+        effects: {progress_points: 15, log: "You named the fog, and for a moment it thinned to show the far shore."}
+      - id: e-harbor-fog-back
+        to: malmo-harbor
+        label: Step back from the wall
+        effects: {log: "You left the scratched riddle to the salt."}
+        sort_order: 9
+
+  # --- puzzle: the blank gravestone (gravestone-sum) ---
+  - id: malmo-cemetery-stones
+    arc: main
+    type: puzzle
+    location: malmo-cemetery
+    title: The Blank Stone
+    puzzle: gravestone-sum
+    media: {image_theme: foggy-graveyard, music_theme: funeral-cold}
+    body: "Three stones stand in a row, newer than their leaning neighbours — and one is blank where a death-year should be, the chalk of an unfinished hand still on it. The fog gives up the dates one at a time. (Read them and give the missing year.)"
+    edges:
+      - id: e-cemetery-stones-solved
+        to: malmo-cemetery
+        label: Chalk the year and step back
+        conditions: {all: [{puzzle_solved: gravestone-sum}]}
+        effects: {progress_points: 15, log: "You finished the blank stone, and the fog over the plot drew back."}
+      - id: e-cemetery-stones-back
+        to: malmo-cemetery
+        label: Leave the stones unread
+        effects: {log: "You left the three stones to the fog."}
+        sort_order: 9
+
+  # --- puzzle: Vallmo's evidence-box word-lock (ystad-wordlock), once you've met him ---
+  - id: malmo-vallmo-lock
+    arc: main
+    type: puzzle
+    location: malmo-police
+    title: The Evidence Box
+    puzzle: ystad-wordlock
+    media: {image_theme: night-office, music_theme: low-dread}
+    body: "Vallmo slides a battered evidence box across the desk, shut with a five-dial word-lock. \"Spells the town where it started,\" he says, not quite meeting your eye. \"I never could bring myself to open it.\" (Set the dials.)"
+    edges:
+      - id: e-lock-solved
+        to: malmo-police
+        label: Set the dials
+        conditions: {all: [{puzzle_solved: ystad-wordlock}]}
+        effects: {progress_points: 15, log: "The lock gave. Vallmo stared at what was inside and said nothing for a long while."}
+      - id: e-lock-back
+        to: malmo-police
+        label: Push the box back across the desk
+        effects: {log: "You left the box shut."}
+        sort_order: 8
+
 puzzles:
   - id: harbor-locker
     type: set
@@ -314,6 +377,25 @@ edges:
     label: Ride the escalator down to the deep platform
     effects: {progress_points: 5, log: "You went down to Triangeln station."}
     sort_order: 10
+  - id: e-harbor-fogwall
+    from: malmo-harbor
+    to: malmo-harbor-fog
+    label: Read the riddle scratched into the harbour wall
+    effects: {progress_points: 5, log: "You found a riddle cut into the harbour wall."}
+    sort_order: 11
+  - id: e-cemetery-stones
+    from: malmo-cemetery
+    to: malmo-cemetery-stones
+    label: Study the three newer stones
+    effects: {progress_points: 5, log: "You found three stones, one of them blank."}
+    sort_order: 2
+  - id: e-police-lock
+    from: malmo-police
+    to: malmo-vallmo-lock
+    label: Try the word-lock on Vallmo's evidence box
+    conditions: {all: [{flag_set: met_vallmo}]}
+    effects: {progress_points: 5, log: "Vallmo let you try the lock on his old evidence box."}
+    sort_order: 4
 
 gates:
   - id: malmo-zoltan
