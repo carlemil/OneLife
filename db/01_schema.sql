@@ -76,7 +76,8 @@ CREATE TABLE story_nodes (
     type        TEXT NOT NULL,                 -- narration|choice|gate|puzzle|location|death|ending
     location_id TEXT REFERENCES locations(id),
     title       TEXT NOT NULL,
-    body        TEXT NOT NULL,
+    body        TEXT NOT NULL,                  -- fallback description text
+    body_variants JSONB NOT NULL DEFAULT '[]',  -- [{when:<condition>, body:<text>}]; first match wins
     is_entry    BOOLEAN NOT NULL DEFAULT FALSE,
     is_death    BOOLEAN NOT NULL DEFAULT FALSE,
     world_access BOOLEAN NOT NULL DEFAULT FALSE, -- can open the world map from here

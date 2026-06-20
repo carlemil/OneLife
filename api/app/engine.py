@@ -88,6 +88,18 @@ async def discover_clues(conn, player_id, log_id, story_time, seq: int):
 # --------------------------------------------------------------------------- #
 #  Render the player's current state for the client
 # --------------------------------------------------------------------------- #
+def resolve_body(node, ctx: PlayerContext) -> str:
+    """Pick a node's description for the current state: the first body_variant
+    whose `when` condition holds (gate state, flags, puzzles, …), else the base
+    `body`. Lets a room/character description react to the gates affecting it."""
+    raw = node["body_variants"]
+    variants = json.loads(raw) if isinstance(raw, str) else (raw or [])
+    for v in variants:
+        if evaluate(v.get("when"), ctx):
+            return v.get("body", node["body"])
+    return node["body"]
+
+
 async def render_state(conn, player_id, session) -> dict:
     node = await conn.fetchrow(
         "SELECT * FROM story_nodes WHERE id=$1", session["current_node"])
@@ -126,7 +138,7 @@ async def render_state(conn, player_id, session) -> dict:
     state = {
         "node": {
             "id": node["id"], "type": node["type"], "title": node["title"],
-            "body": node["body"], "is_death": node["is_death"],
+            "body": resolve_body(node, ctx), "is_death": node["is_death"],
             "world_access": node["world_access"],
             "media": json.loads(node["media"]),
         },

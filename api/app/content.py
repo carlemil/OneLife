@@ -229,14 +229,16 @@ async def seed_content(conn, data: dict):
                 json.dumps(p.get("on_solve", {})))
         for n in data["nodes"]:
             await conn.execute(
-                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,is_entry,is_death,world_access,gate_id,puzzle_id,media)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12::jsonb)
+                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,body_variants,is_entry,is_death,world_access,gate_id,puzzle_id,media)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13::jsonb)
                    ON CONFLICT (id) DO UPDATE SET arc_id=EXCLUDED.arc_id,type=EXCLUDED.type,
                      location_id=EXCLUDED.location_id,title=EXCLUDED.title,body=EXCLUDED.body,
+                     body_variants=EXCLUDED.body_variants,
                      is_entry=EXCLUDED.is_entry,is_death=EXCLUDED.is_death,world_access=EXCLUDED.world_access,
                      gate_id=EXCLUDED.gate_id,puzzle_id=EXCLUDED.puzzle_id,media=EXCLUDED.media""",
                 n["id"], n.get("arc", "main"), n["type"], n.get("location"), n.get("title", ""),
-                n.get("body", ""), bool(n.get("entry", False)),
+                n.get("body", ""), json.dumps(n.get("body_variants", []) or []),
+                bool(n.get("entry", False)),
                 bool(n.get("is_death", n.get("type") == "death")),
                 bool(n.get("world_access", False)),
                 n.get("gate"), n.get("puzzle"), json.dumps(n.get("media", {})))
@@ -327,6 +329,9 @@ async def export_content(conn) -> dict:
     for n in await conn.fetch("SELECT * FROM story_nodes ORDER BY id"):
         row = {"id": n["id"], "arc": n["arc_id"], "type": n["type"],
                "title": n["title"], "body": n["body"]}
+        variants = _j(n["body_variants"], [])
+        if variants:
+            row["body_variants"] = variants
         if n["location_id"]:
             row["location"] = n["location_id"]
         if n["is_entry"]:

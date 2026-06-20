@@ -48,6 +48,12 @@ async def _startup():
         print("[security] WARNING: ONELIFE_SECRET_KEY unset — using an insecure dev "
               "key for TOTP encryption. Set ONELIFE_SECRET_KEY for production.")
     pool = await db.get_pool()
+    # Lightweight, idempotent schema migrations for already-provisioned volumes
+    # (the db/*.sql init scripts only run on a fresh volume).
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "ALTER TABLE story_nodes ADD COLUMN IF NOT EXISTS "
+            "body_variants JSONB NOT NULL DEFAULT '[]'")
     # Load authored content from YAML (idempotent upsert) so `docker compose up`
     # yields a playable game. Validate first; skip seeding on errors rather than
     # crash, leaving whatever content is already in the DB.

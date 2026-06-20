@@ -82,6 +82,31 @@ nodes:
   stored `spec` (criteria, `knowledge_boundary`, `hint_ladder`,
   `mercy_after_attempts`, `on_success`) — see [AI_DIALOGUE_GATES.md](AI_DIALOGUE_GATES.md) §3.
 
+### State-reactive descriptions (`body_variants`)
+
+A node's description can change with the player's state — most usefully with the
+**state of the gates that affect it**, so a room or character reads differently
+once something has happened there. Add `body_variants`: an ordered list of
+`{when: <condition>, body: <text>}`. At render time the engine uses the **first
+variant whose `when` holds**, falling back to the base `body` if none match.
+`when` is the same condition DSL as edges (`gate_passed`, `flag_set`,
+`puzzle_solved`, `node_visited`, `clue_found`, `all`/`any`/`not`), so this works
+for any node — a `location` room *or* a `gate` (character) scene.
+
+```yaml
+nodes:
+  - id: kbk-entrance-hall
+    type: location
+    body: "…an old janitor works a rag over a brass plaque."        # fallback
+    body_variants:
+      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}     # after he talks
+        body: "…the door marked PANNRUM holds your eye now — he as good as told you it's the way out."
+```
+
+Order matters (first match wins, most-specific first); a variant with no `when`
+is a catch-all. Reactive text is a read-time view only — it never changes game
+state, so it's automatically rollback-safe.
+
 See `content/killebackskolan.yaml` and `content/marta.yaml` for full examples.
 
 ---
