@@ -752,7 +752,7 @@
             </button>
           {/each}
           {#if game.edges.length === 0 && game.node.is_death}
-            <p class="dead">You are dead. Roll the log back from the panel on the right to escape — at a cost.</p>
+            <p class="dead">You are dead. Cheat death from the Log panel on the right (↩) to return to an earlier point — at a cost.</p>
           {/if}
           {#if game.node.world_access}
             <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
@@ -775,7 +775,7 @@
         <div class="panel" class:collapsed={!panelOpen.atmosphere}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.atmosphere} onclick={() => togglePanel('atmosphere')}>
-              <span class="chev">{panelOpen.atmosphere ? '▾' : '▸'}</span> Atmosphere
+              <span class="chev">{panelOpen.atmosphere ? '▲' : '▼'}</span> Atmosphere
             </button>
           </h3>
           {#if panelOpen.atmosphere}
@@ -816,7 +816,7 @@
         <div class="panel" class:collapsed={!panelOpen.leaderboard}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.leaderboard} onclick={() => togglePanel('leaderboard')}>
-              <span class="chev">{panelOpen.leaderboard ? '▾' : '▸'}</span> Leaderboard
+              <span class="chev">{panelOpen.leaderboard ? '▲' : '▼'}</span> Leaderboard
             </button>
             <button class="link paneltitle" title="Open full leaderboard" aria-label="Open full leaderboard" onclick={openLeaderboard}>↗</button>
           </h3>
@@ -832,7 +832,7 @@
           <div class="panel" class:collapsed={!panelOpen.notes}>
             <h3 class="acc-head">
               <button class="paneltoggle" aria-expanded={panelOpen.notes} onclick={() => togglePanel('notes')}>
-                <span class="chev">{panelOpen.notes ? '▾' : '▸'}</span> Notes
+                <span class="chev">{panelOpen.notes ? '▲' : '▼'}</span> Notes
               </button>
             </h3>
             {#if panelOpen.notes}
@@ -843,14 +843,14 @@
         <div class="panel" class:collapsed={!panelOpen.log}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
-              <span class="chev">{panelOpen.log ? '▾' : '▸'}</span> Log <span class="sub">(your progress)</span>
+              <span class="chev">{panelOpen.log ? '▲' : '▼'}</span> Log <span class="sub">(your progress)</span>
             </button>
           </h3>
           {#if panelOpen.log}
           <ul class="log">
             {#each logRev.slice(0, logShown) as l}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0}<button class="link rollback" title="Roll back to here" aria-label="Roll back to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+                {#if l.seq > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
               </li>
             {/each}
           </ul>
