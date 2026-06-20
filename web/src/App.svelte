@@ -121,6 +121,7 @@
   let _players = [];
   let _active = 0;
   let _curUrl = '';
+  let _previewTimer = null;
   let _lastNode = '';
 
   function _ensureAudio() {
@@ -145,7 +146,22 @@
     }
     requestAnimationFrame(step);
   }
-  function stopAudio() { _players.forEach((p) => { try { p.pause(); } catch {} }); _curUrl = ''; }
+  // Don't cut a preview off mid-clip (same rule as the full-track path):
+  // >1 min left → crossfade now; ≤1 min left → wait for it to finish; else start now.
+  function playPreview(url) {
+    _ensureAudio();
+    if (url === _curUrl) { _clearPreviewTimer(); return; }
+    _clearPreviewTimer();
+    const cur = _players[_active];
+    const playing = cur && !cur.paused && cur.duration && _curUrl;
+    const left = playing ? cur.duration - cur.currentTime : 0;  // seconds
+    if (playing && left > 60) { crossfade(url); }                // plenty left → crossfade now
+    else if (playing && left > 0) {                              // almost over → wait it out
+      _previewTimer = setTimeout(() => { _previewTimer = null; crossfade(url); }, (left + 0.2) * 1000);
+    } else { crossfade(url); }                                   // nothing playing → start now
+  }
+  function _clearPreviewTimer() { if (_previewTimer) { clearTimeout(_previewTimer); _previewTimer = null; } }
+  function stopAudio() { _clearPreviewTimer(); _players.forEach((p) => { try { p.pause(); } catch {} }); _curUrl = ''; }
   function setSpotifyVol(v) {
     spotifyVol = Math.max(0, Math.min(1, Number(v) || 0));
     localStorage.setItem('onelife_spotify_vol', String(spotifyVol));
@@ -164,7 +180,7 @@
         stopAudio();
         spotify.playWithFade(full.uri, () => spotify.token(spConfig.client_id));
       } else if (prev) {
-        crossfade(prev.preview_url);   // 30s-preview fallback
+        playPreview(prev.preview_url);   // 30s-preview fallback
       }
     } catch { /* atmosphere is non-critical */ }
   }
@@ -731,9 +747,9 @@
           {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
         {/if}
 
-        {#if game.node.type === 'gate' && game.gate && !game.gate.satisfied}
+        {#if game.node.type === 'gate' && game.gate}
           <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
-            <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." disabled={busy} />
+            <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
             <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
           </form>
         {/if}

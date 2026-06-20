@@ -78,7 +78,9 @@ export async function token(clientId) {
   const j = await r.json(); store(j); return j.access_token;
 }
 
-let _player = null, _deviceId = null, _curUri = '', _targetVol = 0.7;
+let _player = null, _deviceId = null, _curUri = '', _targetVol = 0.7, _switchTimer = null;
+
+function _cancelSwitch() { if (_switchTimer) { clearTimeout(_switchTimer); _switchTimer = null; } }
 
 // Set the playback volume (0..1). Applies live to the current player and becomes
 // the level that playWithFade fades up to on the next track.
@@ -123,13 +125,11 @@ async function fade(to, ms) {
   }
 }
 
-// Fade out, switch to `uri`, fade in (a crossfade-style transition on one player).
-export async function playWithFade(uri, getToken) {
-  if (uri === _curUri) return true;
-  const dev = await ensurePlayer(getToken);
+// Start `uri` now: fade the current down (fadeOutMs), switch, fade up to volume.
+async function _begin(uri, dev, getToken, fadeOutMs) {
   const t = await getToken();
   if (!dev || !t) return false;
-  await fade(0, 400);
+  await fade(0, fadeOutMs);
   _curUri = uri;
   const r = await fetch(`https://api.spotify.com/v1/me/player/play?device_id=${dev}`, {
     method: 'PUT', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
@@ -139,4 +139,28 @@ export async function playWithFade(uri, getToken) {
   return r.ok;
 }
 
-export async function pause() { try { await _player?.pause(); } catch {} _curUri = ''; }
+// Switch to `uri`, but don't cut a track off mid-song:
+//  • >1 min left on the current track → crossfade into the new one now;
+//  • ≤1 min left → let the current track finish, then start the new one;
+//  • nothing playing → start immediately.
+export async function playWithFade(uri, getToken) {
+  _cancelSwitch();                 // a newer target supersedes any pending switch
+  if (uri === _curUri) return true;
+  const dev = await ensurePlayer(getToken);
+  if (!dev) return false;
+
+  const st = await _player.getCurrentState().catch(() => null);
+  const left = st && !st.paused && st.duration ? st.duration - st.position : 0;  // ms
+
+  if (left > 60000) return _begin(uri, dev, getToken, 400);    // plenty left → crossfade now
+  if (left > 0) {                                              // almost over → wait it out
+    _switchTimer = setTimeout(() => {
+      _switchTimer = null;
+      _begin(uri, dev, getToken, 100);
+    }, left + 200);
+    return true;
+  }
+  return _begin(uri, dev, getToken, 100);                      // nothing playing → start now
+}
+
+export async function pause() { _cancelSwitch(); try { await _player?.pause(); } catch {} _curUri = ''; }
