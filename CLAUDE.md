@@ -6,6 +6,12 @@ OneLife is a browser-based text-adventure: a stream of interactions with AI-driv
 agents (NPCs/locations), set in a dark southern-Sweden world. Stack: SvelteKit-less
 **Svelte + Vite** frontend ↔ **FastAPI** backend ↔ **Postgres + pgvector**, all via Docker Compose.
 
+**This repo is the data-agnostic engine + editor only.** The game *data* (all
+`*.yaml`) lives in a SEPARATE sibling repo — by default `../OneLife-KBK-mystery`
+(the "KBK mystery" dataset) — mounted into the API container at `/content`. Point at
+a different dataset with `GAME_DATA_DIR` in `.env`. Nothing in this repo hard-codes
+KBK content; to edit the game's world, edit the data repo, not this one.
+
 ## Running & developing
 
 Everything runs in Docker. The host is Windows/PowerShell; `make` may be absent, so
@@ -22,7 +28,7 @@ each Make target's underlying `docker compose` command is given.
 
 - Web: http://localhost:5173 · API: http://localhost:8000 (`/docs`, `/api/health`).
 - **Apply changes correctly:**
-  - `content/*.yaml` is a **mounted volume** → after editing, just `make seed` (no rebuild). The API also auto-seeds (idempotent upsert) on startup.
+  - The game data (`*.yaml` in the **separate** `../OneLife-KBK-mystery` repo) is a **mounted volume** → after editing, just `make seed` (no rebuild). The API also auto-seeds (idempotent upsert) on startup.
   - `api/app/*.py` is **baked into the image** → rebuild: `docker compose up -d --build api`.
   - `web/src/*` → rebuild: `docker compose up -d --build web`.
 - **`db/*.sql` only runs on a fresh volume.** Any schema change (new column/table) requires `make reset` (down -v) to take effect — upsert seeding never adds columns. A reset wipes all players/runtime data.
@@ -31,6 +37,7 @@ each Make target's underlying `docker compose` command is given.
 
 ### Configuration (`.env`, gitignored; see `.env.example`)
 All optional — without them the app still boots using deterministic stubs/fallbacks:
+- `GAME_DATA_DIR` — host path to the game-data repo mounted at `/content` (default `../OneLife-KBK-mystery`). Set this to run a different dataset.
 - `ANTHROPIC_API_KEY` — real Claude for dialogue gates / music director; unset → offline keyword stub.
 - `IMAGE_API_KEY` (+ `IMAGE_API_BASE`/`IMAGE_MODEL`) — real location images (OpenAI-compatible); unset → procedural SVG.
 - `SPOTIFY_CLIENT_ID`/`SECRET`/`REDIRECT_URI` — track resolution + Web Playback SDK; unset → text-only picks.
@@ -46,9 +53,10 @@ Stored `totp_secret` is Fernet-encrypted; decrypt with `from app import security
 
 ### Content is data, not code
 All game content — world cells, locations, characters, story nodes & edges, dialogue
-gates, puzzles, clues — lives in **`content/*.yaml`** and is loaded by `content.py`
+gates, puzzles, clues — lives as **`*.yaml` in the separate data repo**
+(`../OneLife-KBK-mystery`, mounted to `/content`) and is loaded by `content.py`
 (merge files → `validate()` → `seed_content()` upsert). **`db/*.sql` is DDL only.** To add
-or change content, edit YAML and `make seed`; never hand-write content SQL. The
+or change content, edit YAML in the data repo and `make seed`; never hand-write content SQL. The
 `validate()` step is a real gate (run via `make lint`): it checks references and a
 **spine-reachability lint** — exactly one entry node, ≥1 ending, and no "traps"
 (a reachable non-death node that can't reach any ending). Reachability is travel-aware

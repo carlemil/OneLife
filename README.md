@@ -79,17 +79,21 @@ leaderboard, and the uniform seq-stamped **rollback** across all runtime state.
 ## Layout
 
 ```
-content/   Game content authored in YAML (loaded into Postgres; see AUTHORING.md)
-db/        Postgres schema (DDL only; content comes from content/)
+db/        Postgres schema (DDL only; content comes from the data repo)
 api/       FastAPI backend (story engine, gates, puzzles, memory, content loader)
 web/       Svelte + Vite frontend (text-stream UI)
 Makefile   up / down / reset / seed / lint shortcuts
 *.md       Design docs
 ```
 
+The **game data is a separate repo**: this is the data-agnostic engine + editor.
+The YAML world lives in a sibling repo (default `../OneLife-KBK-mystery`), mounted
+into the API at `/content`. Run a different dataset with `GAME_DATA_DIR` in `.env`.
+
 ## Authoring content
 
-Story, NPCs, puzzles, and clues live in `content/*.yaml`, loaded by a validating
-seeder. `make lint` checks references and proves the spine is completable;
-`make seed` loads it. See [AUTHORING.md](AUTHORING.md). (The API also auto-seeds
-on startup, so `docker compose up` is self-contained.)
+Story, NPCs, puzzles, and clues live as `*.yaml` in the **data repo**
+(`../OneLife-KBK-mystery`), loaded by a validating seeder. `make lint` checks
+references and proves the spine is completable; `make seed` loads it. See
+[AUTHORING.md](AUTHORING.md). (The API also auto-seeds on startup, so
+`docker compose up` is self-contained.)

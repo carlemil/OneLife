@@ -20,6 +20,8 @@ services:
     build: ./api
     environment:
       DATABASE_URL: postgresql://onelife:onelife@db:5432/onelife
+      # Game data lives in a SEPARATE repo (the engine here is data-agnostic).
+      # CONTENT_DIR stays /content; the volume below maps the data repo into it.
       # Optional: set to use the real Claude API for the dialogue gate.
       # Leave empty to run the deterministic offline stub (no key required).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -56,7 +58,8 @@ services:
       POLLINATIONS_EDIT_MODEL: ${POLLINATIONS_EDIT_MODEL:-kontext}
       IMAGE_BANNER_SIZE: ${IMAGE_BANNER_SIZE:-1024x384}
     volumes:
-      - ./content:/content:ro
+      # Sibling data repo (override with ${GAME_DATA_DIR}); see OneLife-KBK-mystery.
+      - ${GAME_DATA_DIR:-../OneLife-KBK-mystery}:/content:ro
     ports:
       - "8000:8000"
     depends_on:

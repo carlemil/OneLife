@@ -1,8 +1,11 @@
 # OneLife — Authoring Content
 
 Game content (story nodes, choices, dialogue gates, puzzles, clues, NPCs,
-locations) is authored in **YAML files under `content/`** and loaded into
-Postgres by a validating seed pipeline. You no longer hand-write SQL.
+locations) is authored in **YAML files in the separate game-data repo**
+(default `../OneLife-KBK-mystery`, mounted into the API at `/content`; override
+with `GAME_DATA_DIR`) and loaded into Postgres by a validating seed pipeline.
+This engine repo is data-agnostic — you no longer hand-write SQL, and you edit
+the data repo, not this one, to change the world.
 
 This realizes the authoring step flagged in [STORY_AND_PUZZLES.md](STORY_AND_PUZZLES.md) §10
 and gives the design's "jungle of story arcs" a way to actually grow.
@@ -34,7 +37,7 @@ after edits without a full restart.
 
 ## File format
 
-Drop any number of `*.yaml` files in `content/`; they're merged. Each file may
+Drop any number of `*.yaml` files in the data repo; they're merged. Each file may
 contain any subset of these top-level lists:
 
 | Key | What it defines |
