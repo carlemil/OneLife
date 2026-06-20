@@ -78,7 +78,16 @@ export async function token(clientId) {
   const j = await r.json(); store(j); return j.access_token;
 }
 
-let _player = null, _deviceId = null, _curUri = '';
+let _player = null, _deviceId = null, _curUri = '', _targetVol = 0.7;
+
+// Set the playback volume (0..1). Applies live to the current player and becomes
+// the level that playWithFade fades up to on the next track.
+export function setVolume(v) {
+  _targetVol = Math.max(0, Math.min(1, Number(v) || 0));
+  if (_player) _player.setVolume(_targetVol).catch(() => {});
+  return _targetVol;
+}
+export function getVolume() { return _targetVol; }
 
 function loadSdk() {
   return new Promise((res, rej) => {
@@ -126,7 +135,7 @@ export async function playWithFade(uri, getToken) {
     method: 'PUT', headers: { Authorization: `Bearer ${t}`, 'Content-Type': 'application/json' },
     body: JSON.stringify({ uris: [uri] }),
   });
-  await fade(0.7, 900);
+  await fade(_targetVol, 900);
   return r.ok;
 }
 

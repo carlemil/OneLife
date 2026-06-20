@@ -34,6 +34,8 @@
   let logEntries = $state([]);
   let myWindow = $state([]);
   let gateInput = $state('');
+  let gateReply = $state('');           // the NPC's last spoken line (Actor reply)
+  let gatePassed = $state(false);       // did the last turn pass the gate?
   let puzzleInput = $state('');
   let gateEl = $state(null);
   let puzzleEl = $state(null);
@@ -104,6 +106,7 @@
   let spotifyOn = $state(false);
   let spConfig = $state(null);    // {client_id, configured}
   let spConnected = $state(false); // Web Playback SDK connected (full tracks)
+  let spotifyVol = $state(0.7);    // shared soundtrack volume (0..1)
   let _players = [];
   let _active = 0;
   let _curUrl = '';
@@ -126,12 +129,18 @@
     const start = performance.now(), dur = 1500, fromVol = cur.volume;
     function step(t) {
       const k = Math.min(1, (t - start) / dur);
-      next.volume = 0.7 * k; cur.volume = fromVol * (1 - k);
+      next.volume = spotifyVol * k; cur.volume = fromVol * (1 - k);
       if (k < 1) requestAnimationFrame(step); else cur.pause();
     }
     requestAnimationFrame(step);
   }
   function stopAudio() { _players.forEach((p) => { try { p.pause(); } catch {} }); _curUrl = ''; }
+  function setSpotifyVol(v) {
+    spotifyVol = Math.max(0, Math.min(1, Number(v) || 0));
+    localStorage.setItem('onelife_spotify_vol', String(spotifyVol));
+    spotify.setVolume(spotifyVol);                 // full-track SDK path
+    if (_players[_active]) _players[_active].volume = spotifyVol;  // 30s-preview path
+  }
 
   async function loadAtmosphere() {
     try {
@@ -165,6 +174,8 @@
 
   onMount(async () => {
     spotifyOn = localStorage.getItem('onelife_spotify') === '1';
+    const savedVol = localStorage.getItem('onelife_spotify_vol');
+    if (savedVol !== null) setSpotifyVol(savedVol);
     try {
       spConfig = await api.spotifyConfig();
       if (spConfig.configured) {
@@ -590,6 +601,7 @@
 
   async function onEdge(id) {
     busy = true;
+    gateReply = ''; gatePassed = false;   // a fresh scene clears the last NPC line
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
@@ -597,7 +609,10 @@
     if (!gateInput.trim()) return; busy = true;
     try {
       const r = await api.gate(gateInput.trim());
-      gateInput = ''; game = r.state; logEntries = (await api.log()).entries;
+      gateInput = '';
+      gateReply = r.result?.reply || '';        // show what the NPC actually said
+      gatePassed = !!r.result?.satisfied;        // …and whether that opened the gate
+      game = r.state; logEntries = (await api.log()).entries;
     }
     catch (e) { error = e.message; }
     finally { busy = false; await tick(); gateEl?.focus(); }   // refocus after re-enable
@@ -700,6 +715,11 @@
         <p class="body">{game.node.body}</p>
         <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
+        {#if gateReply}
+          <p class="gate-reply">{gateReply}</p>
+          {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
+        {/if}
+
         {#if game.node.type === 'gate' && game.gate && !game.gate.satisfied}
           <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
             <input bind:this={gateEl} bind:value={gateInput} placeholder="Say something..." disabled={busy} />
@@ -745,6 +765,11 @@
           <h3>Atmosphere</h3>
           <button class="primary" onclick={toggleSpotify}>🎵 Spotify: {spotifyOn ? 'on' : 'off'}</button>
           {#if spotifyOn}
+            <label class="vol">🔈
+              <input type="range" min="0" max="1" step="0.01" value={spotifyVol}
+                oninput={(e) => setSpotifyVol(e.currentTarget.value)} />
+              🔊 <span class="vol-pct">{Math.round(spotifyVol * 100)}%</span>
+            </label>
             {#if spConfig?.configured}
               {#if spConnected}
                 <p class="sub">▶ Full tracks via your Spotify (Premium). <button class="link" onclick={disconnectSpotify}>disconnect</button></p>
@@ -1050,9 +1075,14 @@
   .topbar .link { font-size:1.6rem; padding-left:.8rem; vertical-align:middle; line-height:1; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
+  .gate-reply { font-size:1.1rem; line-height:1.6; font-style:italic; color:#cdd0e6; border-left:3px solid #3a3f57; padding-left:.9rem; margin:1rem 0; }
+  .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
   .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
   .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
+  .vol { display:flex; align-items:center; gap:.5rem; margin:.6rem 0 0; font-size:.9rem; color:#9a9ab0; }
+  .vol input[type=range] { flex:1; accent-color:#7a7ad0; cursor:pointer; }
+  .vol-pct { min-width:2.6em; text-align:right; color:#6b6b80; font-size:.8rem; }
   .tracks { list-style:none; padding:0; font-size:.8rem; margin:.6rem 0 0; }
   .tracks li { display:flex; gap:.5rem; margin:.55rem 0; align-items:center; }
   .tracks img { width:42px; height:42px; border-radius:4px; flex-shrink:0; }
