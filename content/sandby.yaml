@@ -1,0 +1,173 @@
+# OneLife content — Södra Sandby deepened beyond the school: three sub-locations
+# reached from Sandby Street (the village world-access hub in world.yaml), each
+# home to one of the roster NPCs. Side-content off the main spine; every node has
+# a return edge to the hub so the spine lint stays trap-free.
+
+locations:
+  - id: sandby-church
+    name: Sandby Church
+    cell: sandby
+    description: "The old whitewashed church on the hill, its graveyard sloping into mist."
+  - id: sandby-quarry
+    name: The Gravel-Pit Lake
+    cell: sandby
+    description: "A flooded quarry east of the village, and a half-dead motel beside it."
+  - id: sandby-crooked-house
+    name: The Crooked House
+    cell: sandby
+    description: "A leaning house at the very edge of Sandby, where the streetlamps give out."
+
+nodes:
+  # --- Herr Dödblek: the churchyard ---
+  - id: sandby-church
+    arc: main
+    type: gate
+    location: sandby-church
+    title: Sandby Church
+    gate: sandby-dodblek
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "The church door stands open on cold air and faded lime-painted saints. Out among the leaning stones a pale figure in a black hooded cloak sits at a small table, a chess set laid out before him, the far chair empty. He does not look up, but the board is already set as if he expected you. (Sit, or speak — see what he wants.)"
+    edges:
+      - id: e-church-street
+        to: sandby-street
+        label: Leave the churchyard
+        effects: {log: "You left the church behind you."}
+        sort_order: 9
+
+  # --- Norman Båts: the gravel-pit motel ---
+  - id: sandby-quarry
+    arc: main
+    type: gate
+    location: sandby-quarry
+    title: The Gravel-Pit Lake
+    gate: sandby-norman
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "Black water fills the old gravel pit, flat and patient. A motel crouches at its edge, half its windows dark, a VACANCY sign buzzing pink. A boyish man in a damp cardigan fumbles a ring of keys behind the desk and smiles too quickly when he sees you. \"Just the one night?\" (Talk to him — but mind the lake, and his mother.)"
+    edges:
+      - id: e-quarry-street
+        to: sandby-street
+        label: Get back on the road to the village
+        effects: {log: "You left the lake behind you."}
+        sort_order: 9
+
+  # --- Pippa Långskugga: the crooked house ---
+  - id: sandby-crooked-house
+    arc: main
+    type: gate
+    location: sandby-crooked-house
+    title: The Crooked House
+    gate: sandby-pippa
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "The house leans as if listening. A grown woman with grey-rooted red braids sits on the porch rail, swinging her boots, a horseshoe bent straight in her hands like soft bread. \"You're new,\" she says, far too cheerful for the hour, \"nobody comes all the way out to where the lamps stop.\" (She knows the village's old secrets — if you can keep up with her.)"
+    edges:
+      - id: e-crooked-street
+        to: sandby-street
+        label: Back toward the lit streets
+        effects: {log: "You walked back to where the lamps still worked."}
+        sort_order: 9
+
+# Standalone edges off the village hub (sandby-street, world.yaml).
+edges:
+  - id: e-street-church
+    from: sandby-street
+    to: sandby-church
+    label: Climb the hill to the old church
+    effects: {progress_points: 5, log: "You climbed to Sandby church."}
+    sort_order: 2
+  - id: e-street-quarry
+    from: sandby-street
+    to: sandby-quarry
+    label: Follow the east road to the gravel-pit lake
+    effects: {progress_points: 5, log: "You found the gravel-pit lake and its motel."}
+    sort_order: 3
+  - id: e-street-crooked
+    from: sandby-street
+    to: sandby-crooked-house
+    label: Walk out to where the streetlamps end
+    effects: {progress_points: 5, log: "You reached the crooked house at the village edge."}
+    sort_order: 4
+
+gates:
+  - id: sandby-dodblek
+    location: sandby-church
+    character: herr_dodblek
+    intent: Face the pale figure at the chessboard and learn what he remembers of the night the school burned.
+    criteria:
+      - {id: faced_him, desc: "Player engages rather than flees — sits, plays, or asks him directly who he is or what he wants."}
+      - {id: honest, desc: "Player is honest about their fear, or about why they have come, instead of bluffing."}
+    success_rule: "faced_him AND honest"
+    knowledge_boundary:
+      knows:
+        - "he was in the churchyard the night Killebäckskolan burned, and a child came to him out of the smoke"
+        - "he never hurries, and almost everyone in this region owes him a game eventually"
+      refuses:
+        - "when, exactly, the player will lose their own game"
+        - "the larger mystery of why the stranger is here"
+      tone: "calm, courteous, inevitable; explains the rules kindly and never raises his voice"
+    hint_ladder:
+      - "He moves a pawn and waits, the empty chair turned slightly toward you."
+      - "\"Sit. Everyone sits, in the end. I only ask that you be truthful.\""
+      - "\"A child came to me here, the night the school burned. I remember the cold of their hand. Ask, and be honest, and I will tell you.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_dodblek
+      story_node_next: sandby-church
+      log: "Herr Dödblek told you what he saw the night the school burned."
+      write_memory: {owner: herr_dodblek, content: "A stranger sat with me in the churchyard and I told them about the child who came out of the smoke the night the school burned.", leakable: true}
+
+  - id: sandby-norman
+    location: sandby-quarry
+    character: norman_bats
+    intent: Get the nervous motelkeeper to talk about the lake and the guests who never checked out.
+    criteria:
+      - {id: put_at_ease, desc: "Player is friendly, gentle, or unthreatening — does not corner or accuse him."}
+      - {id: asked_about_lake, desc: "Player asks about the lake, a missing guest, the boathouse, or his mother."}
+    success_rule: "put_at_ease AND asked_about_lake"
+    knowledge_boundary:
+      knows:
+        - "some guests check in and the lake keeps them; he tidies their rooms after"
+        - "Mother works the desk at night and does not like questions"
+      refuses:
+        - "what is kept in the boathouse"
+        - "the larger mystery of why the stranger is here"
+      tone: "shy, stammering, over-friendly; goes cold and flat the instant Mother or the boathouse is named"
+    hint_ladder:
+      - "He polishes a key that's already clean, laughing softly at nothing."
+      - "\"People do love the lake. They stay. They always end up staying.\""
+      - "He drops his voice: \"Mother says I shouldn't tell. But the water — the water keeps the ones who stay too long.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_norman
+      story_node_next: sandby-quarry
+      log: "Norman let slip what the lake keeps — and that Mother is always watching."
+      write_memory: {owner: norman_bats, content: "A kind guest got me talking about the lake and the ones who stay too long. Mother would not have liked it.", leakable: true}
+
+  - id: sandby-pippa
+    location: sandby-crooked-house
+    character: pippa_langskugga
+    intent: Keep up with the strange strong woman until she tells you what she saw at the school.
+    criteria:
+      - {id: played_along, desc: "Player matches her playfulness or kindness instead of dismissing her as mad or childish."}
+      - {id: asked_what_she_saw, desc: "Player asks what she has seen, about the school, the fire, or the man she mentions."}
+    success_rule: "played_along AND asked_what_she_saw"
+    knowledge_boundary:
+      knows:
+        - "the night the school burned she saw lights and a tall man carry something small out and away into the dark"
+        - "she has lived at the village edge longer than anyone can remember, and no one remembers her parents"
+      refuses:
+        - "where her parents went"
+        - "the larger mystery of why the stranger is here"
+      tone: "sing-song nonsense and invented words, then a sudden flat sentence far too sharp for a child; laughs at the wrong moments"
+    hint_ladder:
+      - "She balances the bent horseshoe on one finger and grins at you to play."
+      - "\"I see lots of things out here where the lamps stop. Saw a fire once. Pretty.\""
+      - "Flatly, all the play gone: \"A tall man carried something small out of the burning school. Small as a child. Then the lamps came back on and nobody asked.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_pippa
+      story_node_next: sandby-crooked-house
+      log: "Pippa told you what she saw carried out of the burning school."
+      write_memory: {owner: pippa_langskugga, content: "A stranger played along with me and I told them about the tall man who carried something small out of the burning school.", leakable: true}
