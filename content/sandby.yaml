@@ -25,7 +25,7 @@ nodes:
     location: sandby-church
     title: Sandby Church
     gate: sandby-dodblek
-    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold, real_place: "Södra Sandby church, a medieval whitewashed Scanian stone church and graveyard, Sweden"}
     body: "The church door stands open on cold air and faded lime-painted saints. Out among the leaning stones a pale figure in a black hooded cloak sits at a small table, a chess set laid out before him, the far chair empty. He does not look up, but the board is already set as if he expected you. (Sit, or speak — see what he wants.)"
     edges:
       - id: e-church-street

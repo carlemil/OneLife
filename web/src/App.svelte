@@ -692,7 +692,7 @@
     <div class="layout">
       <section class="story">
         {#if atmo?.image_url}
-          <div class="banner"><img src={atmo.image_url} alt="" /><span class="setting">{atmo.setting}</span></div>
+          <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
         {:else if atmo?.image_svg}
           <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
         {/if}

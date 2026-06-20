@@ -549,7 +549,7 @@ async def get_atmosphere(spotify: int = 0,
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         node = await conn.fetchrow(
-            "SELECT location_id, media FROM story_nodes WHERE id=$1", sess["current_node"])
+            "SELECT location_id, media, body FROM story_nodes WHERE id=$1", sess["current_node"])
         loc = cell = None
         if node and node["location_id"]:
             loc = await conn.fetchrow(
@@ -558,9 +558,13 @@ async def get_atmosphere(spotify: int = 0,
         if loc and loc["cell_id"]:
             cell = await conn.fetchrow(
                 "SELECT region FROM world_cells WHERE id=$1", loc["cell_id"])
-        theme = json.loads(node["media"]).get("image_theme", "") if node else ""
+        media = json.loads(node["media"]) if node else {}
+        theme = media.get("image_theme", "")
         setting = atmosphere.setting_for(loc, cell)
-        image_url = await atmosphere.image_for(conn, theme, loc, setting)
+        image_url = await atmosphere.image_for(
+            conn, theme, loc, setting,
+            real_place=media.get("real_place"), reference=media.get("reference_image"),
+            scene_text=node["body"] if node else None)
     tracks = []
     if spotify and loc is not None:
         tracks = await atmosphere.tracks_for(

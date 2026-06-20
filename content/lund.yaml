@@ -108,7 +108,7 @@ nodes:
     location: lund-botanical
     title: The Botanical Garden
     gate: lund-vinne
-    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum, real_place: "the Botanical Garden (Botaniska trädgården) in Lund, Sweden, an old glasshouse"}
     body: "The garden gates are chained, but a glasshouse glows green and fogged from within. Inside, among dripping leaves, a florid man in a fraying frock coat pins specimens to board after board, a wine bottle open at his elbow. \"Ah — a new genus blunders in,\" he beams, raising a magnifying glass to your face. \"Stand still. I shall have to name you.\" (Indulge the cataloguer — and ask what he found by the school.)"
     edges:
       - id: e-botanical-square
@@ -138,7 +138,7 @@ nodes:
     type: location
     location: lund-crypt
     title: The Cathedral Crypt
-    media: {image_theme: stone-crypt, music_theme: dread-drone}
+    media: {image_theme: stone-crypt, music_theme: dread-drone, real_place: "the Romanesque crypt beneath Lund Cathedral, Sweden, with squat stone pillars"}
     body: "Worn steps descend into the crypt beneath the cathedral, older than the church above. Squat pillars hold up the dark; one is gripped by the carved figure of the giant Finn, frozen mid-wrench as if still trying to bring the whole weight down. Water ticks somewhere onto stone. Your breath shows. The stairs back up to the square are a long way behind you."
     edges:
       - id: e-crypt-square

@@ -68,7 +68,7 @@ nodes:
     location: malmo-harbor
     title: The Harbour
     world_access: true
-    media: {image_theme: harbor-night, music_theme: distant-trains}
+    media: {image_theme: harbor-night, music_theme: distant-trains, real_place: "the old industrial harbour of Malmö, Sweden, dockside cranes against the Öresund"}
     body: "Malmö's old harbour. Cranes stand black against the Öresund and the water slaps at the quay. A road runs back inland toward Lund."
     edges:
       - id: e-harbor-lockers
@@ -103,7 +103,7 @@ nodes:
     location: malmo-rosengard
     title: Rosengård
     gate: malmo-zoltan
-    media: {image_theme: estate-floodlight, music_theme: night-bass}
+    media: {image_theme: estate-floodlight, music_theme: night-bass, real_place: "the Rosengård housing estate, Malmö, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Roseng%C3%A5rd_2009.png"}
     body: "Concrete towers box in a floodlit cage pitch where a ball still cracks off the boards after midnight. An enormous ponytailed man holds the court alone, scarred eyebrow, expensive coat thrown over the fence. He nutmegs an invisible defender and grins at you. \"You came to Zoltan's part of town. Brave. Or lost.\" (Show some spine — he has no use for grovelling.)"
     edges:
       - id: e-rosengard-harbor
@@ -135,7 +135,7 @@ nodes:
     location: malmo-police
     title: Police Headquarters
     gate: malmo-vallmo
-    media: {image_theme: night-office, music_theme: low-dread}
+    media: {image_theme: night-office, music_theme: low-dread, real_place: "a night-shift detective's office in a Swedish police station, paperwork and a murder board"}
     body: "One window still burns on the upper floor of the police house. Inside, a heavy, rumpled detective sits alone at a desk drowned in folders, a murder board behind him stuck with a single old case. He doesn't get up; his stomach growls into the quiet. \"We're closed. But you've got the look of somebody who knows something I've been chewing on for years. Sit.\" (Be straight with him — he's too tired for games.)"
     edges:
       - id: e-police-harbor
@@ -150,7 +150,7 @@ nodes:
     type: location
     location: malmo-stortorget
     title: Stortorget
-    media: {image_theme: empty-square-night, music_theme: wind-cold}
+    media: {image_theme: empty-square-night, music_theme: wind-cold, real_place: "Stortorget, the great main square of Malmö, Sweden, with the bronze equestrian statue of King Karl X Gustav", reference_image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Stortorget_in_Malm%C3%B6%2C_Sweden.jpg/3840px-Stortorget_in_Malm%C3%B6%2C_Sweden.jpg"}
     body: "The great square opens out, far too large for the few lit windows around it. A bronze king rides his bronze horse at the centre, green with age, facing nothing. Wind comes straight off the water and worries at the flags. Smaller streets lead off toward a older, tighter square."
     edges:
       - id: e-stortorget-harbor
@@ -168,7 +168,7 @@ nodes:
     type: location
     location: malmo-lilla-torg
     title: Lilla Torg
-    media: {image_theme: timbered-square, music_theme: distant-laughter}
+    media: {image_theme: timbered-square, music_theme: distant-laughter, real_place: "Lilla Torg, the small cobbled half-timbered square in Malmö, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Lilla_Torg%2C_Malm%C3%B6%2C_mars_2015-3.jpg"}
     body: "Crooked timbered houses lean over a cobbled square of shuttered bars and stacked, chained chairs. Somewhere a knot of laughter rises — and stops the moment you look for it. Heat-lamps stand cold. The big square is back the way you came."
     edges:
       - id: e-lilla-stortorget
@@ -182,7 +182,7 @@ nodes:
     type: location
     location: malmo-castle
     title: Malmöhus Castle
-    media: {image_theme: moated-fortress, music_theme: dread-drone}
+    media: {image_theme: moated-fortress, music_theme: dread-drone, real_place: "Malmöhus Castle, Malmö, Sweden, a squat red-brick renaissance fortress with round towers and a moat", reference_image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Malm%C3%B6hus_slott_2022.jpg/3840px-Malm%C3%B6hus_slott_2022.jpg"}
     body: "The fortress squats low behind its moat, more prison than palace, its brick the colour of dried blood under the floodlights. Black water rings it without a ripple. A footbridge crosses to a gate that is, just slightly, ajar. You think of everyone this place was built to keep in."
     edges:
       - id: e-castle-harbor
@@ -196,7 +196,7 @@ nodes:
     type: location
     location: malmo-turning-torso
     title: The Turning Torso
-    media: {image_theme: twisting-tower, music_theme: high-cold}
+    media: {image_theme: twisting-tower, music_theme: high-cold, real_place: "the Turning Torso skyscraper, Malmö, Sweden, a white tower that twists as it rises", reference_image: "https://upload.wikimedia.org/wikipedia/commons/8/8f/Turning_Torso2.jpg"}
     body: "Out at the Western Harbour a white tower screws up into the low cloud, each storey wrung a little further round than the last, as if something had taken the building and slowly twisted it. Every window is dark but one, very high up, where a light moves once and is still. The wind off the sound is bitter."
     edges:
       - id: e-torso-harbor
@@ -210,7 +210,7 @@ nodes:
     type: location
     location: malmo-pildamms
     title: Pildammsparken
-    media: {image_theme: dark-park-lake, music_theme: reeds-wind}
+    media: {image_theme: dark-park-lake, music_theme: reeds-wind, real_place: "Pildammsparken, a large lakeside park in Malmö, Sweden, reeds and dark water", reference_image: "https://upload.wikimedia.org/wikipedia/commons/8/89/Pildammarna%2C_Malm%C3%B6.jpg"}
     body: "Gravel paths wind into a park grown too dark, reeds hissing at the edge of a black lake. You follow a path you're sure you've walked already and it sets you down somewhere new. The lamps are spaced just too far apart. Water lies flat and waiting between the trees."
     edges:
       - id: e-pildamms-harbor
@@ -224,7 +224,7 @@ nodes:
     type: location
     location: malmo-cemetery
     title: The Old Cemetery
-    media: {image_theme: foggy-graveyard, music_theme: funeral-cold}
+    media: {image_theme: foggy-graveyard, music_theme: funeral-cold, real_place: "Gamla kyrkogården, the old cemetery in Malmö, Sweden, leaning gravestones under lime trees"}
     body: "The old cemetery runs on under rows of limes, its stones leaning together like people sharing a secret. Fog pools in the hollows and gives the names back to you one at a time. Some plots are tended fresh; you do not see by whom. The gate to the living streets is somewhere behind you."
     edges:
       - id: e-cemetery-harbor
@@ -238,7 +238,7 @@ nodes:
     type: location
     location: malmo-citytunnel
     title: Triangeln Station
-    media: {image_theme: deep-platform, music_theme: tunnel-hum}
+    media: {image_theme: deep-platform, music_theme: tunnel-hum, real_place: "Triangeln station, the deep underground Citytunnel station in Malmö, Sweden, tiled platform"}
     body: "An escalator carries you far down into the earth to a tiled platform lit white and even, utterly silent. The departures sign holds a single train, due in one minute, that the minute never reaches. Warm air pushes out of the tunnel mouth as if something large just exhaled. The way up is a long bright climb."
     edges:
       - id: e-citytunnel-harbor

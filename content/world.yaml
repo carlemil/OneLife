@@ -50,7 +50,7 @@ nodes:
     location: sandby-street
     title: Sandby Street
     world_access: true
-    media: {image_theme: village-street-dusk, music_theme: hushed-village}
+    media: {image_theme: village-street-dusk, music_theme: hushed-village, real_place: "the village of Södra Sandby, Skåne, Sweden"}
     body: "You step out the front doors onto Sandby's main street. Streetlamps buzz against the dark. The village is silent, but roads lead away into the wider night — toward Lund, and toward the black line of the woods."
     edges:
       - id: e-street-inside
@@ -64,7 +64,7 @@ nodes:
     location: lund-square
     title: Cathedral Square
     world_access: true
-    media: {image_theme: city-square-dusk, music_theme: cathedral-cold}
+    media: {image_theme: city-square-dusk, music_theme: cathedral-cold, real_place: "Lund Cathedral, Lund, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/a/aa/Lunds_domkyrka_augusti_2012.jpg"}
     body: "Lund's cathedral looms over the empty square, its twin towers lost in low cloud. Cobblestones glisten. A side street leads down toward the railway station."
     edges:
       - id: e-square-station
@@ -77,7 +77,7 @@ nodes:
     type: location
     location: lund-station
     title: Lund Station
-    media: {image_theme: station-night, music_theme: distant-trains}
+    media: {image_theme: station-night, music_theme: distant-trains, real_place: "Lund Central Station, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/c/cf/Lunds_centralstation2007.jpg"}
     body: "The station is shuttered for the night. A single departures board flickers a timetable for trains that have long since gone. The square is back up the hill."
     edges:
       - id: e-station-square
@@ -91,7 +91,7 @@ nodes:
     location: skane-woods
     title: Forest Path
     world_access: true
-    media: {image_theme: forest-dark, music_theme: low-dread}
+    media: {image_theme: forest-dark, music_theme: low-dread, real_place: "a dense pine forest in the Skåne countryside, Sweden"}
     body: "The track gives way to close-pressed pines. Something about the dark here feels older than the rest. You do not want to leave the path. The way back out is the world beyond the trees."
 
 # Standalone edge: leave the school for the village street (a world-access node).

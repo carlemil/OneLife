@@ -41,11 +41,20 @@ services:
       # The exact redirect URI registered in your Spotify app (must match the
       # browser origin). Leave empty to use the app's own origin + path.
       SPOTIFY_REDIRECT_URI: ${SPOTIFY_REDIRECT_URI:-}
-      # Optional: real location image generation (OpenAI-compatible images API).
-      # Without IMAGE_API_KEY the game uses the procedural SVG banner.
+      # Optional: real location images. IMAGE_PROVIDER=pollinations uses the free,
+      # keyless Pollinations endpoint (no IMAGE_API_KEY needed); =openai (default)
+      # uses an OpenAI-compatible images API and needs IMAGE_API_KEY. Neither set
+      # -> procedural SVG banner.
+      IMAGE_PROVIDER: ${IMAGE_PROVIDER:-openai}
       IMAGE_API_KEY: ${IMAGE_API_KEY:-}
       IMAGE_API_BASE: ${IMAGE_API_BASE:-https://api.openai.com/v1}
       IMAGE_MODEL: ${IMAGE_MODEL:-gpt-image-1}
+      POLLINATIONS_MODEL: ${POLLINATIONS_MODEL:-flux}
+      # Optional Pollinations token (auth.pollinations.ai) — enables image-to-image
+      # so real location photos are restyled instead of text-to-image from scratch.
+      POLLINATIONS_TOKEN: ${POLLINATIONS_TOKEN:-}
+      POLLINATIONS_EDIT_MODEL: ${POLLINATIONS_EDIT_MODEL:-kontext}
+      IMAGE_BANNER_SIZE: ${IMAGE_BANNER_SIZE:-1024x384}
     volumes:
       - ./content:/content:ro
     ports:

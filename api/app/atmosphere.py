@@ -68,19 +68,37 @@ def setting_for(loc, cell=None) -> str:
     return f"{place} · {region}"
 
 
-async def image_for(conn, theme, loc, setting) -> str | None:
-    """A real generated image for this theme (cached), or None to use the SVG."""
+# House look for every location image: retro, monochrome sepia (dark brown ->
+# pale yellow/amber), old-photograph feel. Applied to text-to-image and, when a
+# real reference photo + token are configured, to the restyled real photo too.
+IMAGE_STYLE = (
+    "Retro vintage monochrome duotone in a dark-brown to pale yellow/amber sepia "
+    "palette only, no other colours. Aged faded old-photograph look, soft film "
+    "grain, high contrast, weathered, moody, no text, no people."
+)
+
+
+async def image_for(conn, theme, loc, setting,
+                    real_place=None, reference=None, scene_text=None) -> str | None:
+    """A real generated image for this theme (cached), or None to use the SVG.
+
+    The prompt blends the real place (`real_place`, falling back to the location
+    name) with the node's in-game text (`scene_text`, falling back to the location
+    description) under the house IMAGE_STYLE. If `reference` (a real photo URL) and
+    a Pollinations token are configured, the image is grounded in that real photo
+    via image-to-image; otherwise it is text-to-image of the named place."""
     if not imagegen.CONFIGURED or loc is None:
         return None
     row = await conn.fetchrow("SELECT image_url FROM generated_images WHERE theme=$1", theme)
     if row:
         return row["image_url"]
+    place = real_place or loc["name"]
+    scene = (scene_text or loc["description"] or "").strip()[:400]
     prompt = (
-        f"Atmospheric establishing shot. {loc['name']}: {loc['description']} "
-        f"Setting: {setting}. Mood: {theme}. Cinematic, desaturated, moody "
-        f"lighting, film grain, no text, no people."
+        f"Establishing shot of {place}. {scene} "
+        f"Setting: {setting}. Mood: {theme}. {IMAGE_STYLE}"
     )
-    url = await imagegen.generate(prompt)
+    url = await imagegen.generate(prompt, reference=reference)
     if url:
         await conn.execute(
             """INSERT INTO generated_images (theme, image_url) VALUES ($1,$2)
