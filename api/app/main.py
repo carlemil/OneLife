@@ -11,7 +11,7 @@ from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_edit, content_log, auth, onboarding, atmosphere, security, admin
+from . import db, engine, gates, puzzles, llm, memory, content, content_edit, content_log, content_repair, auth, onboarding, atmosphere, security, admin
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -610,6 +610,21 @@ async def admin_content_import(body: ContentImportBody,
             "counts": {k: len(data[k]) for k in content._LIST_KEYS}}
 
 
+def _validate_or_repair(merged: dict):
+    """Validate the resulting world; if the spine lint fails, auto-generate the
+    missing nodes/edges and validate again. Returns (added, warnings) where `added`
+    is the list of auto-generated {kind, entity} to fold into the event. Raises 400
+    only if the world still can't be made valid (e.g. no entry node)."""
+    errors, warnings = content.validate(merged)
+    if not errors:
+        return [], warnings
+    repaired, added = content_repair.auto_repair(merged)
+    errors2, warnings2 = content.validate(repaired)
+    if errors2:
+        raise HTTPException(400, "; ".join(errors2[:10]))
+    return added, warnings2
+
+
 # ---------- Admin: in-UI content editor (graph + canonical event log) ----------
 # Every mutation is recorded as one event and applied to the materialized cache;
 # undo/redo walk the log. No blocking confirmation dialogs — integrity is kept by
@@ -635,14 +650,12 @@ async def admin_content_entity(body: ContentEntityBody,
             merged = content_edit.upsert_entity(full, body.kind, body.entity)
         except ValueError as e:
             raise HTTPException(400, str(e))
-        errors, warnings = content.validate(merged)
-        if errors:
-            raise HTTPException(400, "; ".join(errors[:10]))
+        added, warnings = _validate_or_repair(merged)
         before = await content_log.find_entity(conn, body.kind, body.entity["id"])
         op = "update" if before is not None else "create"
         head = await content_log.record(conn, op, body.kind, body.entity["id"],
-                                         before, body.entity, sess.get("email"))
-    return {"ok": True, "warnings": warnings, "head": head}
+                                         before, body.entity, sess.get("email"), extra=added)
+    return {"ok": True, "warnings": warnings, "head": head, "auto_added": len(added)}
 
 
 @app.post("/api/admin/content/delete")
@@ -667,12 +680,10 @@ async def admin_content_delete(body: ContentDeleteBody,
             if before is None:
                 raise HTTPException(404, "no such entity")
             remaining = content_edit.remove_entity(full, body.kind, body.id)
-        errors, warnings = content.validate(remaining)
-        if errors:
-            raise HTTPException(400, "; ".join(errors[:10]))
+        added, warnings = _validate_or_repair(remaining)
         head = await content_log.record(conn, "delete", body.kind, body.id,
-                                         before, None, sess.get("email"))
-    return {"ok": True, "warnings": warnings, "head": head}
+                                         before, None, sess.get("email"), extra=added)
+    return {"ok": True, "warnings": warnings, "head": head, "auto_added": len(added)}
 
 
 @app.post("/api/admin/content/move")

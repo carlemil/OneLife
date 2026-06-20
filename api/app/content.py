@@ -150,6 +150,44 @@ def validate(data: dict):
     return errors, warnings
 
 
+def find_traps(data: dict) -> list[str]:
+    """Reachable non-death nodes that cannot reach any ending — mirrors the TRAP
+    rule in validate()'s spine lint (travel-aware, optimistic). Empty unless there
+    is exactly one entry node and at least one ending."""
+    nodes = {n["id"]: n for n in data["nodes"]}
+    entries = [n["id"] for n in data["nodes"] if n.get("entry")]
+    endings = [n["id"] for n in data["nodes"] if n.get("type") == "ending"]
+    if len(entries) != 1 or not endings:
+        return []
+    edges = all_edges(data)
+    adj, radj = defaultdict(list), defaultdict(list)
+    for e in edges:
+        if e.get("from") in nodes and e.get("to") in nodes:
+            adj[e["from"]].append(e["to"])
+            radj[e["to"]].append(e["from"])
+    arrivals = [c["arrival_node"] for c in data["cells"] if c.get("arrival_node") in nodes]
+    for wa in [n["id"] for n in data["nodes"] if n.get("world_access")]:
+        for an in arrivals:
+            adj[wa].append(an)
+            radj[an].append(wa)
+
+    def bfs(starts, graph):
+        seen, dq = set(), deque(starts)
+        while dq:
+            x = dq.popleft()
+            if x in seen:
+                continue
+            seen.add(x)
+            dq.extend(graph[x])
+        return seen
+
+    reachable = bfs([entries[0]], adj)
+    can_end = bfs(endings, radj)
+    return [nid for nid, n in nodes.items()
+            if nid in reachable and nid not in can_end
+            and not n.get("is_death") and n.get("type") not in ("ending", "death")]
+
+
 async def seed_content(conn, data: dict):
     """Upsert authored content. Runtime tables (players, memories) are untouched."""
     async with conn.transaction():

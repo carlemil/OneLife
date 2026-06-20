@@ -26,9 +26,11 @@ _DDL = [
         entity_id   TEXT NOT NULL,
         before      JSONB,
         after       JSONB,
+        extra       JSONB,
         admin_email TEXT,
         created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
     )""",
+    "ALTER TABLE content_events ADD COLUMN IF NOT EXISTS extra JSONB",
     """CREATE TABLE IF NOT EXISTS content_log_state (
         id   INTEGER PRIMARY KEY DEFAULT 1 CHECK (id = 1),
         head BIGINT NOT NULL DEFAULT 0
@@ -144,10 +146,16 @@ async def apply_forward(conn, ev: dict):
             await _delete_entity(conn, kind, eid)
     elif op == "move":
         await _set_pos(conn, eid, ev["after"])
+    # auto-generated scaffolding (e.g. an ending or trap-fixing edges) rides along
+    for x in (ev.get("extra") or []):
+        await _upsert_entity(conn, x["kind"], x["entity"])
 
 
 async def apply_inverse(conn, ev: dict):
     op, kind, eid = ev["op"], ev["kind"], ev["entity_id"]
+    # undo the scaffolding first (reverse order), then the primary change
+    for x in reversed(ev.get("extra") or []):
+        await _delete_entity(conn, x["kind"], x["entity"]["id"])
     if op == "create":
         await _delete_entity(conn, kind, eid)            # LIFO: no incident deps left
     elif op == "update":
@@ -164,31 +172,37 @@ async def apply_inverse(conn, ev: dict):
 # ---------- the log ----------
 async def _event(conn, seq: int):
     r = await conn.fetchrow(
-        "SELECT seq,op,kind,entity_id,before,after FROM content_events WHERE seq=$1", seq)
+        "SELECT seq,op,kind,entity_id,before,after,extra FROM content_events WHERE seq=$1", seq)
     if not r:
         return None
     return {
         "seq": r["seq"], "op": r["op"], "kind": r["kind"], "entity_id": r["entity_id"],
         "before": json.loads(r["before"]) if r["before"] else None,
         "after": json.loads(r["after"]) if r["after"] else None,
+        "extra": json.loads(r["extra"]) if r["extra"] else None,
     }
 
 
-async def record(conn, op: str, kind: str, entity_id: str, before, after, admin_email=None) -> int:
-    """Append one event at head+1 (truncating any redo tail), materialize it, bump head."""
+async def record(conn, op: str, kind: str, entity_id: str, before, after,
+                 admin_email=None, extra=None) -> int:
+    """Append one event at head+1 (truncating any redo tail), materialize it, bump head.
+
+    `extra` is an optional list of {kind, entity} auto-generated entities applied and
+    reverted together with the primary change (so one undo reverts the whole action)."""
     async with conn.transaction():
         head = await _head(conn)
         await conn.execute("DELETE FROM content_events WHERE seq > $1", head)
         seq = head + 1
         await conn.execute(
-            """INSERT INTO content_events (seq,op,kind,entity_id,before,after,admin_email)
-               VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7)""",
+            """INSERT INTO content_events (seq,op,kind,entity_id,before,after,extra,admin_email)
+               VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7::jsonb,$8)""",
             seq, op, kind, entity_id,
             json.dumps(before) if before is not None else None,
             json.dumps(after) if after is not None else None,
+            json.dumps(extra) if extra else None,
             admin_email)
         await apply_forward(conn, {"op": op, "kind": kind, "entity_id": entity_id,
-                                   "before": before, "after": after})
+                                   "before": before, "after": after, "extra": extra})
         await _set_head(conn, seq)
     return seq
 

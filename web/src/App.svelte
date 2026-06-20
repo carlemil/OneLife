@@ -333,9 +333,9 @@
             { key: 'reveal_text', t: 'longtext' }, { key: 'discover_conditions', t: 'json' }],
     nodes: [{ key: 'id', t: 'text' }, { key: 'arc', t: 'select', ref: 'arcs' },
             { key: 'type', t: 'select', options: ['narration', 'choice', 'gate', 'puzzle', 'location', 'death', 'ending'] },
-            { key: 'location', t: 'select', ref: 'locations' }, { key: 'title', t: 'text' }, { key: 'body', t: 'longtext' },
+            { key: 'location', t: 'select', ref: 'locations' }, { key: 'title', t: 'text' }, { key: 'body', t: 'longtext', rows: 12 },
             { key: 'entry', t: 'bool' }, { key: 'is_death', t: 'bool' }, { key: 'world_access', t: 'bool' },
-            { key: 'gate', t: 'select', ref: 'gates' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'media', t: 'json' }],
+            { key: 'gate', t: 'select', ref: 'gates' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'media', t: 'json', rows: 16 }],
     gates: [{ key: 'id', t: 'text' }, { key: 'location', t: 'select', ref: 'locations' },
             { key: 'character', t: 'select', ref: 'characters' }, { key: 'spec', t: 'json' }],
     edges: [{ key: 'id', t: 'text' }, { key: 'from', t: 'select', ref: 'nodes' }, { key: 'to', t: 'select', ref: 'nodes' },
@@ -378,6 +378,13 @@
     }
     form = f; jsonErrors = {};
   }
+  // Drop empty-string reference fields so they become SQL NULL (an empty string
+  // would violate the FK). Mirrors buildEntity for directly-constructed entities.
+  function stripEmptyRefs(kind, entity) {
+    const out = { ...entity };
+    for (const f of FIELDS[kind]) if (f.ref && (out[f.key] === '' || out[f.key] == null)) delete out[f.key];
+    return out;
+  }
   function buildEntity() {
     const k = editKind, e = {};
     for (const fld of FIELDS[k]) {
@@ -412,6 +419,10 @@
     try { content = await api.contentAll(); editKind = 'nodes'; newEntity(); await loadLog(); }
     catch (e) { editorMsg = e.message; }
   }
+  async function openGraph() {
+    await openEditor();
+    await setGraphView();
+  }
   async function saveEntity() {
     if (!canSave) return;
     let entity;
@@ -421,7 +432,8 @@
       const r = await api.saveEntity(editKind, entity);
       await afterMutation(r.head);
       selId = entity.id;
-      editorMsg = 'Saved.' + (r.warnings?.length ? ` ${r.warnings.length} warning(s).` : '');
+      editorMsg = 'Saved.' + (r.auto_added ? ` Auto-added ${r.auto_added} node/edge to keep the spine valid.` : '')
+        + (r.warnings?.length ? ` ${r.warnings.length} warning(s).` : '');
     } catch (e) { editorMsg = e.message; } finally { busy = false; }
   }
   // No confirmation dialog: delete applies immediately; integrity is enforced
@@ -527,27 +539,28 @@
     let id = `e-${conn.source}-${conn.target}`;
     const existing = new Set((content?.edges ?? []).map((e) => e.id));
     if (existing.has(id)) { let i = 2; while (existing.has(`${id}-${i}`)) i++; id = `${id}-${i}`; }
-    const entity = { id, from: conn.source, to: conn.target, label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 };
+    const entity = stripEmptyRefs('edges', { id, from: conn.source, to: conn.target, label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 });
     busy = true; editorMsg = '';
     try {
       const r = await api.saveEntity('edges', entity);
       await afterMutation(r.head);
       editKind = 'edges'; pickEntity(id);
-      editorMsg = 'Edge created — set its label/conditions.';
+      editorMsg = 'Edge created — set its label/conditions.'
+        + (r.auto_added ? ` (auto-added ${r.auto_added} to keep the spine valid)` : '');
     } catch (e) { editorMsg = e.message; } finally { busy = false; }
   }
   async function addNode() {
     const ids = new Set((content?.nodes ?? []).map((n) => n.id));
     let n = 1; while (ids.has(`node-${n}`)) n++;
     const id = `node-${n}`;
-    const entity = { ...structuredClone(DEFAULTS.nodes), id };
+    const entity = stripEmptyRefs('nodes', { ...structuredClone(DEFAULTS.nodes), id });
     busy = true; editorMsg = '';
     try {
       const r = await api.saveEntity('nodes', entity);
       await api.moveNode(id, 60, 60).catch(() => {});
       await afterMutation(r.head);
       editKind = 'nodes'; pickEntity(id);
-      editorMsg = 'Node created.';
+      editorMsg = 'Node created.' + (r.auto_added ? ` (auto-added ${r.auto_added} to keep the spine valid)` : '');
     } catch (e) { editorMsg = e.message; } finally { busy = false; }
   }
   function showHover(kind, rec, ev) { hover = { kind, rec, x: ev.clientX, y: ev.clientY }; }
@@ -672,8 +685,9 @@
   {:else if phase === 'game' && game}
     <div class="topbar">
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
-      {#if isAdmin}<button class="link" title="Admin" onclick={openAdmin}>⚙</button>{/if}
-      <button class="link" onclick={confirmLogout}>log out</button>
+      {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
+      {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
+      <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
       <section class="story">
@@ -907,9 +921,9 @@
         {:else if f.t === 'number'}
           <input type="number" bind:value={form[f.key]} />
         {:else if f.t === 'longtext'}
-          <textarea rows="4" bind:value={form[f.key]}></textarea>
+          <textarea rows={f.rows ?? 6} bind:value={form[f.key]}></textarea>
         {:else if f.t === 'json'}
-          <textarea rows="5" class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
+          <textarea rows={f.rows ?? 8} class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
           {#if jsonErrors[f.key]}<div class="json-err">{jsonErrors[f.key]}</div>{/if}
         {:else if f.t === 'select'}
           <select bind:value={form[f.key]}>
@@ -981,7 +995,7 @@
             <div class="graphside">
               {#if selId !== null}
                 <div class="sidehd">{editKind === 'edges' ? 'Edge' : 'Node'}: <code>{selId}</code></div>
-                {@render formFields()}
+                <div class="form">{@render formFields()}</div>
               {:else}
                 <p class="sub">Select a node or edge to edit it, or use “+ Node”.</p>
               {/if}
@@ -992,14 +1006,14 @@
         <details class="history">
           <summary>History — {logRows.length} action(s), at #{logHead}</summary>
           <ul>
-            <li><button class="link" class:athead={logHead === 0} onclick={() => gotoSeq(0)}>#0 baseline (current world)</button></li>
-            {#each logRows as e (e.seq)}
+            {#each logRows.slice().reverse() as e (e.seq)}
               <li><button class="link" class:athead={e.seq === logHead} class:undone={!e.applied} onclick={() => gotoSeq(e.seq)}>#{e.seq} {e.op} {e.kind} {e.entity_id}</button></li>
             {/each}
+            <li><button class="link" class:athead={logHead === 0} onclick={() => gotoSeq(0)}>#0 baseline (current world)</button></li>
           </ul>
         </details>
 
-        <button onclick={() => (showEditor = false)}>Close</button>
+        <button class="editor-close" onclick={() => (showEditor = false)}>Close</button>
       </div>
     </div>
     {#if hover}
@@ -1029,10 +1043,11 @@
 
 <style>
   :global(body) { background:#11131a; color:#d8d8e0; font-family: Georgia, serif; margin:0; }
-  main { max-width: 1000px; margin: 0 auto; padding: 1.5rem; }
+  main { max-width: 1340px; margin: 0 auto; padding: 1.5rem; }
   h1 { font-weight: normal; } .sub { color:#6b6b80; font-size:.7em; }
   .layout { display:grid; grid-template-columns: 1fr 300px; gap:1.5rem; }
   .topbar { text-align:right; margin-bottom:.5rem; }
+  .topbar .link { font-size:1.6rem; padding-left:.8rem; vertical-align:middle; line-height:1; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
   .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
@@ -1081,7 +1096,8 @@
   .modal-card.admin { width:480px; max-width:90vw; max-height:85vh; overflow:auto; }
   .modal-card.help { width:560px; max-width:92vw; max-height:85vh; overflow:auto; }
   .modal-card.lb { width:420px; max-width:92vw; max-height:85vh; overflow:auto; }
-  .modal-card.editor { width:1080px; max-width:96vw; max-height:92vh; overflow:auto; }
+  .modal-card.editor { width:100vw; height:100vh; max-width:100vw; max-height:100vh;
+    border-radius:0; overflow:hidden; display:flex; flex-direction:column; padding:1rem 1.5rem; }
   .editor-head { display:flex; align-items:center; gap:1rem; }
   .editor-head h2 { flex:1; margin:.2rem 0; }
   .viewtabs { display:flex; gap:.2rem; }
@@ -1092,28 +1108,42 @@
   .kindtabs { display:flex; flex-wrap:wrap; gap:.2rem; border-bottom:1px solid #2a2e3e; padding-bottom:.5rem; margin:.4rem 0 .6rem; }
   .kindtabs .link { padding:.2rem .5rem; }
   .kindtabs .link.active { color:#cdbb9a; font-weight:bold; }
-  .editor-grid { display:grid; grid-template-columns:220px 1fr; gap:1rem; }
-  .idlist { max-height:62vh; overflow:auto; display:flex; flex-direction:column; gap:.15rem; }
-  .idlist button { width:100%; font-size:.8rem; padding:.3rem .5rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .editor-grid { display:grid; grid-template-columns:260px 1fr; gap:1rem; flex:1 1 auto; min-height:0; }
+  .idlist { overflow:auto; display:flex; flex-direction:column; gap:.15rem; }
+  .idlist button { width:100%; font-size:.95rem; padding:.45rem .6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .idlist button.sel { background:#34416a; color:#cdbb9a; }
-  .form .field { margin-bottom:.5rem; }
-  .form .field label { display:block; font-size:.78rem; color:#9a9ab0; margin-bottom:.1rem; }
-  .form textarea, .form select { width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; font:inherit; }
-  .form textarea.json { font-family:monospace; font-size:.8rem; }
+  .form { overflow:auto; max-width:760px; }
+  .form .field { margin-bottom:1.4rem; }
+  .form .field label { display:block; font-size:.9rem; color:#9a9ab0; margin-bottom:.2rem; }
+  .form input, .form textarea, .form select { width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.65rem .75rem; border-radius:6px; font:inherit; font-size:1.05rem; }
+  .form textarea.json { font-family:monospace; font-size:.95rem; }
   .form input[readonly] { opacity:.55; }
-  .form .chk { width:auto; display:inline-block; }
-  .json-err { color:#e06c75; font-size:.78rem; margin-top:.15rem; }
+  .form .chk { width:auto; display:inline-block; transform:scale(1.3); margin:.3rem 0; }
+  .json-err { color:#e06c75; font-size:.85rem; margin-top:.15rem; }
   /* graph view */
-  .graphwrap { display:grid; grid-template-columns:1fr 300px; gap:1rem; }
-  .canvas { position:relative; height:66vh; border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
+  .graphwrap { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem; flex:1 1 auto; min-height:0; }
+  /* right-hand edit panel: boxes fill the width, taller, more spacing */
+  .graphside .form { max-width:none; }
+  .graphside .field { margin-bottom:1.6rem; }
+  .graphside textarea { min-height:6rem; }
+  .graphside textarea.json { min-height:9rem; }
+  .canvas { position:relative; height:100%; border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
   .canvas :global(.svelte-flow) { background:#0d0e14; }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
-  .graphside { max-height:66vh; overflow:auto; }
-  .graphside .sidehd { margin-bottom:.4rem; font-size:.9rem; }
-  .history { margin-top:.8rem; border-top:1px solid #2a2e3e; padding-top:.4rem; }
+  /* right panel: drag its inner (left) edge to resize width; content fills width.
+     direction:rtl puts the native resize grip on the bottom-left (the divider side). */
+  .graphside { height:100%; overflow:auto; width:440px; min-width:280px; max-width:80vw;
+    resize:horizontal; direction:rtl; padding-left:1.1rem; box-sizing:border-box; }
+  .graphside > * { direction:ltr; }
+  .graphside .sidehd { margin-bottom:.4rem; font-size:1rem; }
+  .editor-close { align-self:flex-end; margin-top:.5rem; padding:.7rem .8rem; font-size:.8rem; line-height:1.4; text-align:center; }
+  /* bottom history panel: drag its bottom edge to resize height; list scrolls inside */
+  .history { margin-top:.8rem; border-top:1px solid #2a2e3e; padding-top:.4rem;
+    resize:vertical; overflow:auto; min-height:1.8rem; height:20vh; }
+  .history:not([open]) { height:auto; min-height:0; resize:none; overflow:visible; }
   .history summary { cursor:pointer; color:#9a9ab0; font-size:.85rem; }
-  .history ul { list-style:none; padding:.3rem 0 0; max-height:24vh; overflow:auto; }
+  .history ul { list-style:none; padding:.3rem 0 0; }
   .history .link { font-size:.8rem; font-family:monospace; }
   .history .athead { color:#cdbb9a; font-weight:bold; }
   .history .undone { opacity:.45; text-decoration:line-through; }

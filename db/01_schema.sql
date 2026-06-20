@@ -218,6 +218,7 @@ CREATE TABLE IF NOT EXISTS content_events (
     entity_id   TEXT NOT NULL,
     before      JSONB,                         -- prior value (for undo); null for create
     after       JSONB,                         -- new value; null for delete
+    extra       JSONB,                         -- auto-generated entities applied/reverted with this event
     admin_email TEXT,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
 );
