@@ -39,9 +39,10 @@ each Make target's underlying `docker compose` command is given.
 All optional — without them the app still boots using deterministic stubs/fallbacks:
 - `GAME_DATA_DIR` — host path to the game-data repo mounted at `/content` (default `../OneLife-KBK-mystery`). Set this to run a different dataset.
 - `ANTHROPIC_API_KEY` — real Claude for dialogue gates / music director; unset → offline keyword stub.
-- `IMAGE_API_KEY` (+ `IMAGE_API_BASE`/`IMAGE_MODEL`) — real location images (OpenAI-compatible); unset → procedural SVG.
+- `IMAGE_PROVIDER` — `pollinations` (free, keyless; `POLLINATIONS_TOKEN` adds real-photo image-to-image) or `openai` (needs `IMAGE_API_KEY`+`IMAGE_API_BASE`/`IMAGE_MODEL`). Unset/neither → procedural SVG.
 - `SPOTIFY_CLIENT_ID`/`SECRET`/`REDIRECT_URI` — track resolution + Web Playback SDK; unset → text-only picks.
 - `ONELIFE_SECRET_KEY` — encrypts TOTP secrets at rest (dev default + warning if unset).
+- `ONELIFE_ADMIN_EMAILS` — comma-separated emails allowed into the in-UI content editor (the ⚙ panel).
 - `WEB_ORIGIN` — comma-separated CORS allow-list (default allows both `localhost` and `127.0.0.1` on :5173). **The browser origin must be in this list and, for Spotify, match the registered redirect URI exactly.**
 
 ### Testing auth flows by hand
@@ -97,9 +98,17 @@ embeddings provider wired). See `MEMORY_AND_LEAKAGE.md`.
   endpoints return 403 until `onboarded`**.
 - **World/maps**: `world_cells` grid; `locations.cell_id`; nodes flagged `world_access` open the
   map. Travel is adjacency-gated with per-player fog-of-war (`player_cells`). See `WORLD_AND_MAPS.md`.
-- **Atmosphere** (`atmosphere.py`, `imagegen.py`): per-location image (procedural SVG or real
-  provider, cached per theme) + LLM "music director" picks resolved to Spotify tracks. See
-  `ATMOSPHERE.md`, `MEDIA_PROVIDERS.md`.
+- **Atmosphere** (`atmosphere.py`, `imagegen.py`, `gen_images.py`): per-location banner image +
+  LLM "music director" picks resolved to Spotify tracks. Images are cached in `generated_images`
+  keyed by the node's `media.image_theme`; the prompt blends `media.real_place` + the node body
+  text in a house sepia style (with `POLLINATIONS_TOKEN`, a real reference photo is restyled via
+  image-to-image, fetched server-side → data URI). Warm every theme up front:
+  `docker compose run --rm api python -m app.gen_images [--force]`. See `ATMOSPHERE.md`, `MEDIA_PROVIDERS.md`.
+- **Admin content editor** (`content_edit.py`, `content_log.py`, `content_repair.py`, `/api/admin/content/*`,
+  graph UI in `App.svelte`): an admins-only in-UI editor that mutates the materialized content cache
+  through an append-only **content-event log** with undo/redo. A save/delete that would fail the spine
+  lint is **auto-repaired** (minimal generated nodes/edges folded into the same event, reverted together
+  on undo). This edits the DB, *not* the YAML data repo — it's a separate path from the seed pipeline. See `ADMIN.md`.
 
 ### Frontend (`web/src`)
 A single Svelte 5 component `App.svelte` (runes: `$state`/`$derived`/`$effect`) drives phases
