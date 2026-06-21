@@ -50,6 +50,8 @@ def evaluate(cond, ctx) -> bool:
         return cond["gate_passed"] in ctx["gates"]
     if "puzzle_solved" in cond:
         return cond["puzzle_solved"] in ctx["solved"]
+    if "name_known" in cond:
+        return cond["name_known"] in ctx.get("known_names", set())
     if "clue_found" in cond:
         return cond["clue_found"] in ctx["clues"]
     if "story_time_gte" in cond:
@@ -142,7 +144,7 @@ def collect_refs(cond, out):
         collect_refs(cond["not"], out)
     for pred, bucket in (("flag_set", "flags"), ("gate_passed", "gates"),
                          ("puzzle_solved", "puzzles"), ("node_visited", "nodes"),
-                         ("clue_found", "clues")):
+                         ("clue_found", "clues"), ("name_known", "characters")):
         if pred in cond:
             out[bucket].add(cond[pred])
 
@@ -158,6 +160,7 @@ def main():
     gates = {g["id"]: g for g in data["gates"]}
     puzzles = {p["id"]: p for p in data["puzzles"]}
     clue_ids = {c["id"] for c in data["clues"]}
+    char_ids = {c["id"] for c in data.get("characters", []) or []}
     edges = all_edges(data)
 
     out_edges = collections.defaultdict(list)
@@ -250,7 +253,7 @@ def main():
             rep.error("reference", f"edge {e.get('id','?')}", f"`from` unknown node {e.get('from')}", "fix the id")
         if e.get("to") not in nodes:
             rep.error("reference", f"edge {e.get('id','?')}", f"`to` unknown node {e.get('to')}", "fix the id")
-        refs = {"flags": set(), "gates": set(), "puzzles": set(), "nodes": set(), "clues": set()}
+        refs = {"flags": set(), "gates": set(), "puzzles": set(), "nodes": set(), "clues": set(), "characters": set()}
         collect_refs(e.get("conditions"), refs)
         for fl in refs["flags"]:
             if fl not in declared_flags:
@@ -263,6 +266,9 @@ def main():
         for pz in refs["puzzles"]:
             if pz not in puzzles:
                 rep.error("reference", f"edge {e.get('id','?')}", f"puzzle_solved references unknown puzzle '{pz}'", "fix the id")
+        for ch in refs["characters"]:
+            if ch not in char_ids:
+                rep.error("reference", f"edge {e.get('id','?')}", f"name_known references unknown character '{ch}'", "fix the id")
 
     for n in data["nodes"]:
         nid = n["id"]
@@ -296,7 +302,7 @@ def main():
         for i, v in enumerate(n.get("body_variants", []) or []):
             if "body" not in v:
                 rep.warn("body_variants", f"node {nid}", f"variant #{i} has no `body`", "add a body string")
-            refs = {"flags": set(), "gates": set(), "puzzles": set(), "nodes": set(), "clues": set()}
+            refs = {"flags": set(), "gates": set(), "puzzles": set(), "nodes": set(), "clues": set(), "characters": set()}
             collect_refs(v.get("when"), refs)
             for gp in refs["gates"]:
                 if gp not in gates:
@@ -304,6 +310,9 @@ def main():
             for pz in refs["puzzles"]:
                 if pz not in puzzles:
                     rep.error("body_variants", f"node {nid}", f"variant #{i} when.puzzle_solved unknown puzzle '{pz}'", "fix the id")
+            for ch in refs["characters"]:
+                if ch not in char_ids:
+                    rep.error("body_variants", f"node {nid}", f"variant #{i} when.name_known unknown character '{ch}'", "fix the id")
             for fl in refs["flags"]:
                 if fl not in declared_flags:
                     rep.warn("body_variants", f"node {nid}", f"variant #{i} when.flag_set '{fl}' is never set by any effect",

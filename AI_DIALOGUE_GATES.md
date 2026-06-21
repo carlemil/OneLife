@@ -109,6 +109,12 @@ Note: **many possible choices** (design §2) is honored by criteria being *seman
 - **Mercy rule.** After N attempts the gate force-passes (or drops to a trivially-easy criterion). Conversation is *never* a dead end.
 - **The real danger lives elsewhere.** Death/getting-stuck (design §1) comes from *world* choices, which have the rollback escape. Conversations don't kill you.
 
+### Names & self-introduction
+- The Actor is given an **IDENTITY** block. A character whose `reveal_name` equals (or is absent from) their `name` is *open*: they introduce themselves by name early, in character, so the player learns what to call them. A character whose `reveal_name` differs from `name` is *withholding* (e.g. `name: The Janitor`, `reveal_name: Arne`): the Actor is told to conceal the true name and deflect until trust is earned.
+- A name is *known* once an NPC has actually spoken it to the player — in that character's own gate, or another's (leaked memories surface as dialogue). `load_context` computes this set (`PlayerContext.known_names`, keyed by character id; `role='agent'` utterances only, so the player typing a name doesn't reveal it).
+- The transcript label (`gate.display_name`, rendered by `App.svelte`) comes from `engine._resolve_name(char, known)`: when known, the true name; otherwise the public `name` for a withholding character (a role descriptor like "The Janitor") or "NPC" for an open one until they introduce themselves.
+- Node body text can react to this too via the **`{name_known: <character_id>}`** condition in the shared DSL (`dsl.py`). Body variants use it to avoid spoiling a name in narration — e.g. Märta's calmed-classroom description reads "Märta" only once her name is known, and "the girl" otherwise. (Keep the playtest harness `analyze.py` in sync — it mirrors `evaluate` and the reference checks.)
+
 ### Can't derail the authored story
 - **Actor can't mutate state** — only the Applier can, only via a validated verdict.
 - **Closed-world instruction.** The Actor may only reference facts in its provided context (persona + `knows` + retrieved memories + location). For anything outside that, it deflects *in character* (uses `refuses`). This stops the model inventing plot.

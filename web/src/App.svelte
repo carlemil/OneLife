@@ -59,13 +59,11 @@
   let logShown = $state(LOG_PAGE);
   let gateMsgs = $derived(game?.gate?.messages ? [...game.gate.messages].reverse() : []);
   let logRev = $derived(logEntries ? [...logEntries].reverse() : []);
-  // Show the NPC's name once it has been revealed/guessed in the conversation.
-  let npcLabel = $derived.by(() => {
-    const g = game?.gate;
-    const rn = g?.reveal_name;
-    if (rn && (g.messages || []).some((m) => (m.content || '').toLowerCase().includes(rn.toLowerCase()))) return rn;
-    return 'NPC';
-  });
+  // What to call the NPC in the transcript. The backend resolves this: open
+  // characters introduce themselves (name known from the start); name-withholding
+  // ones stay a role descriptor (e.g. "The Janitor") until their true name is
+  // learned here or in another conversation, then switch to it.
+  let npcLabel = $derived(game?.gate?.display_name || 'NPC');
 
   // world map
   let world = $state(null);

@@ -6,12 +6,24 @@ from . import llm, memory
 from .engine import apply_action, discover_clues, next_seq
 
 
+def _identity(char) -> dict:
+    """Identity facts the Actor needs to (not) introduce itself. A character whose
+    reveal_name differs from their public name is hiding their true identity."""
+    name = char["name"]
+    reveal = char["reveal_name"]
+    withholds = bool(reveal and reveal != name)
+    return {"name": name, "true_name": reveal or name, "withholds": withholds}
+
+
 async def process_message(conn, player_id, session, text: str) -> dict:
     node = await conn.fetchrow("SELECT * FROM story_nodes WHERE id=$1",
                                session["current_node"])
     gate_id = node["gate_id"]
     gate = await conn.fetchrow("SELECT * FROM dialogue_gates WHERE id=$1", gate_id)
     spec = json.loads(gate["spec"])
+    char = await conn.fetchrow(
+        "SELECT name, reveal_name FROM characters WHERE id=$1",
+        gate["character_id"])
 
     ga = await conn.fetchrow(
         "SELECT * FROM gate_attempts WHERE player_id=$1 AND gate_id=$2",
@@ -43,7 +55,9 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     own_mem, leaked_mem = await memory.retrieve(
         conn, character_id=gate["character_id"], query_text=text,
         player_id=player_id, story_time=session["story_time"])
-    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem)
+    identity = _identity(char) if char else None
+    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
+                                  identity=identity)
 
     async def _say(line: str):
         await conn.execute(

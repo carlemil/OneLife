@@ -13,6 +13,7 @@ class PlayerContext:
     passed_gates: set[str] = field(default_factory=set)
     solved_puzzles: set[str] = field(default_factory=set)
     found_clues: set[str] = field(default_factory=set)
+    known_names: set[str] = field(default_factory=set)  # character ids whose name the player has learned
     story_time: int = 0
 
 
@@ -34,6 +35,8 @@ def evaluate(cond: dict | None, ctx: PlayerContext) -> bool:
         return cond["gate_passed"] in ctx.passed_gates
     if "puzzle_solved" in cond:
         return cond["puzzle_solved"] in ctx.solved_puzzles
+    if "name_known" in cond:
+        return cond["name_known"] in ctx.known_names
     if "clue_found" in cond:
         return cond["clue_found"] in ctx.found_clues
     if "story_time_gte" in cond:

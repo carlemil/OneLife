@@ -1,8 +1,18 @@
 """Story-graph engine: context snapshot, effect applier, clue discovery,
 state rendering, and the uniform rollback (STORY_AND_PUZZLES.md §6/§7)."""
 import json
+import re
 from .dsl import PlayerContext, evaluate
 from . import memory
+
+# Tokens that are titles/particles, not the name itself (so "Herr Dödblek" is
+# "known" when an NPC says "Dödblek", not merely "Herr").
+_NAME_NOISE = {"the", "herr", "fru", "greve", "von", "van", "der", "af", "de", "la", "le"}
+
+
+def _name_tokens(full_name: str) -> list[str]:
+    return [t for t in re.findall(r"[^\W\d_]+", (full_name or "").lower())
+            if len(t) >= 3 and t not in _NAME_NOISE]
 
 
 # --------------------------------------------------------------------------- #
@@ -20,12 +30,27 @@ async def load_context(conn, player_id, story_time: int = 0) -> PlayerContext:
     puzzles = await conn.fetch(
         "SELECT puzzle_id FROM puzzle_progress WHERE player_id=$1 AND solved", player_id)
     clues = await conn.fetch("SELECT clue_id FROM player_clues WHERE player_id=$1", player_id)
+    # A character's name is "known" once an NPC has actually spoken it to this
+    # player — in that character's own gate, or another's (leaked memories surface
+    # as dialogue). The player typing a name doesn't count (role='agent' only).
+    # Match on any distinctive name token (first name OR surname), so e.g. "I'm
+    # Vallmo" reveals "Kurt Vallmo".
+    chars = await conn.fetch("SELECT id, name, reveal_name FROM characters")
+    said = await conn.fetch(
+        "SELECT content FROM gate_messages WHERE player_id=$1 AND role='agent'", player_id)
+    spoken = "\n".join((r["content"] or "") for r in said).lower()
+    known_names = set()
+    for c in chars:
+        toks = _name_tokens(c["reveal_name"] or c["name"])  # true name (reveal if withholding)
+        if toks and any(re.search(r"\b" + re.escape(t) + r"\b", spoken) for t in toks):
+            known_names.add(c["id"])
     return PlayerContext(
         flags={r["flag"] for r in flags},
         visited_nodes={r["node_id"] for r in visited},
         passed_gates={r["gate_id"] for r in gates},
         solved_puzzles={r["puzzle_id"] for r in puzzles},
         found_clues={r["clue_id"] for r in clues},
+        known_names=known_names,
         story_time=story_time,
     )
 
@@ -100,6 +125,24 @@ def resolve_body(node, ctx: PlayerContext) -> str:
     return node["body"]
 
 
+def _resolve_name(char, known: bool) -> tuple[str, str | None, bool]:
+    """What to call this NPC in the UI. `known` is whether the player has learned
+    the character's name (an NPC has spoken it — see load_context.known_names).
+    Until then a name-withholding character (reveal_name != name) shows its public
+    role descriptor (e.g. "The Janitor"); an open character, whose only name IS
+    their real one, is simply "NPC" until they introduce themselves.
+    Returns (display_name, true_name, name_known)."""
+    if char is None:
+        return "NPC", None, False
+    name = char["name"]
+    reveal = char["reveal_name"]
+    withholds = bool(reveal and reveal != name)
+    true_name = reveal or name
+    if known:
+        return true_name, true_name, True
+    return (name if withholds else "NPC"), true_name, False
+
+
 async def render_state(conn, player_id, session) -> dict:
     node = await conn.fetchrow(
         "SELECT * FROM story_nodes WHERE id=$1", session["current_node"])
@@ -159,15 +202,19 @@ async def render_state(conn, player_id, session) -> dict:
                WHERE player_id=$1 AND gate_id=$2 ORDER BY seq, created_at""",
             player_id, node["gate_id"])
         char = await conn.fetchrow(
-            """SELECT c.name, c.reveal_name FROM dialogue_gates g
+            """SELECT c.id, c.name, c.reveal_name FROM dialogue_gates g
                JOIN characters c ON c.id = g.character_id WHERE g.id=$1""",
             node["gate_id"])
+        known = bool(char and char["id"] in ctx.known_names)
+        display_name, true_name, name_known = _resolve_name(char, known)
         state["gate"] = {
             "gate_id": node["gate_id"],
             "messages": [{"role": m["role"], "content": m["content"]} for m in msgs],
             "satisfied": bool(ga["satisfied"]) if ga else False,
             "character_name": char["name"] if char else "NPC",
-            "reveal_name": (char["reveal_name"] or char["name"]) if char else None,
+            "reveal_name": true_name,
+            "display_name": display_name,
+            "name_known": name_known,
         }
 
     if node["type"] == "puzzle":

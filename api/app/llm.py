@@ -29,7 +29,8 @@ USING_REAL_LLM = _client is not None
 # --------------------------------------------------------------------------- #
 async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       own_memories: list[str] | None = None,
-                      leaked_memories: list[str] | None = None) -> str:
+                      leaked_memories: list[str] | None = None,
+                      identity: dict | None = None) -> str:
     kb = spec.get("knowledge_boundary", {})
     ladder = spec.get("hint_ladder", [])
     hint = ladder[min(hint_level, len(ladder) - 1)] if ladder else ""
@@ -38,6 +39,20 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
 
     if _client is None:
         return _stub_actor(history, hint_level, ladder, leaked_memories)
+
+    identity_block = ""
+    if identity:
+        if identity.get("withholds"):
+            identity_block = (
+                f"\nIDENTITY: others know you only as \"{identity['name']}\". You have "
+                f"reason to conceal your true name (\"{identity['true_name']}\") — do NOT "
+                "volunteer it and deflect if asked, until the player has genuinely earned "
+                "your trust; only then might you give your real name.")
+        else:
+            identity_block = (
+                f"\nIDENTITY: your name is \"{identity['name']}\". If you have not already "
+                "in this conversation, introduce yourself by name early and naturally, in "
+                "character, so the player learns what to call you.")
 
     memory_block = ""
     if own_memories:
@@ -62,6 +77,7 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
         "go see another person, open a door, or perform an errand — they cannot act "
         "on such instructions and it leaves them stuck. Mention other people, places, "
         "or things only as part of what you know or feel, never as a task for them."
+        f"{identity_block}"
         f"{memory_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
     )
