@@ -115,20 +115,23 @@ async def render_state(conn, player_id, session) -> dict:
             "SELECT id, type, gate_id, puzzle_id FROM story_nodes WHERE id = ANY($1::text[])",
             list(targets))
         tinfo = {r["id"]: r for r in trows}
-    visible = []
+    # Edges whose conditions hold, tagged with whether they lead into an
+    # already-finished interaction (a passed gate or a solved puzzle).
+    passing = []
     for e in edges:
         if not evaluate(json.loads(e["conditions"]), ctx):
             continue
-        # Hide a choice that leads into an interaction already finished — a gate
-        # you've passed or a puzzle you've solved. Navigation (location/narration/
-        # ending targets) is never hidden, so this can't soft-lock the player.
         t = tinfo.get(e["to_node"])
-        if t is not None:
-            if t["type"] == "gate" and t["gate_id"] in ctx.passed_gates:
-                continue
-            if t["type"] == "puzzle" and t["puzzle_id"] in ctx.solved_puzzles:
-                continue
-        visible.append({"id": e["id"], "label": e["label"], "danger": e["danger"]})
+        finished = t is not None and (
+            (t["type"] == "gate" and t["gate_id"] in ctx.passed_gates)
+            or (t["type"] == "puzzle" and t["puzzle_id"] in ctx.solved_puzzles))
+        passing.append((e, finished))
+    # Hide finished interactions to keep the menu clean — but NEVER hide the only
+    # way out. A gate node doubles as a location hub, so sub-nodes whose return
+    # edge points back at a now-passed gate would otherwise be soft-locked. If
+    # hiding leaves nothing, fall back to every condition-met edge.
+    shown = [e for e, fin in passing if not fin] or [e for e, _ in passing]
+    visible = [{"id": e["id"], "label": e["label"], "danger": e["danger"]} for e in shown]
 
     found = await conn.fetch(
         """SELECT pc.reveal_text FROM player_clues p

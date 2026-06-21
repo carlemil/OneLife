@@ -36,6 +36,7 @@
   let gateInput = $state('');
   let gateReply = $state('');           // the NPC's last spoken line (Actor reply)
   let gatePassed = $state(false);       // did the last turn pass the gate?
+  let puzzleResult = $state('');        // the outcome line shown after solving a puzzle
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
@@ -628,7 +629,7 @@
 
   async function onEdge(id) {
     busy = true;
-    gateReply = ''; gatePassed = false;   // a fresh scene clears the last NPC line
+    gateReply = ''; gatePassed = false; puzzleResult = '';   // a fresh scene clears the last reply
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
@@ -649,7 +650,13 @@
     try {
       const r = await api.puzzle(puzzleInput.trim());
       game = r.state; logEntries = (await api.log()).entries;
-      error = (!r.result.solved && r.result.hint) ? `Hint: ${r.result.hint}` : '';
+      if (r.result.solved) {
+        puzzleResult = r.result.message || '';   // show the outcome in the main window
+        error = '';
+      } else {
+        puzzleResult = '';
+        error = r.result.hint ? `Hint: ${r.result.hint}` : (r.result.message || '');
+      }
       puzzleInput = '';
     } catch (e) { error = e.message; }
     finally { busy = false; await tick(); puzzleEl?.focus(); }
@@ -754,11 +761,16 @@
           </form>
         {/if}
 
-        {#if game.node.type === 'puzzle' && game.puzzle && !game.puzzle.solved}
-          <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
-            <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter the code..." disabled={busy} />
-            <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
-          </form>
+        {#if game.node.type === 'puzzle' && game.puzzle}
+          <p class="puzzle-prompt">{game.puzzle.prompt}</p>
+          {#if game.puzzle.hint}<p class="puzzle-hint">💡 {game.puzzle.hint}</p>{/if}
+          {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
+          {#if !game.puzzle.solved}
+            <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
+              <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter your answer..." disabled={busy} />
+              <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
+            </form>
+          {/if}
         {/if}
 
         <div class="edges">
@@ -1129,6 +1141,8 @@
   .media { color:#5a5a72; font-size:.85rem; }
   .gate-reply { font-size:1.1rem; line-height:1.6; font-style:italic; color:#cdd0e6; border-left:3px solid #3a3f57; padding-left:.9rem; margin:1rem 0; }
   .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
+  .puzzle-prompt { font-size:1.1rem; line-height:1.6; color:#e8e8f0; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.7rem .9rem; margin:1rem 0 .5rem; }
+  .puzzle-hint { color:#d8c89a; font-size:.95rem; margin:.25rem 0 .5rem; }
   .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
   .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
