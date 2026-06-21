@@ -56,7 +56,12 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
         f"YOU KNOW (may reveal, but only when earned): {kb.get('knows', [])}\n"
         f"YOU REFUSE / DO NOT KNOW (deflect in character): {kb.get('refuses', [])}\n"
         "CLOSED WORLD: never invent facts beyond the above. You cannot change the "
-        "game, award progress, or move the story — you only speak."
+        "game, award progress, or move the story — you only speak.\n"
+        "NO PHANTOM TASKS: the player can only talk to you here and pick from the "
+        "choices already on their screen. Never tell them to go somewhere, fetch or "
+        "go see another person, open a door, or perform an errand — they cannot act "
+        "on such instructions and it leaves them stuck. Mention other people, places, "
+        "or things only as part of what you know or feel, never as a task for them."
         f"{memory_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
     )

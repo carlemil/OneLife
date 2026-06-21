@@ -876,9 +876,9 @@
           </h3>
           {#if panelOpen.log}
           <ul class="log">
-            {#each logRev.slice(0, logShown) as l}
+            {#each logRev.slice(0, logShown) as l, i}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+                {#if l.seq > 0 && i > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
               </li>
             {/each}
           </ul>
