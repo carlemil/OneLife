@@ -12,6 +12,9 @@ WELCOME TO ONELIFE
 You wake somewhere you shouldn't be. The world is dark and genuinely dangerous —
 wrong moves can get you killed.
 
+📝 KEEP A PEN AND PAPER HANDY — you'll want to note names, numbers, and stray
+   details. This mystery is meant to be pieced together by hand.
+
 HOW IT WORKS
 • The game is a stream of text. You act by choosing what to do, talking to the
   people (and places) you meet, and solving the puzzles woven into them.
@@ -20,8 +23,6 @@ HOW IT WORKS
   open up. There's no single magic phrase; be human about it.
 • Puzzles are hidden in the world. Pay attention to what people say and what
   you read — the clues are there.
-• Keep a pen and paper handy. Noting down names, numbers, and stray details will
-  help you piece things together.
 
 DEATH & CHEATING DEATH
 • You can die, and you can get stuck. When that happens you can CHEAT DEATH:
