@@ -100,7 +100,7 @@ async def process_message(conn, player_id, session, text: str) -> dict:
             "UPDATE player_sessions SET story_time=$1 WHERE token=$2",
             story_time, session["token"])
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, session["log_id"], story_time, seq)
+        await discover_clues(conn, player_id, session["log_id"], story_time, node["id"])
 
         # Write the NPC's memory of this interaction — becomes leakable to others.
         wm = on_success.get("write_memory")

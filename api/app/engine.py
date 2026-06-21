@@ -61,6 +61,30 @@ async def next_seq(conn, log_id) -> int:
     return row["s"]
 
 
+# Every beat in the narration flow carries a `kind` so the UI can style it and so
+# nothing meaningful is ever silent. When an effect/edge has no authored `log`
+# line, fall back to a generic one keyed by kind rather than an empty summary.
+_FALLBACK_SUMMARY = {
+    "action": "You press on.",
+    "scene": "You take in your surroundings.",
+    "dialogue": "The conversation shifts.",
+    "puzzle": "It gives way.",
+    "death": "Everything goes dark.",
+}
+
+
+async def narrate(conn, log_id, *, node_id, story_time, summary, kind) -> int:
+    """Append a standalone narration beat to the flow (a log entry with no side
+    effects). Used for world changes that aren't actions in their own right —
+    discovering a clue, the map opening up — so they show in the running story."""
+    seq = await next_seq(conn, log_id)
+    await conn.execute(
+        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,$2,$3,$4,$5,$6)""",
+        log_id, seq, story_time, node_id, summary, kind)
+    return seq
+
+
 # --------------------------------------------------------------------------- #
 #  Apply one action: a single log entry + its effects, all stamped with seq.
 # --------------------------------------------------------------------------- #
@@ -69,12 +93,13 @@ async def apply_action(conn, player_id, log_id, *, node_id: str | None,
                        kind: str = "action", summary_override: str | None = None):
     seq = await next_seq(conn, log_id)
     story_time = story_time + int(effects.get("advance_story_time", 0))
-    summary = summary_override or effects.get("log", "")
+    summary = summary_override or effects.get("log", "") \
+        or _FALLBACK_SUMMARY.get(kind, "Something shifts.")
 
     await conn.execute(
-        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary)
-           VALUES ($1,$2,$3,$4,$5)""",
-        log_id, seq, story_time, node_id, summary)
+        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,$2,$3,$4,$5,$6)""",
+        log_id, seq, story_time, node_id, summary, kind)
 
     pts = int(effects.get("progress_points", 0))
     if pts:
@@ -96,18 +121,26 @@ async def apply_action(conn, player_id, log_id, *, node_id: str | None,
     return seq, story_time
 
 
-async def discover_clues(conn, player_id, log_id, story_time, seq: int):
-    """After a state change, discover any clues whose conditions now hold."""
+async def discover_clues(conn, player_id, log_id, story_time, node_id=None):
+    """After a state change, discover any clues whose conditions now hold. Each
+    newly found clue writes its own 'clue' beat into the narration flow, and the
+    clue is stamped with that beat's seq so the two roll back together."""
     ctx = await load_context(conn, player_id, story_time)
-    rows = await conn.fetch("SELECT id, discover_conditions FROM puzzle_clues")
+    rows = await conn.fetch(
+        "SELECT id, reveal_text, discover_conditions FROM puzzle_clues")
     for r in rows:
         if r["id"] in ctx.found_clues:
             continue
         if evaluate(json.loads(r["discover_conditions"]), ctx):
+            seq = await narrate(
+                conn, log_id, node_id=node_id, story_time=story_time,
+                summary=f"You notice: {r['reveal_text']}", kind="clue")
             await conn.execute(
                 """INSERT INTO player_clues (player_id, clue_id, found_at_seq)
                    VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""",
                 player_id, r["id"], seq)
+            # Let a clue unlocked this pass satisfy another clue's condition.
+            ctx.found_clues.add(r["id"])
 
 
 # --------------------------------------------------------------------------- #

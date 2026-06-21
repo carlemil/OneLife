@@ -34,13 +34,11 @@
   let logEntries = $state([]);
   let myWindow = $state([]);
   let gateInput = $state('');
-  let gateReply = $state('');           // the NPC's last spoken line (Actor reply)
-  let gatePassed = $state(false);       // did the last turn pass the gate?
-  let puzzleResult = $state('');        // the outcome line shown after solving a puzzle
+  let gatePassed = $state(false);       // did the last turn pass the gate? (shows a note)
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
-    const def = { atmosphere: true, leaderboard: true, notes: true, log: true };
+    const def = { atmosphere: true, leaderboard: true, notes: true };
     try { return { ...def, ...JSON.parse(localStorage.getItem('onelife_panels') || '{}') }; }
     catch { return def; }
   }
@@ -52,18 +50,16 @@
   let gateEl = $state(null);
   let puzzleEl = $state(null);
 
-  // Newest-on-top with "More" pagination, for the dialog and the log.
-  const GATE_PAGE = 12;
-  const LOG_PAGE = 10;
-  let gateShown = $state(GATE_PAGE);
-  let logShown = $state(LOG_PAGE);
-  let gateMsgs = $derived(game?.gate?.messages ? [...game.gate.messages].reverse() : []);
-  let logRev = $derived(logEntries ? [...logEntries].reverse() : []);
-  // What to call the NPC in the transcript. The backend resolves this: open
-  // characters introduce themselves (name known from the start); name-withholding
-  // ones stay a role descriptor (e.g. "The Janitor") until their true name is
-  // learned here or in another conversation, then switch to it.
-  let npcLabel = $derived(game?.gate?.display_name || 'NPC');
+  // The running story flow: every beat (log entries + the NPC dialogue woven in
+  // by the backend) in chronological order, oldest first. Paged from the top so
+  // a long game can't render thousands of beats at once.
+  const FEED_PAGE = 40;
+  let feedShown = $state(FEED_PAGE);
+  let feed = $derived(logEntries || []);
+  let sceneEl = $state(null);   // the live "current scene" — we scroll it into view
+  let _seenBeats = 0;
+  // Icon per beat kind; dialogue and scene lines carry none.
+  const KIND_ICON = { action: '›', puzzle: '🧩', clue: '✦', travel: '🗺', death: '✝' };
 
   // world map
   let world = $state(null);
@@ -195,7 +191,17 @@
   // Reload atmosphere whenever the location (node) changes.
   $effect(() => {
     const id = game?.node?.id;
-    if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; gateShown = GATE_PAGE; loadAtmosphere(); }
+    if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; loadAtmosphere(); }
+  });
+
+  // Keep the latest of the story flow in view: when new beats arrive, bring the
+  // current scene (which sits just below them) into view.
+  $effect(() => {
+    const n = feed.length;
+    if (phase === 'game' && n !== _seenBeats) {
+      _seenBeats = n;
+      tick().then(() => sceneEl?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+    }
   });
 
   onMount(async () => {
@@ -627,7 +633,7 @@
 
   async function onEdge(id) {
     busy = true;
-    gateReply = ''; gatePassed = false; puzzleResult = '';   // a fresh scene clears the last reply
+    gatePassed = false;   // a fresh scene clears the "way opened" note
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
@@ -636,8 +642,7 @@
     try {
       const r = await api.gate(gateInput.trim());
       gateInput = '';
-      gateReply = r.result?.reply || '';        // show what the NPC actually said
-      gatePassed = !!r.result?.satisfied;        // …and whether that opened the gate
+      gatePassed = !!r.result?.satisfied;   // did this turn open the gate? (reply shows in the flow)
       game = r.state; logEntries = (await api.log()).entries;
     }
     catch (e) { error = e.message; }
@@ -648,11 +653,10 @@
     try {
       const r = await api.puzzle(puzzleInput.trim());
       game = r.state; logEntries = (await api.log()).entries;
+      // The solve narration appears in the story flow; a wrong guess shows a hint.
       if (r.result.solved) {
-        puzzleResult = r.result.message || '';   // show the outcome in the main window
         error = '';
       } else {
-        puzzleResult = '';
         error = r.result.hint ? `Hint: ${r.result.hint}` : (r.result.message || '');
       }
       puzzleInput = '';
@@ -738,63 +742,69 @@
     </div>
     <div class="layout">
       <section class="story">
-        {#if atmo?.image_url}
-          <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
-        {:else if atmo?.image_svg}
-          <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
-        {/if}
-        <h2>{game.node.title}</h2>
-        <p class="body">{game.node.body}</p>
-        <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
-
-        {#if gateReply}
-          <p class="gate-reply">{gateReply}</p>
-          {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
-        {/if}
-
-        {#if game.node.type === 'gate' && game.gate}
-          <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
-            <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
-            <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
-          </form>
-        {/if}
-
-        {#if game.node.type === 'puzzle' && game.puzzle}
-          <p class="puzzle-prompt">{game.puzzle.prompt}</p>
-          {#if game.puzzle.hint}<p class="puzzle-hint">💡 {game.puzzle.hint}</p>{/if}
-          {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
-          {#if !game.puzzle.solved}
-            <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
-              <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter your answer..." disabled={busy} />
-              <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
-            </form>
+        <!-- The running story: every beat — moves, dialogue, puzzle solves, clues
+             found, the map opening, death — in the order it happened. -->
+        <div class="transcript">
+          {#if feed.length > feedShown}
+            <button class="link more earlier" onclick={() => (feedShown += FEED_PAGE)}>↑ earlier ({feed.length - feedShown})</button>
           {/if}
-        {/if}
-
-        <div class="edges">
-          {#each game.edges as e}
-            <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
-              {e.label}{#if e.danger > 0} ⚠{/if}
-            </button>
+          {#each feed.slice(Math.max(0, feed.length - feedShown)) as l}
+            {#if l.kind === 'dialogue'}
+              <p class="beat dialogue {l.speaker === 'You' ? 'me' : 'npc'}"><b class="who">{l.speaker}:</b> {l.summary}</p>
+            {:else}
+              <p class="beat beat-{l.kind}">
+                {#if KIND_ICON[l.kind]}<span class="ic">{KIND_ICON[l.kind]}</span> {/if}{l.summary || '…'}
+                {#if l.seq > 0 && l.node_id}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+              </p>
+            {/if}
           {/each}
-          {#if game.edges.length === 0 && game.node.is_death}
-            <p class="dead">You are dead. Cheat death from the Log panel on the right (↩) to return to an earlier point — at a cost.</p>
-          {/if}
-          {#if game.node.world_access}
-            <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
-          {/if}
         </div>
 
-        {#if game.node.type === 'gate' && game.gate}
-          <div class="chat">
-            {#each gateMsgs.slice(0, gateShown) as m}
-              <p class={m.role === 'player' ? 'me' : 'npc'}><b>{m.role === 'player' ? 'You' : npcLabel}:</b> {m.content}</p>
+        <!-- The current moment: where the player acts next. -->
+        <div class="scene" bind:this={sceneEl}>
+          {#if atmo?.image_url}
+            <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
+          {:else if atmo?.image_svg}
+            <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
+          {/if}
+          <h2>{game.node.title}</h2>
+          <p class="body">{game.node.body}</p>
+          <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
+
+          {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
+
+          {#if game.node.type === 'gate' && game.gate}
+            <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
+              <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
+              <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
+            </form>
+          {/if}
+
+          {#if game.node.type === 'puzzle' && game.puzzle}
+            <p class="puzzle-prompt">{game.puzzle.prompt}</p>
+            {#if game.puzzle.hint}<p class="puzzle-hint">💡 {game.puzzle.hint}</p>{/if}
+            {#if !game.puzzle.solved}
+              <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
+                <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter your answer..." disabled={busy} />
+                <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
+              </form>
+            {/if}
+          {/if}
+
+          <div class="edges">
+            {#each game.edges as e}
+              <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
+                {e.label}{#if e.danger > 0} ⚠{/if}
+              </button>
             {/each}
-            {#if gateMsgs.length > gateShown}
-              <button class="link more" onclick={() => (gateShown += GATE_PAGE)}>more ({gateMsgs.length - gateShown} earlier)</button>
+            {#if game.edges.length === 0 && game.node.is_death}
+              <p class="dead">You are dead. Scroll up and use ↩ on an earlier beat to cheat death and return there — at a cost.</p>
+            {/if}
+            {#if game.node.world_access}
+              <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
             {/if}
           </div>
-        {/if}
+        </div>
       </section>
 
       <aside class="side">
@@ -866,25 +876,6 @@
             {/if}
           </div>
         {/if}
-        <div class="panel" class:collapsed={!panelOpen.log}>
-          <h3 class="acc-head">
-            <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
-              <span class="chev">{panelOpen.log ? '▲' : '▼'}</span> Log <span class="sub">(your progress)</span>
-            </button>
-          </h3>
-          {#if panelOpen.log}
-          <ul class="log">
-            {#each logRev.slice(0, logShown) as l, i}
-              <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0 && i > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
-              </li>
-            {/each}
-          </ul>
-          {#if logRev.length > logShown}
-            <button class="link more" onclick={() => (logShown += LOG_PAGE)}>more ({logRev.length - logShown} earlier)</button>
-          {/if}
-          {/if}
-        </div>
       </aside>
     </div>
   {/if}
@@ -1137,7 +1128,6 @@
   .topbar .link { font-size:1.6rem; padding-left:.8rem; vertical-align:middle; line-height:1; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
-  .gate-reply { font-size:1.1rem; line-height:1.6; font-style:italic; color:#cdd0e6; border-left:3px solid #3a3f57; padding-left:.9rem; margin:1rem 0; }
   .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
   .puzzle-prompt { font-size:1.1rem; line-height:1.6; color:#e8e8f0; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.7rem .9rem; margin:1rem 0 .5rem; }
   .puzzle-hint { color:#d8c89a; font-size:.95rem; margin:.25rem 0 .5rem; }
@@ -1161,8 +1151,23 @@
   .tabs button { flex:1; background:#15171f; }
   .tabs button.active { background:#34416a; }
   .switch { margin-top:.7rem; font-size:.85rem; color:#9aa; }
-  .chat { background:#15171f; border-radius:8px; padding:.75rem; margin:.5rem 0; }
-  .chat .me { color:#9fd3ff; } .chat .npc { color:#cdbb9a; }
+  /* The running story flow */
+  .transcript { margin-bottom:1.25rem; }
+  .beat { font-size:1.05rem; line-height:1.55; margin:.45rem 0; color:#cfd0dc; }
+  .beat .ic { color:#6f7290; margin-right:.15rem; }
+  .beat .rollback { opacity:0; transition:opacity .12s; }
+  .beat:hover .rollback { opacity:1; }
+  .beat-clue { color:#cdbb9a; }
+  .beat-travel { color:#8fb8c8; }
+  .beat-death { color:#d98a8a; font-weight:bold; }
+  .beat-puzzle { color:#cdd0e6; }
+  .beat.dialogue { font-style:italic; border-left:2px solid #2a2e3e; padding-left:.7rem; }
+  .beat.dialogue .who { font-style:normal; }
+  .beat.dialogue.me { color:#9fd3ff; } .beat.dialogue.npc { color:#cdbb9a; }
+  .earlier { display:block; margin:0 0 .8rem; color:#6f7290; }
+  /* The current scene sits below the flow, set apart so the player's next move
+     is easy to find after a long transcript. */
+  .scene { border-top:1px solid #2a2e3e; padding-top:1rem; }
   .row { display:flex; gap:.5rem; margin:.5rem 0; }
   input { display:block; width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; margin:.4rem 0; }
   .row input { margin:0; flex:1; }
@@ -1182,7 +1187,6 @@
   button.danger { background:#4a2330; border-color:#6a3346; }
   button.link { background:none; border:none; color:#7fa8d8; padding:0 0 0 .4rem; width:auto; cursor:pointer; font-size:.8rem; }
   .dead { color:#c98; }
-  .log { list-style:none; padding:0; font-size:.85rem; } .log .seq { color:#5a5a72; }
   .more { display:inline-block; margin-top:.5rem; }
   .rollback { font-size:1rem; line-height:1; }
   .notelist { list-style:disc; padding-left:1.1rem; margin:.3rem 0 0; font-size:.82rem; color:#cdbb9a; }

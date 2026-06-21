@@ -56,7 +56,7 @@ async def submit(conn, player_id, session, answer: str) -> dict:
             "UPDATE player_sessions SET story_time=$1 WHERE token=$2",
             story_time, session["token"])
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, session["log_id"], story_time, seq)
+        await discover_clues(conn, player_id, session["log_id"], story_time, node["id"])
         return {"solved": True, "message": on_solve.get("log", "It opens.")}
 
     await conn.execute(

@@ -136,33 +136,47 @@ async def _start_game(conn, sess: dict):
         "INSERT INTO game_logs (player_id) VALUES ($1) RETURNING id", pid)
     entry = await conn.fetchrow("SELECT id FROM story_nodes WHERE is_entry LIMIT 1")
     await conn.execute(
-        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary)
-           VALUES ($1,0,0,$2,'You woke at Killebäckskolan.')""", log_id, entry["id"])
+        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,0,0,$2,'You woke at Killebäckskolan.','scene')""",
+        log_id, entry["id"])
     await conn.execute(
         "UPDATE player_sessions SET current_node=$1, log_id=$2 WHERE player_id=$3",
         entry["id"], log_id, pid)
     sess["current_node"] = entry["id"]
     sess["log_id"] = log_id
-    await engine.discover_clues(conn, pid, log_id, 0, 0)
-    await _reveal_cells_around(conn, pid, entry["id"], 0)
+    await engine.discover_clues(conn, pid, log_id, 0, entry["id"])
+    await _reveal_cells_around(conn, pid, entry["id"], 0, log_id, 0)
 
 
-async def _reveal_cells_around(conn, player_id, node_id, seq):
-    """Fog-of-war: discover the node's cell + orthogonally adjacent cells."""
+async def _reveal_cells_around(conn, player_id, node_id, seq, log_id, story_time):
+    """Fog-of-war: discover the node's cell + orthogonally adjacent cells. Newly
+    revealed neighbours are narrated as one 'travel' beat in the story flow."""
     cell = await conn.fetchrow(
-        """SELECT w.grid_x, w.grid_y FROM story_nodes n
+        """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
            JOIN locations l ON l.id = n.location_id
            JOIN world_cells w ON w.id = l.cell_id
            WHERE n.id=$1""", node_id)
     if cell is None:
         return
     near = await conn.fetch(
-        "SELECT id FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
+        "SELECT id, name FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
         cell["grid_x"], cell["grid_y"])
+    have = {r["cell_id"] for r in await conn.fetch(
+        "SELECT cell_id FROM player_cells WHERE player_id=$1", player_id)}
+    fresh = [c for c in near if c["id"] not in have and c["id"] != cell["id"]]
+    beat_seq = seq
+    if fresh:
+        names = ", ".join(c["name"] for c in fresh)
+        beat_seq = await engine.narrate(
+            conn, log_id, node_id=node_id, story_time=story_time,
+            summary=f"New paths open on your map: {names}.", kind="travel")
     for c in near:
+        if c["id"] in have:
+            continue
+        stamp = beat_seq if c["id"] != cell["id"] else seq
         await conn.execute(
             """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
-               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], seq)
+               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], stamp)
 
 
 # --------------------------------------------------------------------------- #
@@ -376,15 +390,24 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
             if not evaluate(json.loads(edge["conditions"]), ctx):
                 raise HTTPException(400, "edge conditions not met")
             effects = json.loads(edge["effects"])
+            dest = await conn.fetchrow(
+                "SELECT title, is_death FROM story_nodes WHERE id=$1", edge["to_node"])
+            kind = "death" if (dest and dest["is_death"]) else "action"
+            # Name the place when the edge has no authored line, so every move
+            # reads as a beat in the flow rather than a blank step.
+            override = None if effects.get("log") else (
+                f"You go to {dest['title']}." if dest else None)
             seq, story_time = await engine.apply_action(
                 conn, sess["player_id"], sess["log_id"], node_id=edge["to_node"],
-                effects=effects, story_time=sess["story_time"], kind="action")
+                effects=effects, story_time=sess["story_time"], kind=kind,
+                summary_override=override)
             await conn.execute(
                 "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
                 edge["to_node"], story_time, sess["token"])
             sess["current_node"] = edge["to_node"]
             sess["story_time"] = story_time
-            await engine.discover_clues(conn, sess["player_id"], sess["log_id"], story_time, seq)
+            await engine.discover_clues(
+                conn, sess["player_id"], sess["log_id"], story_time, sess["current_node"])
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
@@ -433,10 +456,35 @@ async def get_log(authorization: str | None = Header(default=None)):
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            """SELECT seq, summary, node_id FROM log_entries
+            """SELECT seq, summary, node_id, kind FROM log_entries
                WHERE log_id=$1 AND NOT rolled_back ORDER BY seq""", sess["log_id"])
-    return {"entries": [{"seq": r["seq"], "summary": r["summary"],
-                         "node_id": r["node_id"]} for r in rows]}
+        # Weave the NPC conversation into the same flow. Gate messages are stamped
+        # with the seq they happened at and pruned on rollback, so they stay in
+        # step with the log beats. Resolve each NPC's name the way the live view
+        # does (a name-withholder stays a role descriptor until it's learned).
+        msgs = await conn.fetch(
+            """SELECT m.seq, m.role, m.content, m.created_at, g.character_id
+               FROM gate_messages m JOIN dialogue_gates g ON g.id = m.gate_id
+               WHERE m.player_id=$1 ORDER BY m.seq, m.created_at""", sess["player_id"])
+        ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
+        chars = {c["id"]: c for c in await conn.fetch(
+            "SELECT id, name, reveal_name FROM characters")}
+
+    entries = [{"seq": r["seq"], "ord": 0, "summary": r["summary"],
+                "node_id": r["node_id"], "kind": r["kind"]} for r in rows]
+    for m in msgs:
+        if m["role"] == "player":
+            speaker = "You"
+        else:
+            c = chars.get(m["character_id"])
+            speaker = engine._resolve_name(
+                c, m["character_id"] in ctx.known_names)[0] if c else "NPC"
+        entries.append({"seq": m["seq"], "ord": 1, "summary": m["content"],
+                        "node_id": None, "kind": "dialogue", "speaker": speaker})
+    # Stable sort keeps each turn's player→NPC order (already created_at-ordered)
+    # and places a beat's dialogue right after the beat itself.
+    entries.sort(key=lambda e: (e["seq"], e["ord"]))
+    return {"entries": entries}
 
 
 @app.get("/api/memories")
@@ -530,8 +578,10 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
                 arrival, story_time, sess["token"])
             sess["current_node"] = arrival
             sess["story_time"] = story_time
-            await engine.discover_clues(conn, sess["player_id"], sess["log_id"], story_time, seq)
-            await _reveal_cells_around(conn, sess["player_id"], arrival, seq)
+            await engine.discover_clues(
+                conn, sess["player_id"], sess["log_id"], story_time, arrival)
+            await _reveal_cells_around(
+                conn, sess["player_id"], arrival, seq, sess["log_id"], story_time)
         return await engine.render_state(conn, sess["player_id"], sess)
 
 

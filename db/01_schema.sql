@@ -138,6 +138,7 @@ CREATE TABLE log_entries (
     story_time  BIGINT NOT NULL DEFAULT 0,
     node_id     TEXT,
     summary     TEXT NOT NULL,
+    kind        TEXT NOT NULL DEFAULT 'action',  -- action|scene|dialogue|puzzle|clue|travel|death|system
     rolled_back BOOLEAN NOT NULL DEFAULT FALSE,
     created_at  TIMESTAMPTZ NOT NULL DEFAULT now(),
     UNIQUE (log_id, seq)
