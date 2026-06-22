@@ -16,6 +16,7 @@
   let email = $state('');
   let password = $state('');
   let displayName = $state('');
+  let twoFactor = $state(true);   // 2FA on by default; opt out at registration
   let code = $state('');
 
   // 2fa setup
@@ -34,7 +35,9 @@
   let logEntries = $state([]);
   let myWindow = $state([]);
   let gateInput = $state('');
+  let gateReply = $state('');           // latest NPC line, echoed by the input for immediacy
   let gatePassed = $state(false);       // did the last turn pass the gate? (shows a note)
+  let puzzleResult = $state('');        // latest solve message, echoed by the puzzle input
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
@@ -194,13 +197,12 @@
     if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; loadAtmosphere(); }
   });
 
-  // Keep the latest of the story flow in view: when new beats arrive, bring the
-  // current scene (which sits just below them) into view.
+  // After acting, keep the scene's controls in view (the log grows below them).
   $effect(() => {
     const n = feed.length;
     if (phase === 'game' && n !== _seenBeats) {
       _seenBeats = n;
-      tick().then(() => sceneEl?.scrollIntoView({ behavior: 'smooth', block: 'start' }));
+      tick().then(() => sceneEl?.scrollIntoView({ behavior: 'smooth', block: 'nearest' }));
     }
   });
 
@@ -229,10 +231,17 @@
   async function doRegister() {
     error = ''; busy = true;
     try {
-      const r = await api.register(email.trim(), password, displayName.trim());
-      qrSvg = r.qr_svg; secret = r.secret;
-      phase = 'twofa';
-      notice = 'Scan the QR with an authenticator app, then enter a code to finish setup.';
+      const r = await api.register(email.trim(), password, displayName.trim(), twoFactor);
+      if (r.two_factor) {
+        qrSvg = r.qr_svg; secret = r.secret;
+        phase = 'twofa';
+        notice = 'Scan the QR with an authenticator app, then enter a code to finish setup.';
+      } else {
+        // Password-only account: log straight in, no code needed.
+        notice = '';
+        const lr = await api.login(email.trim(), password, '');
+        if (lr.onboarded) await loadGame(); else await loadOnboarding();
+      }
     } catch (e) { error = e.message; }
     finally { busy = false; }
   }
@@ -633,7 +642,7 @@
 
   async function onEdge(id) {
     busy = true;
-    gatePassed = false;   // a fresh scene clears the "way opened" note
+    gateReply = ''; gatePassed = false; puzzleResult = '';   // a fresh scene clears the last reply
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
@@ -642,7 +651,8 @@
     try {
       const r = await api.gate(gateInput.trim());
       gateInput = '';
-      gatePassed = !!r.result?.satisfied;   // did this turn open the gate? (reply shows in the flow)
+      gateReply = r.result?.reply || '';     // echo the NPC's line by the input
+      gatePassed = !!r.result?.satisfied;    // …and whether that opened the gate
       game = r.state; logEntries = (await api.log()).entries;
     }
     catch (e) { error = e.message; }
@@ -653,10 +663,11 @@
     try {
       const r = await api.puzzle(puzzleInput.trim());
       game = r.state; logEntries = (await api.log()).entries;
-      // The solve narration appears in the story flow; a wrong guess shows a hint.
+      // Echo the outcome by the input; a wrong guess shows a hint instead.
       if (r.result.solved) {
-        error = '';
+        puzzleResult = r.result.message || ''; error = '';
       } else {
+        puzzleResult = '';
         error = r.result.hint ? `Hint: ${r.result.hint}` : (r.result.message || '');
       }
       puzzleInput = '';
@@ -686,10 +697,11 @@
       <input type="password" bind:value={password} placeholder="Password (min 8 chars)" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       {#if authMode==='register'}
         <input bind:value={displayName} placeholder="Display name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
+        <label class="opt toggle"><input type="checkbox" bind:checked={twoFactor} /> Protect this account with two-factor auth (recommended)</label>
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
         <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>
       {:else}
-        <input bind:value={code} placeholder="Authenticator code (or a recovery code)" onkeydown={(e) => e.key === 'Enter' && doLogin()} />
+        <input bind:value={code} placeholder="Authenticator code (blank if 2FA is off)" onkeydown={(e) => e.key === 'Enter' && doLogin()} />
         <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
         <p class="switch">No account yet? <button class="link" onclick={() => { authMode='register'; error=''; }}>Register</button></p>
       {/if}
@@ -742,24 +754,6 @@
     </div>
     <div class="layout">
       <section class="story">
-        <!-- The running story: every beat — moves, dialogue, puzzle solves, clues
-             found, the map opening, death — in the order it happened. -->
-        <div class="transcript">
-          {#if feed.length > feedShown}
-            <button class="link more earlier" onclick={() => (feedShown += FEED_PAGE)}>↑ earlier ({feed.length - feedShown})</button>
-          {/if}
-          {#each feed.slice(Math.max(0, feed.length - feedShown)) as l}
-            {#if l.kind === 'dialogue'}
-              <p class="beat dialogue {l.speaker === 'You' ? 'me' : 'npc'}"><b class="who">{l.speaker}:</b> {l.summary}</p>
-            {:else}
-              <p class="beat beat-{l.kind}">
-                {#if KIND_ICON[l.kind]}<span class="ic">{KIND_ICON[l.kind]}</span> {/if}{l.summary || '…'}
-                {#if l.seq > 0 && l.node_id}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
-              </p>
-            {/if}
-          {/each}
-        </div>
-
         <!-- The current moment: where the player acts next. -->
         <div class="scene" bind:this={sceneEl}>
           {#if atmo?.image_url}
@@ -771,13 +765,13 @@
           <p class="body">{game.node.body}</p>
           <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
-          {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
-
           {#if game.node.type === 'gate' && game.gate}
             <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
               <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
               <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
             </form>
+            {#if gateReply}<p class="gate-reply">{gateReply}</p>{/if}
+            {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
           {/if}
 
           {#if game.node.type === 'puzzle' && game.puzzle}
@@ -789,6 +783,7 @@
                 <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
               </form>
             {/if}
+            {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
           {/if}
 
           <div class="edges">
@@ -798,12 +793,30 @@
               </button>
             {/each}
             {#if game.edges.length === 0 && game.node.is_death}
-              <p class="dead">You are dead. Scroll up and use ↩ on an earlier beat to cheat death and return there — at a cost.</p>
+              <p class="dead">You are dead. Scroll down to the log and use ↩ on an earlier beat to cheat death and return there — at a cost.</p>
             {/if}
             {#if game.node.world_access}
               <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
             {/if}
           </div>
+        </div>
+
+        <!-- The running log of everything that has happened, kept at the bottom. -->
+        <div class="transcript">
+          <h3 class="flow-head">The log so far <span class="sub">— newest first</span></h3>
+          {#each feed.slice(Math.max(0, feed.length - feedShown)).reverse() as l}
+            {#if l.kind === 'dialogue'}
+              <p class="beat dialogue {l.speaker === 'You' ? 'me' : 'npc'}"><b class="who">{l.speaker}:</b> {l.summary}</p>
+            {:else}
+              <p class="beat beat-{l.kind}">
+                {#if KIND_ICON[l.kind]}<span class="ic">{KIND_ICON[l.kind]}</span> {/if}{l.summary || '…'}
+                {#if l.seq > 0 && l.node_id}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+              </p>
+            {/if}
+          {/each}
+          {#if feed.length > feedShown}
+            <button class="link more earlier" onclick={() => (feedShown += FEED_PAGE)}>↓ earlier ({feed.length - feedShown})</button>
+          {/if}
         </div>
       </section>
 
@@ -1151,8 +1164,10 @@
   .tabs button { flex:1; background:#15171f; }
   .tabs button.active { background:#34416a; }
   .switch { margin-top:.7rem; font-size:.85rem; color:#9aa; }
-  /* The running story flow */
-  .transcript { margin-bottom:1.25rem; }
+  .gate-reply { font-size:1.1rem; line-height:1.6; font-style:italic; color:#cdd0e6; border-left:3px solid #3a3f57; padding-left:.9rem; margin:1rem 0; }
+  /* The running log, kept below the current scene. */
+  .transcript { margin-top:1.5rem; border-top:1px solid #2a2e3e; padding-top:1rem; }
+  .flow-head { margin:0 0 .6rem; font-size:.95rem; font-weight:normal; color:#6f7290; }
   .beat { font-size:1.05rem; line-height:1.55; margin:.45rem 0; color:#cfd0dc; }
   .beat .ic { color:#6f7290; margin-right:.15rem; }
   .beat .rollback { opacity:0; transition:opacity .12s; }
@@ -1164,10 +1179,7 @@
   .beat.dialogue { font-style:italic; border-left:2px solid #2a2e3e; padding-left:.7rem; }
   .beat.dialogue .who { font-style:normal; }
   .beat.dialogue.me { color:#9fd3ff; } .beat.dialogue.npc { color:#cdbb9a; }
-  .earlier { display:block; margin:0 0 .8rem; color:#6f7290; }
-  /* The current scene sits below the flow, set apart so the player's next move
-     is easy to find after a long transcript. */
-  .scene { border-top:1px solid #2a2e3e; padding-top:1rem; }
+  .earlier { display:block; margin:.8rem 0 0; color:#6f7290; }
   .row { display:flex; gap:.5rem; margin:.5rem 0; }
   input { display:block; width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; margin:.4rem 0; }
   .row input { margin:0; flex:1; }
@@ -1176,6 +1188,7 @@
   .manual { white-space:pre-wrap; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:1rem; font-family:Georgia,serif; line-height:1.5; }
   .quiz-q { margin:.8rem 0; } .quiz-q .q { font-weight:bold; margin-bottom:.3rem; }
   .opt { display:block; cursor:pointer; padding:.15rem 0; }
+  .opt.toggle { font-size:.9rem; color:#9aa; margin:.3rem 0 .6rem; }
   .opt input { display:inline; width:auto; margin-right:.5rem; }
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }

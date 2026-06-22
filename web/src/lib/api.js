@@ -36,8 +36,8 @@ export const api = {
   logout() { localStorage.removeItem('onelife_token'); },
 
   // auth
-  register: (email, password, display_name) =>
-    req('/api/auth/register', { method: 'POST', auth: false, body: { email, password, display_name } }),
+  register: (email, password, display_name, two_factor = true) =>
+    req('/api/auth/register', { method: 'POST', auth: false, body: { email, password, display_name, two_factor } }),
   enableTotp: (email, password, code) =>
     req('/api/auth/totp/enable', { method: 'POST', auth: false, body: { email, password, code } }),
   async login(email, password, code) {

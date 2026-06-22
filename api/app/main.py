@@ -184,6 +184,7 @@ class RegisterBody(BaseModel):
     email: str
     password: str
     display_name: str
+    two_factor: bool = True   # opt out to create a password-only account
 
 class TotpBody(BaseModel):
     email: str
@@ -255,21 +256,48 @@ async def register(body: RegisterBody, request: Request):
         raise HTTPException(400, "password must be at least 8 characters")
     if not name:
         raise HTTPException(400, "display_name required")
-    secret = auth.new_totp_secret()
+    want_2fa = bool(body.two_factor)
+    secret = auth.new_totp_secret() if want_2fa else None
+    enc_secret = security.encrypt(secret) if want_2fa else None
+    pwd = auth.hash_password(body.password)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            if await conn.fetchval("SELECT 1 FROM players WHERE email=$1", email):
-                raise HTTPException(409, "email already registered")
-            if await conn.fetchval("SELECT 1 FROM players WHERE display_name=$1", name):
+            existing = await conn.fetchrow(
+                """SELECT id, totp_secret, totp_enabled FROM players WHERE email=$1""",
+                email)
+            # An account is only reclaimable if it's a half-finished 2FA setup —
+            # a secret was issued but never confirmed, so it can never be logged
+            # into. (A password-only account has no secret; a finished account is
+            # totp_enabled.) Re-registering that dead account heals it instead of
+            # leaving the user stuck between a 409 and a 403.
+            reclaimable = existing is not None \
+                and existing["totp_secret"] is not None and not existing["totp_enabled"]
+            if existing is not None and not reclaimable:
+                raise HTTPException(409, "email already registered — log in instead")
+            if await conn.fetchval(
+                    "SELECT 1 FROM players WHERE display_name=$1 AND email<>$2", name, email):
                 raise HTTPException(409, "display name taken")
-            await conn.execute(
-                """INSERT INTO players (email, password_hash, display_name, totp_secret)
-                   VALUES ($1,$2,$3,$4)""",
-                email, auth.hash_password(body.password), name, security.encrypt(secret))
+            if reclaimable:
+                await conn.execute(
+                    "DELETE FROM recovery_codes WHERE player_id=$1", existing["id"])
+                await conn.execute(
+                    "DELETE FROM player_sessions WHERE player_id=$1", existing["id"])
+                await conn.execute(
+                    """UPDATE players SET password_hash=$2, display_name=$3,
+                       totp_secret=$4, totp_enabled=FALSE WHERE id=$1""",
+                    existing["id"], pwd, name, enc_secret)
+            else:
+                await conn.execute(
+                    """INSERT INTO players (email, password_hash, display_name, totp_secret)
+                       VALUES ($1,$2,$3,$4)""",
+                    email, pwd, name, enc_secret)
+    if not want_2fa:
+        # Password-only account — ready to log in immediately.
+        return {"two_factor": False}
     uri = auth.totp_uri(secret, email)
-    # Account exists but 2FA must be set up before login; hand back the QR.
-    return {"otpauth_uri": uri, "secret": secret, "qr_svg": auth.qr_svg(uri)}
+    # 2FA must be set up before login; hand back the QR.
+    return {"two_factor": True, "otpauth_uri": uri, "secret": secret, "qr_svg": auth.qr_svg(uri)}
 
 
 @app.post("/api/auth/totp/enable")
@@ -324,14 +352,17 @@ async def login(body: LoginBody, request: Request):
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
             security.record_fail(f"loginfail:{email}")
             raise HTTPException(401, "invalid email or password")
-        if not p["totp_enabled"]:
+        if p["totp_secret"] is None:
+            pass  # password-only account (2FA opted out) — password is enough
+        elif not p["totp_enabled"]:
             raise HTTPException(403, "two-factor setup not complete")
-        code = auth.normalize_code(body.code)
-        ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
-            or await _check_recovery(conn, p["id"], code)
-        if not ok:
-            security.record_fail(f"loginfail:{email}")
-            raise HTTPException(401, "invalid authenticator or recovery code")
+        else:
+            code = auth.normalize_code(body.code)
+            ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
+                or await _check_recovery(conn, p["id"], code)
+            if not ok:
+                security.record_fail(f"loginfail:{email}")
+                raise HTTPException(401, "invalid authenticator or recovery code")
         security.clear_fails(f"loginfail:{email}")
         # One session per player: rotate the token + TTL, preserve game state.
         token = await conn.fetchval(
