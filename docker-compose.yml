@@ -5,8 +5,10 @@ services:
       POSTGRES_USER: onelife
       POSTGRES_PASSWORD: onelife
       POSTGRES_DB: onelife
+    # Bound to loopback only: the DB must never be reachable from the LAN/internet.
+    # Local tooling (psql) and the api on the compose network still reach it.
     ports:
-      - "5432:5432"
+      - "127.0.0.1:5432:5432"
     volumes:
       - ./db:/docker-entrypoint-initdb.d:ro
       - onelife_db:/var/lib/postgresql/data
@@ -60,8 +62,10 @@ services:
     volumes:
       # Sibling data repo (override with ${GAME_DATA_DIR}); see OneLife-KBK-mystery.
       - ${GAME_DATA_DIR:-../OneLife-KBK-mystery}:/content:ro
+    # Loopback-only: in production Caddy reaches the api via the compose network
+    # (api:8000), so it never needs to be published to the host's LAN/internet.
     ports:
-      - "8000:8000"
+      - "127.0.0.1:8000:8000"
     depends_on:
       db:
         condition: service_healthy
@@ -69,10 +73,13 @@ services:
   web:
     build: ./web
     environment:
-      # Browser talks to the API directly on localhost:8000
+      # Local dev: the browser talks to the API directly on localhost:8000.
+      # The production overlay (docker-compose.prod.yml) overrides this to "" so the
+      # built app makes same-origin /api requests through the Caddy reverse proxy.
       VITE_API_BASE: http://localhost:8000
+    # Loopback-only; in production Caddy serves the built app over the compose network.
     ports:
-      - "5173:5173"
+      - "127.0.0.1:5173:5173"
     depends_on:
       - api
 

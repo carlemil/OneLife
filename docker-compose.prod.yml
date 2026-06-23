@@ -1,0 +1,58 @@
+# Production overlay — expose OneLife to the internet behind Caddy (HTTPS).
+#
+#   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+#
+# Requires DOMAIN (and the hardening secrets) set in .env. See PLAN / README.
+# The base file already binds db/api/web to 127.0.0.1, so the only ports reaching
+# the network are Caddy's 80/443 — forward exactly those two on the router.
+services:
+  api:
+    environment:
+      # Same-origin in production: the browser calls https://DOMAIN/api/... so the
+      # only allowed CORS origin is the domain. Spotify's redirect must be HTTPS and
+      # match the browser origin exactly.
+      WEB_ORIGIN: https://${DOMAIN}
+      SPOTIFY_REDIRECT_URI: https://${DOMAIN}/
+
+  web:
+    environment:
+      # Empty -> the built app uses relative /api requests (resolved by Caddy to the
+      # api service). vite reads this at build time, so it must be set for the build.
+      VITE_API_BASE: ""
+    # Build the static bundle, then serve it (no dev server / HMR in production).
+    command: sh -c "npm run build && npm run preview"
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    environment:
+      SITE_ADDRESS: ${DOMAIN}   # a bare domain -> Caddy serves HTTPS with an auto cert
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data       # persists issued certificates across restarts
+      - caddy_config:/config
+
+  # Keeps the DuckDNS record pointed at this host's current public IP (for dynamic
+  # home IPs). Only needed when DOMAIN is a *.duckdns.org name. SUBDOMAINS is just
+  # the label(s) without ".duckdns.org" (e.g. "erbserver"); TOKEN is from duckdns.org.
+  duckdns:
+    image: lscr.io/linuxserver/duckdns:latest
+    restart: unless-stopped
+    environment:
+      SUBDOMAINS: ${DUCKDNS_SUBDOMAINS}
+      TOKEN: ${DUCKDNS_TOKEN}
+      UPDATE_IP: ipv4
+      LOG_FILE: "false"
+    volumes:
+      - duckdns_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:
+  duckdns_config:

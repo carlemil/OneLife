@@ -1,0 +1,19 @@
+# Caddy reverse proxy for OneLife. Single origin: /api/* -> FastAPI, everything else
+# -> the Svelte app. The site address comes from $SITE_ADDRESS (set by whichever
+# overlay is used):
+#   docker-compose.lan.yml  -> SITE_ADDRESS=":80"            (plain HTTP on the LAN IP)
+#   docker-compose.prod.yml -> SITE_ADDRESS="<domain>"       (auto Let's Encrypt HTTPS)
+# With a domain, Caddy auto-provisions/renews the cert via ACME (needs ports 80/443
+# reachable and the domain resolving here) and adds the HTTP->HTTPS redirect + HSTS.
+
+{$SITE_ADDRESS} {
+	encode gzip
+
+	# API: keep the /api prefix intact (FastAPI routes are already /api/...).
+	handle /api/* {
+		reverse_proxy api:8000
+	}
+
+	# Everything else: the production web app (vite preview serving the built bundle).
+	reverse_proxy web:5173
+}

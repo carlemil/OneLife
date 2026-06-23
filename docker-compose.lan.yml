@@ -1,0 +1,39 @@
+# LAN overlay — reach the game from other devices on the local network over plain
+# HTTP, no domain or certificate. A quick sanity check before the public HTTPS setup.
+#
+#   docker compose -f docker-compose.yml -f docker-compose.lan.yml up -d --build
+#
+# Then browse http://<this-host-LAN-IP>/  (e.g. http://192.168.1.115/) from any
+# device on the LAN. Caddy serves one origin on port 80 and proxies /api -> api, so
+# the browser calls the server (not its own localhost). Keeps the Vite dev server
+# (fast restart); only Caddy's port 80 is published.
+services:
+  api:
+    environment:
+      # Same-origin requests don't actually trigger CORS, but keep this honest.
+      WEB_ORIGIN: http://192.168.1.115
+
+  web:
+    environment:
+      # Empty -> the app makes relative /api requests, resolved by Caddy to the api
+      # service. The Vite dev server reads this at runtime (no rebuild needed).
+      VITE_API_BASE: ""
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    depends_on:
+      - api
+      - web
+    environment:
+      SITE_ADDRESS: ":80"   # HTTP on every host/IP, no TLS
+    ports:
+      - "80:80"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+
+volumes:
+  caddy_data:
+  caddy_config:

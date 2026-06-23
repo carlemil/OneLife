@@ -1,4 +1,8 @@
-const BASE = import.meta.env.VITE_API_BASE || 'http://localhost:8000';
+// undefined (local dev, var unset) → talk to the API on localhost:8000.
+// "" (production build behind the Caddy reverse proxy) → same-origin relative
+// requests (/api/...), so a remote browser hits the server, not its own localhost.
+// Note: `??` not `||` — an explicit empty string must survive as "relative".
+const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
 
 function token() {
   return localStorage.getItem('onelife_token');

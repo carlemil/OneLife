@@ -67,6 +67,26 @@ docker compose up --build
 docker compose down -v   # wipes the Postgres volume; schema+seed re-run on next up
 ```
 
+### Expose it to the internet (HTTPS, behind a reverse proxy)
+
+Local `docker compose up` binds the api/web/db to `127.0.0.1` only. To let remote
+players in, use the production overlay, which adds a **Caddy** reverse proxy serving
+one HTTPS origin (`/api/*` → api, everything else → the built web app) with an
+automatic Let's Encrypt certificate:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
+```
+
+Prerequisites (see `.env`): set `DOMAIN` (its DNS → this host's public IP — DuckDNS
+works for a dynamic IP), set `WEB_ORIGIN=https://DOMAIN`, and harden secrets
+(`ONELIFE_SECRET_KEY`, DB password). On the network: **forward only router TCP 80 +
+443** to this host (port 80 is needed for the cert challenge) and allow them through
+the firewall — do *not* forward 5173/8000/5432. For Spotify, register
+`https://DOMAIN/` as the redirect URI. Music is streamed by Spotify directly to each
+player's browser via their own Premium account; the server only resolves track
+metadata, so non-Premium players get 30s previews + text.
+
 ## Notes / deferred
 
 This slice intentionally defers (see docs for the full design): 2FA + real auth,
