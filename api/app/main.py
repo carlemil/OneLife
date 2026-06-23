@@ -234,6 +234,9 @@ class ContentMoveBody(BaseModel):
     x: float
     y: float
 
+class ContentLayoutBody(BaseModel):
+    positions: dict   # {node_id: {"x": .., "y": ..}}
+
 class ContentSeqBody(BaseModel):
     seq: int
 
@@ -806,6 +809,24 @@ async def admin_content_move(body: ContentMoveBody,
         before = {"x": row["x"], "y": row["y"]} if row else None
         head = await content_log.record(conn, "move", "nodes", body.id,
                                         before, {"x": body.x, "y": body.y}, sess.get("email"))
+    return {"ok": True, "head": head}
+
+
+@app.post("/api/admin/content/layout")
+async def admin_content_layout(body: ContentLayoutBody,
+                               authorization: str | None = Header(default=None)):
+    """Persist a whole-graph auto-layout as ONE undoable event."""
+    sess = await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        before = {}
+        for nid in body.positions:
+            row = await conn.fetchrow("SELECT x,y FROM node_positions WHERE node_id=$1", nid)
+            before[nid] = {"x": row["x"], "y": row["y"]} if row else None
+        after = {nid: {"x": float(p["x"]), "y": float(p["y"])}
+                 for nid, p in body.positions.items()}
+        head = await content_log.record(conn, "layout", "nodes", "(layout)",
+                                        before, after, sess.get("email"))
     return {"ok": True, "head": head}
 
 

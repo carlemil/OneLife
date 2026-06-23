@@ -88,6 +88,7 @@ export const api = {
   saveEntity: (kind, entity) => req('/api/admin/content/entity', { method: 'POST', body: { kind, entity } }),
   deleteEntity: (kind, id) => req('/api/admin/content/delete', { method: 'POST', body: { kind, id } }),
   moveNode: (id, x, y) => req('/api/admin/content/move', { method: 'POST', body: { id, x, y } }),
+  layoutNodes: (positions) => req('/api/admin/content/layout', { method: 'POST', body: { positions } }),
   contentLog: () => req('/api/admin/content/log'),
   contentUndo: () => req('/api/admin/content/undo', { method: 'POST' }),
   contentRedo: () => req('/api/admin/content/redo', { method: 'POST' }),

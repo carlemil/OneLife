@@ -593,6 +593,71 @@
     try { const r = await api.moveNode(targetNode.id, targetNode.position.x, targetNode.position.y); logHead = r.head; await loadLog(); }
     catch (e) { editorMsg = e.message; }
   }
+  // Force-directed layout: repel every node, pull connected nodes toward an ideal
+  // edge length, then push apart any boxes that still overlap. Deterministic
+  // (seeded on a circle, no RNG) so the same graph always lays out the same way.
+  function forceLayout(fnodes, fedges) {
+    const N = fnodes.length;
+    const ids = fnodes.map((n) => n.id);
+    const idx = Object.fromEntries(ids.map((id, i) => [id, i]));
+    const K = 300;                                   // ideal edge length / spacing
+    const px = new Array(N), py = new Array(N);
+    const R = K * Math.max(1, Math.sqrt(N) / 1.6);   // seed on a ring (no overlap, no RNG)
+    for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2; px[i] = Math.cos(a) * R; py[i] = Math.sin(a) * R; }
+    const edges = fedges
+      .filter((e) => idx[e.source] !== undefined && idx[e.target] !== undefined)
+      .map((e) => [idx[e.source], idx[e.target]]);
+    let temp = K;
+    for (let it = 0; it < 400; it++) {
+      const dx = new Array(N).fill(0), dy = new Array(N).fill(0);
+      for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {     // repulsion
+        let vx = px[i] - px[j], vy = py[i] - py[j], d2 = vx * vx + vy * vy;
+        if (d2 < 0.01) { vx = (i - j) || 1; vy = 1; d2 = vx * vx + vy * vy; }
+        const d = Math.sqrt(d2), f = (K * K) / d, ux = vx / d, uy = vy / d;
+        dx[i] += ux * f; dy[i] += uy * f; dx[j] -= ux * f; dy[j] -= uy * f;
+      }
+      for (const [a, b] of edges) {                                    // attraction along edges
+        let vx = px[a] - px[b], vy = py[a] - py[b];
+        const d = Math.hypot(vx, vy) || 0.01, f = (d * d) / K, ux = vx / d, uy = vy / d;
+        dx[a] -= ux * f; dy[a] -= uy * f; dx[b] += ux * f; dy[b] += uy * f;
+      }
+      for (let i = 0; i < N; i++) {                                    // integrate, capped by temperature
+        const d = Math.hypot(dx[i], dy[i]) || 0.01;
+        px[i] += (dx[i] / d) * Math.min(d, temp); py[i] += (dy[i] / d) * Math.min(d, temp);
+      }
+      temp = Math.max(temp * 0.985, K * 0.05);
+    }
+    const NW = 220, NH = 96;                          // node footprint + margin
+    for (let pass = 0; pass < 90; pass++) {           // resolve any remaining box overlaps
+      let hit = false;
+      for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
+        const vx = px[j] - px[i], vy = py[j] - py[i];
+        const ox = NW - Math.abs(vx), oy = NH - Math.abs(vy);
+        if (ox > 0 && oy > 0) {
+          if (ox <= oy) { const s = (ox / 2 + 0.5) * (vx < 0 ? -1 : 1); px[i] -= s; px[j] += s; }
+          else { const s = (oy / 2 + 0.5) * (vy < 0 ? -1 : 1); py[i] -= s; py[j] += s; }
+          hit = true;
+        }
+      }
+      if (!hit) break;
+    }
+    let minx = Infinity, miny = Infinity;
+    for (let i = 0; i < N; i++) { if (px[i] < minx) minx = px[i]; if (py[i] < miny) miny = py[i]; }
+    const out = {};
+    for (let i = 0; i < N; i++) out[ids[i]] = { x: Math.round(px[i] - minx + 40), y: Math.round(py[i] - miny + 40) };
+    return out;
+  }
+  async function spreadOut() {
+    if (!flowNodes.length) return;
+    busy = true; editorMsg = '';
+    try {
+      const pos = forceLayout(flowNodes, flowEdges);
+      flowNodes = flowNodes.map((n) => ({ ...n, position: pos[n.id] }));   // instant feedback
+      const r = await api.layoutNodes(pos);                                // one undoable event
+      await afterMutation(r.head);
+      editorMsg = 'Spread the nodes out (undo to revert).';
+    } catch (e) { editorMsg = e.message; } finally { busy = false; }
+  }
   async function onConnect(conn) {
     if (!conn.source || !conn.target) return;
     let id = `e-${conn.source}-${conn.target}`;
@@ -1117,6 +1182,7 @@
               </SvelteFlow>
               <div class="graphtools">
                 <button onclick={addNode} disabled={busy}>+ Node</button>
+                <button onclick={spreadOut} disabled={busy} title="Spread the nodes out: even spacing, similar edge lengths, no overlap">⤢ Spread out</button>
                 {#if selId !== null}<button class="danger" onclick={deleteCurrent} disabled={busy}>Delete {editKind === 'edges' ? 'edge' : 'node'}</button>{/if}
                 <span class="sub">drag a node to move · drag handle→node to connect · click to edit</span>
               </div>

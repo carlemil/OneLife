@@ -146,6 +146,9 @@ async def apply_forward(conn, ev: dict):
             await _delete_entity(conn, kind, eid)
     elif op == "move":
         await _set_pos(conn, eid, ev["after"])
+    elif op == "layout":                                  # whole-graph re-layout
+        for nid, xy in (ev["after"] or {}).items():
+            await _set_pos(conn, nid, xy)
     # auto-generated scaffolding (e.g. an ending or trap-fixing edges) rides along
     for x in (ev.get("extra") or []):
         await _upsert_entity(conn, x["kind"], x["entity"])
@@ -167,6 +170,9 @@ async def apply_inverse(conn, ev: dict):
             await _upsert_entity(conn, kind, ev["before"])
     elif op == "move":
         await _set_pos(conn, eid, ev["before"])
+    elif op == "layout":                                  # restore each prior position
+        for nid, xy in (ev["before"] or {}).items():
+            await _set_pos(conn, nid, xy)
 
 
 # ---------- the log ----------
