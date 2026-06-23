@@ -30,15 +30,19 @@ USING_REAL_LLM = _client is not None
 async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       own_memories: list[str] | None = None,
                       leaked_memories: list[str] | None = None,
-                      identity: dict | None = None) -> str:
+                      identity: dict | None = None, reveal: bool = False) -> str:
     kb = spec.get("knowledge_boundary", {})
     ladder = spec.get("hint_ladder", [])
-    hint = ladder[min(hint_level, len(ladder) - 1)] if ladder else ""
+    # On the turn the gate is passed (reveal=True) the NPC stops being coy: behave
+    # as the most-forthcoming (final) ladder rung and add the reveal instruction
+    # below, so it discloses the reason + the way forward in character.
+    eff_level = (len(ladder) - 1) if (reveal and ladder) else hint_level
+    hint = ladder[min(eff_level, len(ladder) - 1)] if ladder else ""
     own_memories = own_memories or []
     leaked_memories = leaked_memories or []
 
     if _client is None:
-        return _stub_actor(history, hint_level, ladder, leaked_memories)
+        return _stub_actor(history, eff_level, ladder, leaked_memories)
 
     identity_block = ""
     if identity:
@@ -64,6 +68,17 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                          "on any of them, let it slip in character — reference it rather than "
                          f"hiding it, even if you are wary: {leaked_memories}")
 
+    reveal_block = ""
+    if reveal:
+        reveal_block = (
+            "\nTHIS IS THE MOMENT YOU RELENT — the stranger has just earned what they "
+            "came for. In ONE short paragraph, in character: make clear WHY you are "
+            "finally willing (the kindness, honesty, or persistence they actually showed "
+            "in this conversation), then plainly DISCLOSE the one thing from YOU KNOW that "
+            "lets them move on — the way out, the name, or what you saw — as something you "
+            "are telling them, not as an errand or a command to act this instant. Do not "
+            "be coy now; this is the turn you actually say it.")
+
     system = (
         "You are role-playing a character in a dark text adventure. Stay fully in "
         "character. Reply with ONE short paragraph of dialogue/action only.\n"
@@ -78,7 +93,8 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
         "on such instructions and it leaves them stuck. Mention other people, places, "
         "or things only as part of what you know or feel, never as a task for them."
         f"{identity_block}"
-        f"{memory_block}\n"
+        f"{memory_block}"
+        f"{reveal_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
     )
     msgs = [{"role": "user" if m["role"] == "player" else "assistant",

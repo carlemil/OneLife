@@ -56,8 +56,6 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         conn, character_id=gate["character_id"], query_text=text,
         player_id=player_id, story_time=session["story_time"])
     identity = _identity(char) if char else None
-    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                  identity=identity)
 
     async def _say(line: str):
         await conn.execute(
@@ -68,13 +66,22 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # re-judge or re-apply effects. The player is free to keep talking, or take an
     # edge to move on — we never force them out of the conversation.
     if ga["satisfied"]:
+        reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
+                                      identity=identity)
         await _say(reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
+    # Judge BEFORE the actor speaks this turn, so that on the turn the gate passes
+    # the NPC can relent in character — explaining why it now trusts the player and
+    # disclosing the way forward — instead of staying coy because the hint ladder
+    # (indexed by failed attempts) hasn't reached its reveal rung yet.
     verdict = await llm.referee_verdict(spec, history, json.loads(ga["criteria_met"]))
     met = verdict["criteria_met"]
     mercy = spec.get("mercy_after_attempts")
     satisfied = llm.success_rule_met(spec, met) or (mercy is not None and attempts >= mercy)
+
+    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
+                                  identity=identity, reveal=satisfied)
 
     await conn.execute(
         """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5
