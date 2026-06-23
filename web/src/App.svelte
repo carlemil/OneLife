@@ -593,20 +593,16 @@
     try { const r = await api.moveNode(targetNode.id, targetNode.position.x, targetNode.position.y); logHead = r.head; await loadLog(); }
     catch (e) { editorMsg = e.message; }
   }
-  // Force-directed layout: repel every node, pull connected nodes toward an ideal
-  // edge length, then push apart any boxes that still overlap. Deterministic
-  // (seeded on a circle, no RNG) so the same graph always lays out the same way.
-  function forceLayout(fnodes, fedges) {
-    const N = fnodes.length;
-    const ids = fnodes.map((n) => n.id);
-    const idx = Object.fromEntries(ids.map((id, i) => [id, i]));
-    const K = 300;                                   // ideal edge length / spacing
+  // Force-directed layout of ONE connected cluster: repel every node, pull
+  // connected nodes toward an ideal edge length K, then push apart any boxes that
+  // still overlap. Deterministic (seeded on a ring, no RNG). Returns {id:{x,y}}.
+  function _simulate(nodeIds, edgePairs, K) {
+    const N = nodeIds.length;
+    const idx = Object.fromEntries(nodeIds.map((id, i) => [id, i]));
     const px = new Array(N), py = new Array(N);
-    const R = K * Math.max(1, Math.sqrt(N) / 1.6);   // seed on a ring (no overlap, no RNG)
+    const R = K * Math.max(1, Math.sqrt(N) / 1.6);
     for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2; px[i] = Math.cos(a) * R; py[i] = Math.sin(a) * R; }
-    const edges = fedges
-      .filter((e) => idx[e.source] !== undefined && idx[e.target] !== undefined)
-      .map((e) => [idx[e.source], idx[e.target]]);
+    const edges = edgePairs.map(([a, b]) => [idx[a], idx[b]]);
     let temp = K;
     for (let it = 0; it < 400; it++) {
       const dx = new Array(N).fill(0), dy = new Array(N).fill(0);
@@ -631,8 +627,7 @@
     for (let pass = 0; pass < 90; pass++) {           // resolve any remaining box overlaps
       let hit = false;
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
-        const vx = px[j] - px[i], vy = py[j] - py[i];
-        const ox = NW - Math.abs(vx), oy = NH - Math.abs(vy);
+        const vx = px[j] - px[i], vy = py[j] - py[i], ox = NW - Math.abs(vx), oy = NH - Math.abs(vy);
         if (ox > 0 && oy > 0) {
           if (ox <= oy) { const s = (ox / 2 + 0.5) * (vx < 0 ? -1 : 1); px[i] -= s; px[j] += s; }
           else { const s = (oy / 2 + 0.5) * (vy < 0 ? -1 : 1); py[i] -= s; py[j] += s; }
@@ -641,10 +636,47 @@
       }
       if (!hit) break;
     }
-    let minx = Infinity, miny = Infinity;
-    for (let i = 0; i < N; i++) { if (px[i] < minx) minx = px[i]; if (py[i] < miny) miny = py[i]; }
     const out = {};
-    for (let i = 0; i < N; i++) out[ids[i]] = { x: Math.round(px[i] - minx + 40), y: Math.round(py[i] - miny + 40) };
+    for (let i = 0; i < N; i++) out[nodeIds[i]] = { x: px[i], y: py[i] };
+    return out;
+  }
+  // The story graph splits into disconnected clusters (cells joined only by
+  // implicit travel, not edges). Lay each cluster out on its own, then pack them
+  // close together — gap = 2x the average neighbour distance — so no cluster drifts
+  // off where you can't find it. Deterministic.
+  function forceLayout(fnodes, fedges) {
+    const ids = fnodes.map((n) => n.id);
+    const idset = new Set(ids);
+    const pairs = fedges.filter((e) => idset.has(e.source) && idset.has(e.target)).map((e) => [e.source, e.target]);
+    const adj = {}; ids.forEach((id) => (adj[id] = []));
+    for (const [a, b] of pairs) { adj[a].push(b); adj[b].push(a); }
+    const compOf = {}; const comps = [];                       // connected components (BFS)
+    for (const id of ids) {
+      if (compOf[id] !== undefined) continue;
+      const ci = comps.length, group = [], q = [id]; compOf[id] = ci;
+      while (q.length) { const x = q.shift(); group.push(x); for (const t of adj[x]) if (compOf[t] === undefined) { compOf[t] = ci; q.push(t); } }
+      comps.push(group);
+    }
+    const K = 300;
+    const blocks = comps.map((group, ci) => {
+      const pos = _simulate(group, pairs.filter(([a]) => compOf[a] === ci), K);
+      let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
+      for (const id of group) { const p = pos[id]; if (p.x < minx) minx = p.x; if (p.y < miny) miny = p.y; if (p.x > maxx) maxx = p.x; if (p.y > maxy) maxy = p.y; }
+      return { group, pos, minx, miny, w: maxx - minx, h: maxy - miny };
+    });
+    let sum = 0, cnt = 0;                                       // average neighbour (edge) distance
+    for (const [a, b] of pairs) { const pa = blocks[compOf[a]].pos[a], pb = blocks[compOf[b]].pos[b]; sum += Math.hypot(pa.x - pb.x, pa.y - pb.y); cnt++; }
+    const GAP = 2 * (cnt ? sum / cnt : K);
+    const order = blocks.map((b, i) => i).sort((i, j) => blocks[j].h - blocks[i].h);  // shelf-pack, tallest first
+    const rowW = Math.max(Math.sqrt(blocks.reduce((s, b) => s + (b.w + GAP) * (b.h + GAP), 0)), ...blocks.map((b) => b.w));
+    const out = {};
+    let curX = 0, curY = 0, rowH = 0;
+    for (const i of order) {
+      const b = blocks[i];
+      if (curX > 0 && curX + b.w > rowW) { curX = 0; curY += rowH + GAP; rowH = 0; }
+      for (const id of b.group) out[id] = { x: Math.round(curX + (b.pos[id].x - b.minx) + 40), y: Math.round(curY + (b.pos[id].y - b.miny) + 40) };
+      curX += b.w + GAP; rowH = Math.max(rowH, b.h);
+    }
     return out;
   }
   async function spreadOut() {
@@ -1171,6 +1203,7 @@
           <div class="graphwrap">
             <div class="canvas">
               <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} fitView
+                minZoom={0.25} fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }}
                 onnodeclick={onNodeClick} onedgeclick={onEdgeClick}
                 onconnect={onConnect} onnodedragstop={onNodeDragStop}
                 onnodepointerenter={({ node, event }) => showHover('node', node.data.rec, event)}
@@ -1178,7 +1211,7 @@
                 onedgepointerenter={({ edge, event }) => showHover('edge', edge.data.rec, event)}
                 onedgepointerleave={() => (hover = null)}>
                 <Background />
-                <Controls />
+                <Controls fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }} />
               </SvelteFlow>
               <div class="graphtools">
                 <button onclick={addNode} disabled={busy}>+ Node</button>
@@ -1352,6 +1385,13 @@
   .graphside textarea.json { min-height:9rem; }
   .canvas { position:relative; height:100%; border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
   .canvas :global(.svelte-flow) { background:#0d0e14; }
+  /* Zoom / fit / interactivity controls: dark buttons with bright icons (the
+     default near-white-on-white made the icons almost invisible on this theme). */
+  .canvas :global(.svelte-flow__controls) { box-shadow:0 0 0 1px #2a2e3e; border-radius:6px; overflow:hidden; }
+  .canvas :global(.svelte-flow__controls-button) { background:#1a1d28; border-bottom:1px solid #2a2e3e; width:26px; height:26px; }
+  .canvas :global(.svelte-flow__controls-button:hover) { background:#2e3450; }
+  .canvas :global(.svelte-flow__controls-button svg) { fill:#e8e8f0; max-width:15px; max-height:15px; }
+  .canvas :global(.svelte-flow__controls-button:hover svg) { fill:#fff; }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
   /* right panel: drag its inner (left) edge to resize width; content fills width.
