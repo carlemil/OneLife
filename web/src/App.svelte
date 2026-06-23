@@ -41,7 +41,7 @@
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
-    const def = { atmosphere: true, leaderboard: true, notes: true };
+    const def = { atmosphere: true, leaderboard: true, notes: true, log: true };
     try { return { ...def, ...JSON.parse(localStorage.getItem('onelife_panels') || '{}') }; }
     catch { return def; }
   }
@@ -63,6 +63,12 @@
   let _seenBeats = 0;
   // Icon per beat kind; dialogue and scene lines carry none.
   const KIND_ICON = { action: '›', puzzle: '🧩', clue: '✦', travel: '🗺', death: '✝' };
+
+  // Side "Log" panel: the progress beats (no NPC dialogue), newest first, paged.
+  // The main-column flow is unaffected; this is the compact progress log + rollback.
+  const LOG_PAGE = 10;
+  let logShown = $state(LOG_PAGE);
+  let logRev = $derived((logEntries || []).filter((l) => l.kind !== 'dialogue').slice().reverse());
 
   // world map
   let world = $state(null);
@@ -889,6 +895,25 @@
             {/if}
           </div>
         {/if}
+        <div class="panel" class:collapsed={!panelOpen.log}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
+              <span class="chev">{panelOpen.log ? '▲' : '▼'}</span> Log <span class="sub">(your progress)</span>
+            </button>
+          </h3>
+          {#if panelOpen.log}
+          <ul class="log">
+            {#each logRev.slice(0, logShown) as l, i}
+              <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
+                {#if l.seq > 0 && i > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+              </li>
+            {/each}
+          </ul>
+          {#if logRev.length > logShown}
+            <button class="link more" onclick={() => (logShown += LOG_PAGE)}>more ({logRev.length - logShown} earlier)</button>
+          {/if}
+          {/if}
+        </div>
       </aside>
     </div>
   {/if}
@@ -1179,6 +1204,9 @@
   .beat.dialogue { font-style:italic; border-left:2px solid #2a2e3e; padding-left:.7rem; }
   .beat.dialogue .who { font-style:normal; }
   .beat.dialogue.me { color:#9fd3ff; } .beat.dialogue.npc { color:#cdbb9a; }
+  /* Side "Log" panel (compact progress beats). */
+  .log { list-style:none; padding:0; font-size:.85rem; } .log .seq { color:#5a5a72; }
+  .log li { margin:.3rem 0; }
   .earlier { display:block; margin:.8rem 0 0; color:#6f7290; }
   .row { display:flex; gap:.5rem; margin:.5rem 0; }
   input { display:block; width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.5rem; border-radius:6px; margin:.4rem 0; }
