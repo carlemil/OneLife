@@ -100,9 +100,12 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         # the NPC and leave through an authored edge ("the way ahead has opened")
         # when ready, so a passing line never cuts the conversation off mid-flow.
         # (Onward routes are unlocked by the flags set here, e.g. knows_boiler_exit.)
+        # A narrative outcome beat ("Pippa told you what she saw…"), NOT spoken
+        # dialogue — kind="action" so it renders as a normal beat. (As a dialogue
+        # beat it had no speaker and rendered as a bare ": …".)
         seq, story_time = await apply_action(
             conn, player_id, session["log_id"], node_id=node["id"],
-            effects=on_success, story_time=session["story_time"], kind="dialogue")
+            effects=on_success, story_time=session["story_time"], kind="action")
         await conn.execute(
             "UPDATE player_sessions SET story_time=$1 WHERE token=$2",
             story_time, session["token"])

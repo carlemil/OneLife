@@ -1,21 +1,60 @@
 """Puzzle submission handler (STORY_AND_PUZZLES.md §5). Validates the answer in
 code; the 'semantic' kind would reuse the gate referee (deferred for the slice)."""
 import json
-from .engine import apply_action, discover_clues, load_context, next_seq
+from . import llm
+from .engine import (apply_action, discover_clues, load_context, narrate,
+                     narrate_puzzle_prompt, next_seq)
+
+
+def _is_wordlike(s: str) -> bool:
+    """A spellable word (letters only, length >= 4) — eligible for typo tolerance.
+    Numbers, codes, times and short tokens stay strict (so 1998 never matches 1999)."""
+    return len(s) >= 4 and s.isalpha()
+
+
+def _within_one_edit(a: str, b: str) -> bool:
+    """True if `a` is within one edit (insert/delete/substitute) of `b`."""
+    if a == b:
+        return True
+    la, lb = len(a), len(b)
+    if abs(la - lb) > 1:
+        return False
+    if la == lb:                                    # one substitution
+        return sum(x != y for x, y in zip(a, b)) == 1
+    if la > lb:                                     # make `a` the shorter one
+        a, b, la, lb = b, a, lb, la
+    i = j = 0
+    skipped = False
+    while i < la and j < lb:                        # one insertion/deletion
+        if a[i] == b[j]:
+            i += 1
+            j += 1
+        elif skipped:
+            return False
+        else:
+            skipped = True
+            j += 1
+    return True
 
 
 def _check(solution: dict, answer: str, ctx) -> bool:
     kind = solution.get("kind")
     a = answer.strip().lower()
-    if kind == "exact":
-        return a == str(solution["value"]).strip().lower()
-    if kind == "set":
-        return a in {str(v).strip().lower() for v in solution.get("set", [])}
     if kind == "assembly":
         # auto-solved elsewhere; treat any submit as solved if clues complete
         return True
-    # 'semantic' would call the referee here; fall back to exact for the slice.
-    return a == str(solution.get("value", "")).strip().lower()
+    if kind == "set":
+        targets = [str(v).strip().lower() for v in solution.get("set", [])]
+    else:  # 'exact' (and the deferred 'semantic' kind) — single value
+        targets = [str(solution.get("value", "")).strip().lower()]
+    for t in targets:
+        if a == t:
+            return True
+        # Forgive a single typo on spellable WORD answers (shaddow -> shadow);
+        # numbers, codes and times stay strict (1998 never matches 1999).
+        if _is_wordlike(t) and _is_wordlike(a) and _within_one_edit(a, t):
+            return True
+    return False
 
 
 async def submit(conn, player_id, session, answer: str) -> dict:
@@ -40,8 +79,16 @@ async def submit(conn, player_id, session, answer: str) -> dict:
     ok = _check(json.loads(pz["solution"]), answer, ctx)
 
     attempts = pp["attempts"] + 1
-    ladder = json.loads(pz["hint_ladder"])
-    hint_level = min(attempts, max(len(ladder) - 1, 0))
+
+    # Weave the riddle and the player's answer into the narration flow, the way NPC
+    # gate dialogue is woven in — so the events list preserves the whole exchange,
+    # not just the terse outcome line. The prompt is recorded once (deduped; also
+    # shown on arrival at the node); every submitted answer is recorded. Both are
+    # seq-stamped beats, so they roll back with the rest of the run.
+    await narrate_puzzle_prompt(conn, session["log_id"], node, session["story_time"])
+    await narrate(conn, session["log_id"], node_id=node["id"],
+                  story_time=session["story_time"],
+                  summary=f'You answer: "{answer.strip()}"', kind="puzzle")
 
     if ok:
         on_solve = json.loads(pz["on_solve"])
@@ -59,8 +106,37 @@ async def submit(conn, player_id, session, answer: str) -> dict:
         await discover_clues(conn, player_id, session["log_id"], story_time, node["id"])
         return {"solved": True, "message": on_solve.get("log", "It opens.")}
 
+    # No auto-hint: only count the attempt. Hints are revealed solely when the
+    # player asks (request_hint), and only after they've tried at least once.
     await conn.execute(
-        "UPDATE puzzle_progress SET attempts=$3, hint_level=$4 WHERE player_id=$1 AND puzzle_id=$2",
-        player_id, pz["id"], attempts, hint_level)
-    hint = ladder[min(hint_level, len(ladder) - 1)] if ladder else None
-    return {"solved": False, "message": "Nothing happens.", "hint": hint}
+        "UPDATE puzzle_progress SET attempts=$3 WHERE player_id=$1 AND puzzle_id=$2",
+        player_id, pz["id"], attempts)
+    return {"solved": False, "message": "Nothing happens."}
+
+
+async def request_hint(conn, player_id, session) -> dict:
+    """Reveal the next hint for the puzzle the player is on — but only after they
+    have actually tried and failed. Each ask climbs one rung of the hint ladder."""
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE id=$1",
+                               session["current_node"])
+    if not node or not node["puzzle_id"]:
+        return {"hint": None}
+    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE id=$1", node["puzzle_id"])
+    ladder = json.loads(pz["hint_ladder"]) if pz else []
+    pp = await conn.fetchrow(
+        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
+        player_id, pz["id"])
+    if not ladder or pp is None or pp["solved"]:
+        return {"hint": None}
+    if pp["attempts"] == 0:
+        return {"hint": None, "message": "Try an answer first."}
+    new_level = min(pp["hint_level"] + 1, len(ladder))
+    await conn.execute(
+        "UPDATE puzzle_progress SET hint_level=$3 WHERE player_id=$1 AND puzzle_id=$2",
+        player_id, pz["id"], new_level)
+    # Voice the hint as whoever posed the riddle, and record it in the flow like the
+    # rest of the conversation (so it persists and can be re-read).
+    spoken = await llm.hint_in_character(pz["prompt"], ladder[new_level - 1])
+    await narrate(conn, session["log_id"], node_id=node["id"],
+                  story_time=session["story_time"], summary=spoken, kind="puzzle")
+    return {"hint": spoken}

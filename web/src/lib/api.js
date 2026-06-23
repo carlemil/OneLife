@@ -70,6 +70,7 @@ export const api = {
   takeEdge: (edge_id) => req('/api/edge', { method: 'POST', body: { edge_id } }),
   gate: (text) => req('/api/gate/message', { method: 'POST', body: { text } }),
   puzzle: (answer) => req('/api/puzzle/submit', { method: 'POST', body: { answer } }),
+  puzzleHint: () => req('/api/puzzle/hint', { method: 'POST' }),
   rollback: (to_seq) => req('/api/rollback', { method: 'POST', body: { to_seq } }),
 
   // admin (export/import) — all require an allowlisted account

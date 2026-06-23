@@ -107,6 +107,30 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
     return resp.content[0].text.strip()
 
 
+async def hint_in_character(puzzle_prompt: str, hint: str) -> str:
+    """Deliver a puzzle hint as the character who posed the riddle would say it.
+    The puzzle text usually frames the riddle in a character's voice — reuse it. If
+    no speaker is implied (a lock, a carving, a sign), return the hint as one terse
+    line of narration. Words only; no state effects. Falls back to the raw hint."""
+    if _client is None:
+        return hint
+    system = (
+        "In a dark text adventure, the player has asked for a hint on a riddle or "
+        "puzzle. Rewrite the HINT as ONE short line, spoken IN CHARACTER by whoever "
+        "posed it (infer their voice, name and manner from the PUZZLE text). Preserve "
+        "the hint's actual information exactly — reveal no more and no less than it "
+        "does. If the puzzle implies no speaker, give the hint as one terse line of "
+        "narration instead. Output only the line.")
+    try:
+        resp = await _client.messages.create(
+            model=_ACTOR_MODEL, max_tokens=120, system=system,
+            messages=[{"role": "user",
+                       "content": f"PUZZLE:\n{puzzle_prompt}\n\nHINT:\n{hint}"}])
+        return resp.content[0].text.strip() or hint
+    except Exception:  # noqa: BLE001 — never fail a hint over the LLM
+        return hint
+
+
 # --------------------------------------------------------------------------- #
 #  Referee: judge intent vs criteria. Returns typed verdict. Out-of-band.
 # --------------------------------------------------------------------------- #

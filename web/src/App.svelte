@@ -38,6 +38,7 @@
   let gateReply = $state('');           // latest NPC line, echoed by the input for immediacy
   let gatePassed = $state(false);       // did the last turn pass the gate? (shows a note)
   let puzzleResult = $state('');        // latest solve message, echoed by the puzzle input
+  let puzzleHintLine = $state('');      // the NPC's spoken hint, shown only after you ask
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
@@ -648,7 +649,7 @@
 
   async function onEdge(id) {
     busy = true;
-    gateReply = ''; gatePassed = false; puzzleResult = '';   // a fresh scene clears the last reply
+    gateReply = ''; gatePassed = false; puzzleResult = ''; puzzleHintLine = '';   // a fresh scene clears the last reply
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
@@ -669,16 +670,26 @@
     try {
       const r = await api.puzzle(puzzleInput.trim());
       game = r.state; logEntries = (await api.log()).entries;
-      // Echo the outcome by the input; a wrong guess shows a hint instead.
+      // Echo the outcome by the input. A wrong guess says so but volunteers no
+      // hint — the player must ask for one (askHint), and only after trying.
       if (r.result.solved) {
         puzzleResult = r.result.message || ''; error = '';
       } else {
-        puzzleResult = '';
-        error = r.result.hint ? `Hint: ${r.result.hint}` : (r.result.message || '');
+        puzzleResult = ''; error = r.result.message || 'Nothing happens.';
       }
       puzzleInput = '';
     } catch (e) { error = e.message; }
     finally { busy = false; await tick(); puzzleEl?.focus(); }
+  }
+  async function askHint() {
+    busy = true;
+    try {
+      const r = await api.puzzleHint();   // the NPC speaks the next hint, only on ask
+      game = r.state;
+      puzzleHintLine = r.result?.hint || '';
+      error = (!r.result?.hint && r.result?.message) ? r.result.message : '';
+      logEntries = (await api.log()).entries;   // the spoken hint is also a beat
+    } catch (e) { error = e.message; } finally { busy = false; }
   }
   async function onRollback(seq) {
     if (!confirm(`Cheat death — return to step ${seq}? You'll lose all progress made after it.`)) return;
@@ -782,12 +793,15 @@
 
           {#if game.node.type === 'puzzle' && game.puzzle}
             <p class="puzzle-prompt">{game.puzzle.prompt}</p>
-            {#if game.puzzle.hint}<p class="puzzle-hint">💡 {game.puzzle.hint}</p>{/if}
+            {#if puzzleHintLine}<p class="puzzle-hint">💡 {puzzleHintLine}</p>{/if}
             {#if !game.puzzle.solved}
               <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
                 <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter your answer..." disabled={busy} />
                 <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
               </form>
+              {#if game.puzzle.attempts > 0}
+                <button class="link askhint" onclick={askHint} disabled={busy}>{puzzleHintLine ? 'Ask for another hint 💡' : 'Stuck? Ask for a hint 💡'}</button>
+              {/if}
             {/if}
             {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
           {/if}
@@ -799,7 +813,7 @@
               </button>
             {/each}
             {#if game.edges.length === 0 && game.node.is_death}
-              <p class="dead">You are dead. Scroll down to the log and use ↩ on an earlier beat to cheat death and return there — at a cost.</p>
+              <p class="dead">You are dead. Use the ↩ on an earlier beat in the <b>Log</b> panel (right) to cheat death and return there — at a cost.</p>
             {/if}
             {#if game.node.world_access}
               <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
@@ -816,7 +830,6 @@
             {:else}
               <p class="beat beat-{l.kind}">
                 {#if KIND_ICON[l.kind]}<span class="ic">{KIND_ICON[l.kind]}</span> {/if}{l.summary || '…'}
-                {#if l.seq > 0 && l.node_id}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
               </p>
             {/if}
           {/each}

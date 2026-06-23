@@ -437,6 +437,12 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
                 edge["to_node"], story_time, sess["token"])
             sess["current_node"] = edge["to_node"]
             sess["story_time"] = story_time
+            # Arriving at a puzzle node records the riddle/prompt in the flow, so the
+            # events list shows what was actually asked (deduped — see the helper).
+            dest_node = await conn.fetchrow(
+                "SELECT id, puzzle_id FROM story_nodes WHERE id=$1", sess["current_node"])
+            await engine.narrate_puzzle_prompt(
+                conn, sess["log_id"], dest_node, story_time)
             await engine.discover_clues(
                 conn, sess["player_id"], sess["log_id"], story_time, sess["current_node"])
         return await engine.render_state(conn, sess["player_id"], sess)
@@ -462,6 +468,18 @@ async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(def
     async with pool.acquire() as conn:
         async with conn.transaction():
             result = await puzzles.submit(conn, sess["player_id"], sess, body.answer)
+        state_after = await engine.render_state(conn, sess["player_id"], sess)
+    return {"result": result, "state": state_after}
+
+
+@app.post("/api/puzzle/hint")
+async def puzzle_hint(authorization: str | None = Header(default=None)):
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            result = await puzzles.request_hint(conn, sess["player_id"], sess)
         state_after = await engine.render_state(conn, sess["player_id"], sess)
     return {"result": result, "state": state_after}
 

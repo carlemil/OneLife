@@ -121,6 +121,26 @@ async def apply_action(conn, player_id, log_id, *, node_id: str | None,
     return seq, story_time
 
 
+async def narrate_puzzle_prompt(conn, log_id, node, story_time):
+    """Record a puzzle's prompt as a beat the first time the player reaches it, so
+    the events flow shows what was actually asked — not just that a riddle happened.
+    Deduped by the prompt text (re-entering the node won't repeat it); rolls back
+    with the rest since it's a seq-stamped beat."""
+    if not node["puzzle_id"]:
+        return
+    prompt = await conn.fetchval("SELECT prompt FROM puzzles WHERE id=$1",
+                                 node["puzzle_id"])
+    if not prompt:
+        return
+    exists = await conn.fetchval(
+        """SELECT 1 FROM log_entries
+           WHERE log_id=$1 AND node_id=$2 AND summary=$3 AND NOT rolled_back""",
+        log_id, node["id"], prompt)
+    if not exists:
+        await narrate(conn, log_id, node_id=node["id"], story_time=story_time,
+                      summary=prompt, kind="puzzle")
+
+
 async def discover_clues(conn, player_id, log_id, story_time, node_id=None):
     """After a state change, discover any clues whose conditions now hold. Each
     newly found clue writes its own 'clue' beat into the narration flow, and the
@@ -255,12 +275,12 @@ async def render_state(conn, player_id, session) -> dict:
         pp = await conn.fetchrow(
             "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
             player_id, node["puzzle_id"])
-        ladder = json.loads(pz["hint_ladder"])
-        hint_level = pp["hint_level"] if pp else 0
+        # Hints are never auto-revealed: they're delivered in-character only when the
+        # player asks (POST /api/puzzle/hint), as a spoken beat in the flow.
         state["puzzle"] = {
             "puzzle_id": pz["id"], "prompt": pz["prompt"],
-            "hint": ladder[min(hint_level, len(ladder) - 1)] if ladder and hint_level > 0 else None,
             "solved": bool(pp["solved"]) if pp else False,
+            "attempts": pp["attempts"] if pp else 0,
         }
 
     return state
