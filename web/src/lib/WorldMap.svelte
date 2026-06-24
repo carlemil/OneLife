@@ -46,7 +46,7 @@
   }
 </script>
 
-<div class="modal" onclick={onClose}>
+<div class="wm-overlay" onclick={onClose}>
   <div class="wm-card" onclick={(e) => e.stopPropagation()}>
     <div class="wm-head">
       <h2>🗺 World Map</h2>
@@ -120,8 +120,10 @@
 </div>
 
 <style>
+  .wm-overlay { position:fixed; inset:0; z-index:2000; background:rgba(8,9,14,.82);
+    display:flex; align-items:center; justify-content:center; padding:1.2rem; }
   .wm-card { background:#1a1d28; border:1px solid #2a2e3e; border-radius:12px; padding:1rem;
-    max-width:95vw; max-height:95vh; display:flex; flex-direction:column; }
+    max-width:96vw; max-height:96vh; display:flex; flex-direction:column; }
   .wm-head { display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; }
   .wm-head h2 { margin:0; font-size:1.1rem; }
   .wm-x { margin-left:auto; }
