@@ -498,28 +498,82 @@ def burnt_edges(base):
                            rim.point(lambda v: min(255, int(v * 1.6))))
 
 
-def draw_rivers(base, W, H):
-    """A couple of faint double-line ink rivers (always-on geography)."""
-    rivers = [
-        [(0.52, 0.04), (0.47, 0.18), (0.41, 0.33), (0.33, 0.47), (0.26, 0.6), (0.2, 0.72)],
-        [(0.04, 0.8), (0.14, 0.84), (0.27, 0.81), (0.4, 0.87), (0.5, 0.84)],
-    ]
-    d = ImageDraw.Draw(base, "RGBA")
-    for ri, river in enumerate(rivers):
-        pts = []
-        for i in range(len(river) - 1):
-            seg = wobble((river[i][0] * W, river[i][1] * H),
-                         (river[i + 1][0] * W, river[i + 1][1] * H),
-                         min(W, H) * 0.012, 6, f"river{ri}-{i}")
-            pts.extend(seg)
-        for sign in (-1, 1):
-            off = []
-            for k in range(len(pts)):
-                a = pts[max(0, k - 1)]; b = pts[min(len(pts) - 1, k + 1)]
-                dx, dy = b[0] - a[0], b[1] - a[1]
-                L = math.hypot(dx, dy) or 1
-                off.append((pts[k][0] - dy / L * 6 * sign, pts[k][1] + dx / L * 6 * sign))
-            d.line(off, fill=WATER_INK + (150,), width=4, joint="curve")
+def fetch_texture(concept, prompt, cache_dir, use_ai, size):
+    """Raw RGB wear-and-tear texture (coffee stain / grunge), cached. None if AI off
+    or unreachable -> caller uses a procedural fallback."""
+    path = os.path.join(cache_dir, f"tex-{concept}.png")
+    if os.path.exists(path):
+        try:
+            return Image.open(path).convert("RGB")
+        except Exception:
+            pass
+    if not use_ai:
+        return None
+    url = ("https://image.pollinations.ai/prompt/" + urllib.parse.quote(prompt)
+           + f"?width={size}&height={size}&nologo=true&model=flux&seed={_seed(concept)}")
+    try:
+        req = urllib.request.Request(url, headers={"User-Agent": "onelife-map/1"})
+        raw = urllib.request.urlopen(req, timeout=90).read()
+        rgb = Image.open(io.BytesIO(raw)).convert("RGB")
+        os.makedirs(cache_dir, exist_ok=True)
+        rgb.save(path)
+        return rgb
+    except Exception as e:
+        print(f"  [texture] {concept}: fetch failed ({e}); using procedural fallback")
+        return None
+
+
+def _procedural_coffee(size, seed):
+    im = Image.new("RGB", (size, size), "white")
+    d = ImageDraw.Draw(im, "RGBA")
+    cx, cy, br = size / 2, size / 2, size * 0.36
+    d.ellipse([cx - br * 0.8, cy - br * 0.74, cx + br * 0.8, cy + br * 0.74], fill=(150, 110, 70, 26))
+    for k in range(3):
+        rr = br * (0.72 + 0.12 * k)
+        d.ellipse([cx - rr, cy - rr * 0.92, cx + rr, cy + rr * 0.92],
+                  outline=(120, 84, 50, 70 + 22 * k), width=max(2, int(size * 0.012)))
+    return im.filter(ImageFilter.GaussianBlur(size * 0.004))
+
+
+def _procedural_grunge(size, seed):
+    im = Image.new("RGB", (size, size), "white")
+    d = ImageDraw.Draw(im, "RGBA")
+    r = random.Random(seed)
+    for _ in range(int(size * 0.7)):
+        x, y, s = r.randint(0, size), r.randint(0, size), r.randint(1, max(2, size // 160))
+        d.ellipse([x, y, x + s, y + s], fill=(90, 66, 40, r.randint(8, 42)))
+    for _ in range(24):
+        x0, y0 = r.randint(0, size), r.randint(0, size)
+        d.line([(x0, y0), (x0 + r.randint(-size // 3, size // 3), y0 + r.randint(-size // 10, size // 10))],
+               fill=(80, 58, 36, r.randint(10, 30)), width=1)
+    return im
+
+
+def aged_overlays(base, cache_dir, use_ai):
+    """Grain, grunge marks and coffee stains over the parchment — marks of wear."""
+    base = base.convert("RGB")
+    W, H = base.size
+    minc = min(W, H)
+    rng = random.Random(99)
+    # faint grunge over the whole sheet (multiply)
+    grunge = fetch_texture(
+        "grunge", "subtle grunge dirty old paper texture, faint scratches stains and "
+        "specks, light beige, monochrome, flat scan, seamless",
+        cache_dir, use_ai, 1024) or _procedural_grunge(1024, 1)
+    g = grunge.convert("RGB").resize((W, H))
+    base = Image.blend(base, ImageChops.multiply(base, g), 0.16)
+    # coffee-cup ring stains — procedural rings read much better than a solid AI blob;
+    # kept small and faint, at a few seeded spots
+    for i, (fx, fy) in enumerate(((0.17, 0.2), (0.85, 0.74), (0.66, 0.3), (0.3, 0.83))):
+        s = int(W * (0.06 + 0.015 * i))
+        tx = _procedural_coffee(512, i + 3).rotate(rng.randint(0, 359), fillcolor=(255, 255, 255)).resize((s, s))
+        cx, cy = int(W * fx), int(H * fy)
+        x0, y0 = cx - s // 2, cy - s // 2
+        region = base.crop((x0, y0, x0 + s, y0 + s))
+        base.paste(Image.blend(region, ImageChops.multiply(region, tx), 0.45), (x0, y0))
+    # film grain
+    noise = Image.effect_noise((W, H), 26).convert("L").convert("RGB")
+    return Image.blend(base, ImageChops.overlay(base, noise), 0.08).convert("RGBA")
 
 
 def draw_banner(text, font, w_pad=60):
@@ -622,7 +676,7 @@ def render(content_dir, out_dir, use_ai, W, H):
 
     # ---- base (opaque bottom layer -> JPEG to keep it light for the browser) ----
     base = parchment(W, H)
-    draw_rivers(base, W, H)
+    base = aged_overlays(base, cache, use_ai)
     base.convert("RGB").save(os.path.join(out_dir, "base.jpg"), quality=82, optimize=True)
 
     # ---- roads (each its own tile) ----
