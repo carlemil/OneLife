@@ -1415,7 +1415,12 @@
   /* Edge labels are HTML pills whose colour is var-driven; the dark theme default
      renders them light-on-dark. They're portaled out of .canvas, so target them
      unscoped and force black text on a light pill. */
-  :global(.svelte-flow__edge-label) { color:#000 !important; background:#e6e8f0 !important; font-weight:600; padding:1px 5px; border-radius:4px; }
+  :global(.svelte-flow__edge-label) {
+    color:#000 !important; background:#e6e8f0 !important; font-weight:600;
+    padding:2px 6px; border-radius:4px;
+    max-width:150px; white-space:normal; overflow-wrap:break-word;
+    text-align:center; line-height:1.2; font-size:11px;
+  }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
   /* right panel: drag its inner (left) edge to resize width; content fills width.
