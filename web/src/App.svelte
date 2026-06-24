@@ -64,7 +64,7 @@
   let sceneEl = $state(null);   // the live "current scene" — we scroll it into view
   let _seenBeats = 0;
   // Icon per beat kind; dialogue and scene lines carry none.
-  const KIND_ICON = { action: '›', puzzle: '🧩', clue: '✦', travel: '🗺', death: '✝' };
+  const KIND_ICON = { action: '›', gate: '›', puzzle: '🧩', clue: '✦', travel: '🗺', death: '✝' };
 
   // Side "Log" panel: the progress beats (no NPC dialogue), newest first, paged.
   // The main-column flow is unaffected; this is the compact progress log + rollback.
@@ -953,7 +953,7 @@
               </button>
             {/each}
             {#if game.edges.length === 0 && game.node.is_death}
-              <p class="dead">You are dead. Use the ↩ on an earlier beat in the <b>Log</b> panel (right) to cheat death and return there — at a cost.</p>
+              <p class="dead">You are dead. In the <b>Log</b> panel (right), use ↩ on an earlier <b>gate</b> you talked your way through to cheat death and return there — at a cost.</p>
             {/if}
             {#if game.node.world_access}
               <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
@@ -1058,7 +1058,10 @@
           <ul class="log">
             {#each logRev.slice(0, logShown) as l, i}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0 && i > 0}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+                {#if l.seq > 0 && i > 0}
+                  {#if l.kind === 'gate'}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
+                  {#if isAdmin}<button class="link rollback adminrb" title="Admin: roll back to this point" aria-label="Admin: roll back to this point" onclick={() => onRollback(l.seq)}>↺</button>{/if}
+                {/if}
               </li>
             {/each}
           </ul>
@@ -1385,6 +1388,7 @@
   .dead { color:#c98; }
   .more { display:inline-block; margin-top:.5rem; }
   .rollback { font-size:1rem; line-height:1; }
+  .rollback.adminrb { color:#7da7d0; margin-left:.15rem; }   /* admin: roll back to ANY beat (distinct from the player ↩) */
   .notelist { list-style:disc; padding-left:1.1rem; margin:.3rem 0 0; font-size:.82rem; color:#cdbb9a; }
   .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#e8e8f0; border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
