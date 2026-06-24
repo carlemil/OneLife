@@ -2528,5 +2528,113 @@
       "concept": "village",
       "label": "Village / town"
     }
+  ],
+  "regions": [
+    {
+      "cell": "malmo",
+      "name": "Malmö",
+      "tile": "region-malmo.png",
+      "bbox": [
+        830,
+        1379,
+        203,
+        71
+      ],
+      "reveal_locations": [
+        "malmo-harbor",
+        "malmo-crossing",
+        "malmo-locker",
+        "malmo-rosengard",
+        "malmo-server-basement",
+        "malmo-police",
+        "malmo-stortorget",
+        "malmo-lilla-torg",
+        "malmo-castle",
+        "malmo-turning-torso",
+        "malmo-pildamms",
+        "malmo-cemetery",
+        "malmo-citytunnel"
+      ]
+    },
+    {
+      "cell": "sandby",
+      "name": "Södra Sandby",
+      "tile": "region-sandby.png",
+      "bbox": [
+        2127,
+        844,
+        282,
+        71
+      ],
+      "reveal_locations": [
+        "killebackskolan",
+        "sandby-church",
+        "sandby-quarry",
+        "sandby-crooked-house",
+        "sandby-street"
+      ]
+    },
+    {
+      "cell": "lund",
+      "name": "Lund",
+      "tile": "region-lund.png",
+      "bbox": [
+        840,
+        693,
+        183,
+        71
+      ],
+      "reveal_locations": [
+        "lund-library",
+        "lund-cellar",
+        "lund-lodgings",
+        "lund-manor",
+        "lund-botanical",
+        "lund-apothecary",
+        "lund-crypt",
+        "lund-square",
+        "lund-station"
+      ]
+    },
+    {
+      "cell": "skane-woods",
+      "name": "Skåne Woods",
+      "tile": "region-skane-woods.png",
+      "bbox": [
+        2128,
+        406,
+        279,
+        71
+      ],
+      "reveal_locations": [
+        "skane-woods"
+      ]
+    }
+  ],
+  "markers": [
+    {
+      "type": "skull",
+      "node": "kbk-caught",
+      "tile": "marker-skull-kbk-caught.png",
+      "bbox": [
+        2410,
+        954,
+        99,
+        99
+      ],
+      "reveal_node": "kbk-caught"
+    },
+    {
+      "type": "ending",
+      "node": "malmo-crossing",
+      "tile": "marker-ending.png",
+      "bbox": [
+        888,
+        1551,
+        81,
+        81
+      ],
+      "reveal_location": "malmo-harbor"
+    }
   ]
 }

@@ -34,6 +34,9 @@
   load();
 
   const roadShown = (r) => locs.has(r.from) && locs.has(r.to);
+  const regionShown = (reg) => (reg.reveal_locations || []).some((id) => locs.has(id));
+  const markerShown = (m) => (m.reveal_node && nodes.has(m.reveal_node))
+    || (m.reveal_location && locs.has(m.reveal_location));
   const building = $derived(meta?.building);
   const schoolShown = $derived(building ? locs.has(building.id) : false);
   function here() {
@@ -63,14 +66,14 @@
 
           {#each meta.roads as r}
             {#if roadShown(r)}
-              <img class="wm-tile" src="{BASE}/{r.tile}" alt="" draggable="false"
+              <img class="wm-tile wm-anim" src="{BASE}/{r.tile}" alt="" draggable="false"
                    style="left:{px(r.bbox[0])}px; top:{px(r.bbox[1])}px; width:{px(r.bbox[2])}px; height:{px(r.bbox[3])}px" />
             {/if}
           {/each}
 
           {#each meta.locations as l}
             {#if !l.is_building && locs.has(l.id)}
-              <img class="wm-tile" src="{BASE}/{l.tile}" alt="" draggable="false"
+              <img class="wm-tile wm-anim" src="{BASE}/{l.tile}" alt="" draggable="false"
                    style="left:{px(l.bbox[0])}px; top:{px(l.bbox[1])}px; width:{px(l.bbox[2])}px; height:{px(l.bbox[3])}px" />
               <button class="wm-hit" title={l.name} aria-label={l.name} onclick={() => (sel = l)}
                    style="left:{px(l.x) - 26}px; top:{px(l.y) - 26}px"></button>
@@ -78,15 +81,30 @@
           {/each}
 
           {#if building && schoolShown}
-            <img class="wm-tile" src="{BASE}/{building.shell}" alt="" draggable="false"
+            <img class="wm-tile wm-anim" src="{BASE}/{building.shell}" alt="" draggable="false"
                  style="left:{px(building.footprint[0])}px; top:{px(building.footprint[1])}px; width:{px(building.footprint[2])}px; height:{px(building.footprint[3])}px" />
             {#each building.rooms as rm}
               {#if nodes.has(rm.node_id)}
-                <img class="wm-tile" src="{BASE}/{rm.tile}" alt="" draggable="false"
+                <img class="wm-tile wm-anim" src="{BASE}/{rm.tile}" alt="" draggable="false"
                      style="left:{px(rm.bbox[0])}px; top:{px(rm.bbox[1])}px; width:{px(rm.bbox[2])}px; height:{px(rm.bbox[3])}px" />
               {/if}
             {/each}
           {/if}
+
+          {#each meta.regions || [] as reg}
+            {#if regionShown(reg)}
+              <img class="wm-tile wm-anim" src="{BASE}/{reg.tile}" alt="" draggable="false"
+                   style="left:{px(reg.bbox[0])}px; top:{px(reg.bbox[1])}px; width:{px(reg.bbox[2])}px; height:{px(reg.bbox[3])}px" />
+            {/if}
+          {/each}
+
+          {#each meta.markers || [] as m}
+            {#if markerShown(m)}
+              <img class="wm-tile wm-anim wm-mark" src="{BASE}/{m.tile}" alt="" draggable="false"
+                   title={m.type === 'ending' ? 'Journey’s end' : 'Danger — death'}
+                   style="left:{px(m.bbox[0])}px; top:{px(m.bbox[1])}px; width:{px(m.bbox[2])}px; height:{px(m.bbox[3])}px" />
+            {/if}
+          {/each}
 
           <img class="wm-full wm-frame" src="{BASE}/{meta.frame}" alt="" draggable="false" />
 
@@ -112,6 +130,12 @@
   .wm-full { position:absolute; left:0; top:0; width:100%; height:100%; }
   .wm-frame { pointer-events:none; }
   .wm-tile { position:absolute; image-rendering:auto; }
+  .wm-anim { animation:wm-reveal .6s ease both; transform-origin:center; }
+  @keyframes wm-reveal { from { opacity:0; transform:scale(.6); filter:blur(2px); }
+    to { opacity:1; transform:scale(1); filter:blur(0); } }
+  .wm-mark { animation:wm-pop .7s cubic-bezier(.34,1.56,.64,1) both; }
+  @keyframes wm-pop { 0% { opacity:0; transform:scale(0) rotate(-20deg); }
+    100% { opacity:1; transform:scale(1) rotate(0); } }
   .wm-hit { position:absolute; width:52px; height:52px; border-radius:50%; border:0;
     background:transparent; cursor:pointer; }
   .wm-hit:hover { background:rgba(205,187,154,.18); }

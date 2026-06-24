@@ -352,7 +352,8 @@ def layout(data, W, H):
                     seen.add(tuple(sorted((l1, l2))))
                     roads.append({"id": f"road-{l1}--{l2}", "from": l1, "to": l2,
                                   "label": "", "intercell": True})
-    return cells, node_loc, pos, roads, M, cw, ch
+    cell_pos = {cid: cell_center(c) for cid, c in cells.items()}
+    return cells, node_loc, pos, roads, M, cw, ch, cell_pos
 
 
 # --------------------------------------------------------------------------- #
@@ -380,7 +381,69 @@ def parchment(W, H):
     vig = ImageOps.invert(vig.filter(ImageFilter.GaussianBlur(220)))
     base = Image.composite(Image.new("RGB", (W, H), (120, 96, 60)), base,
                            vig.point(lambda v: int(v * 0.5)))
+    base = burnt_edges(base)
     return base.convert("RGBA")
+
+
+def burnt_edges(base):
+    """Char the parchment edges — an irregular scorched/blackened border."""
+    W, H = base.size
+    b = int(min(W, H) * 0.075)
+    band = Image.new("L", (W, H), 0)
+    bd = ImageDraw.Draw(band)
+    bd.rectangle([0, 0, W, H], fill=255)
+    bd.rectangle([b, b, W - b, H - b], fill=0)
+    band = band.filter(ImageFilter.GaussianBlur(b * 0.55))
+    noise = Image.effect_noise((W, H), 70)
+    band = ImageChops.multiply(band, noise).point(lambda v: min(255, int(v * 3.2)))
+    base = Image.composite(Image.new("RGB", (W, H), (46, 30, 16)), base, band)
+    rim = Image.new("L", (W, H), 0)
+    rd = ImageDraw.Draw(rim)
+    rd.rectangle([0, 0, W, H], fill=255)
+    rd.rectangle([int(b * 0.4), int(b * 0.4), int(W - b * 0.4), int(H - b * 0.4)], fill=0)
+    rim = rim.filter(ImageFilter.GaussianBlur(b * 0.25))
+    return Image.composite(Image.new("RGB", (W, H), (18, 11, 6)), base,
+                           rim.point(lambda v: min(255, int(v * 1.6))))
+
+
+def draw_rivers(base, W, H):
+    """A couple of faint double-line ink rivers (always-on geography)."""
+    rivers = [
+        [(0.52, 0.04), (0.47, 0.18), (0.41, 0.33), (0.33, 0.47), (0.26, 0.6), (0.2, 0.72)],
+        [(0.04, 0.8), (0.14, 0.84), (0.27, 0.81), (0.4, 0.87), (0.5, 0.84)],
+    ]
+    d = ImageDraw.Draw(base, "RGBA")
+    for ri, river in enumerate(rivers):
+        pts = []
+        for i in range(len(river) - 1):
+            seg = wobble((river[i][0] * W, river[i][1] * H),
+                         (river[i + 1][0] * W, river[i + 1][1] * H),
+                         min(W, H) * 0.012, 6, f"river{ri}-{i}")
+            pts.extend(seg)
+        for sign in (-1, 1):
+            off = []
+            for k in range(len(pts)):
+                a = pts[max(0, k - 1)]; b = pts[min(len(pts) - 1, k + 1)]
+                dx, dy = b[0] - a[0], b[1] - a[1]
+                L = math.hypot(dx, dy) or 1
+                off.append((pts[k][0] - dy / L * 6 * sign, pts[k][1] + dx / L * 6 * sign))
+            d.line(off, fill=WATER_INK + (150,), width=4, joint="curve")
+
+
+def draw_banner(text, font, w_pad=60):
+    """A small ribbon banner tile with calligraphic text on parchment."""
+    tmp = ImageDraw.Draw(Image.new("RGB", (4, 4)))
+    tw = int(tmp.textlength(text, font=font)); th = font.getbbox("Ay")[3]
+    W, H = tw + w_pad * 2, th + 36
+    im = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+    d = ImageDraw.Draw(im, "RGBA")
+    notch = 22
+    d.polygon([(notch, 4), (W - notch, 4), (W - 4, H / 2), (W - notch, H - 4),
+               (notch, H - 4), (4, H / 2)], fill=PARCH + (236,), outline=INK + (255,))
+    d.line([(notch, 4), (4, H / 2), (notch, H - 4)], fill=INK + (255,), width=4)
+    d.line([(W - notch, 4), (W - 4, H / 2), (W - notch, H - 4)], fill=INK + (255,), width=4)
+    d.text((W / 2 - tw / 2, (H - th) / 2 - 2), text, font=font, fill=INK + (255,))
+    return im
 
 
 def terrain_patch(tile, concept, cx, cy, R):
@@ -422,7 +485,7 @@ def draw_label(tile, text, cx, y, font, max_w):
 
 def render(content_dir, out_dir, use_ai, W, H):
     data = load_data(content_dir)
-    cells, node_loc, pos, roads, M, cw, ch = layout(data, W, H)
+    cells, node_loc, pos, roads, M, cw, ch, cell_pos = layout(data, W, H)
     locs = {l["id"]: l for l in data["locations"]}
     os.makedirs(out_dir, exist_ok=True)
     cache = os.path.join(out_dir, "iconcache")
@@ -441,15 +504,19 @@ def render(content_dir, out_dir, use_ai, W, H):
             icon_cache[cid] = get_icon(cid, subj, cache, use_ai)
     for extra, subj in (("compass", "an ornate cartographer compass rose with fleur-de-lis north"),
                         ("monster", "a coiling sea serpent monster"),
-                        ("mountains", "a row of small hand drawn mountains"),):
+                        ("mountains", "a row of small hand drawn mountains"),
+                        ("skull", "a small skull and crossbones warning symbol"),):
         icon_cache[extra] = get_icon(extra, subj, cache, use_ai,
                                      size=520 if extra == "compass" else 360)
+    banner_font = load_font(int(min(cw, ch) * 0.062))
 
     meta = {"width": W, "height": H, "base": "base.jpg", "frame": "frame.png",
-            "locations": [], "roads": [], "building": None, "legend": []}
+            "locations": [], "roads": [], "building": None, "legend": [],
+            "regions": [], "markers": []}
 
     # ---- base (opaque bottom layer -> JPEG to keep it light for the browser) ----
     base = parchment(W, H)
+    draw_rivers(base, W, H)
     base.convert("RGB").save(os.path.join(out_dir, "base.jpg"), quality=82, optimize=True)
 
     # ---- roads (each its own tile) ----
@@ -549,6 +616,56 @@ def render(content_dir, out_dir, use_ai, W, H):
                                   "bbox": [bx0, by0, bw, bh],
                                   "reveal_nodes": [n["id"] for n in school_nodes]})
 
+    # ---- region banners (shown once any place in that region is discovered) ----
+    locs_by_cell = {}
+    for l in data["locations"]:
+        locs_by_cell.setdefault(l.get("cell"), []).append(l["id"])
+    for cid, c in cells.items():
+        name = c.get("name") or cid
+        cx, cy = cell_pos[cid]
+        ban = draw_banner(name, banner_font)
+        bw, bh = ban.size
+        ys = [pos[lid][1] for lid in locs_by_cell.get(cid, []) if lid in pos]
+        by = int(max(M * 0.6, (min(ys) if ys else cy) - bh - int(min(cw, ch) * 0.16)))
+        bx = int(cx - bw / 2)
+        ban.save(os.path.join(out_dir, f"region-{cid}.png"))
+        meta["regions"].append({"cell": cid, "name": name, "tile": f"region-{cid}.png",
+                                "bbox": [bx, by, bw, bh],
+                                "reveal_locations": locs_by_cell.get(cid, [])})
+
+    # ---- markers: a skull at death spots, an X at the Malmö-crossing ending ----
+    skull = icon_cache["skull"]
+    msz = int(min(cw, ch) * 0.16)
+    for n in data["nodes"]:
+        if not (n.get("type") == "death" or n.get("is_death")):
+            continue
+        loc = n.get("location")
+        if loc == SCHOOL and meta["building"]:
+            rm = next((r for r in meta["building"]["rooms"] if r["node_id"] == n["id"]), None)
+            if not rm:
+                continue
+            mx, my, rev = rm["x"], rm["y"], {"reveal_node": n["id"]}
+        elif loc in pos:
+            mx, my, rev = pos[loc][0], pos[loc][1], {"reveal_location": loc}
+        else:
+            continue
+        skull.resize((msz, msz)).save(os.path.join(out_dir, f"marker-skull-{n['id']}.png"))
+        meta["markers"].append({"type": "skull", "node": n["id"],
+                                "tile": f"marker-skull-{n['id']}.png",
+                                "bbox": [int(mx - msz / 2), int(my - msz * 0.85), msz, msz], **rev})
+    end = next((n for n in data["nodes"] if n.get("type") == "ending"), None)
+    if end and end.get("location") in pos:
+        ex, ey = pos[end["location"]]
+        xs = int(min(cw, ch) * 0.13)
+        xt = Image.new("RGBA", (xs, xs), (0, 0, 0, 0))
+        xd = ImageDraw.Draw(xt, "RGBA")
+        for p in ([(6, 6), (xs - 6, xs - 6)], [(xs - 6, 6), (6, xs - 6)]):
+            xd.line(p, fill=(150, 40, 24, 255), width=max(5, xs // 13))
+        xt.save(os.path.join(out_dir, "marker-ending.png"))
+        meta["markers"].append({"type": "ending", "node": end["id"], "tile": "marker-ending.png",
+                                "bbox": [int(ex - xs / 2), int(ey - xs / 2), xs, xs],
+                                "reveal_location": "malmo-harbor"})
+
     # ---- frame: border, compass, title, legend ----
     frame = Image.new("RGBA", (W, H), (0, 0, 0, 0))
     fd = ImageDraw.Draw(frame, "RGBA")
@@ -605,6 +722,9 @@ def render(content_dir, out_dir, use_ai, W, H):
     if meta["building"]:
         for rm in meta["building"]["rooms"]:
             t = Image.open(os.path.join(out_dir, rm["tile"])); preview.alpha_composite(t, (rm["bbox"][0], rm["bbox"][1]))
+    for grp in (meta["regions"], meta["markers"]):
+        for it in grp:
+            t = Image.open(os.path.join(out_dir, it["tile"])); preview.alpha_composite(t, (it["bbox"][0], it["bbox"][1]))
     preview.alpha_composite(frame, (0, 0))
     preview.convert("RGB").save(os.path.join(out_dir, "preview.png"))
 
