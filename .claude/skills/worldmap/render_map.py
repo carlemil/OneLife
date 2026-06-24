@@ -279,11 +279,19 @@ def layout(data, W, H):
                 M + (c["grid_y"] - miny + 0.5) * ch)
 
     minch = min(cw, ch)
-    PAD = M * 0.78           # margin: room to spread without tiles hitting the frame
+    PAD = minch * 0.5        # generous inset so places never sit along the image edge
     bx0, by0, bx1, by1 = PAD, PAD, W - PAD, H - PAD
+    # Contain places within a centred ELLIPSE rather than the rectangle: this keeps
+    # them off the straight image edges (no edge-rows) and out of the corners where
+    # the compass / legend / monster sit — an organic oval that still fills the map.
+    ecx, ecy = W * 0.5, H * 0.5
+    erx, ery = W * 0.5 - PAD, H * 0.5 - PAD
 
     def clampb(p):
-        p[0] = min(bx1, max(bx0, p[0])); p[1] = min(by1, max(by0, p[1]))
+        nx, ny = (p[0] - ecx) / erx, (p[1] - ecy) / ery
+        r = math.hypot(nx, ny)
+        if r > 1.0:
+            p[0] = ecx + nx / r * erx; p[1] = ecy + ny / r * ery
 
     # Frame furniture (compass / sea-monster / title / legend) sits on top — model
     # each as a soft circular repulsor so places drift out from behind it.
@@ -319,12 +327,19 @@ def layout(data, W, H):
         c = cells.get(cid)
         if not c:
             continue
+        # Bias each cell's anchor toward the map centre so places don't pile up along
+        # the edges, then give every place its OWN seeded random offset — the force
+        # layout settles toward these scattered targets, so the final spread is partly
+        # random / organic rather than an even relaxed grid.
         ccx, ccy = cell_center(c)
+        bxc = ccx * 0.55 + (W * 0.5) * 0.45
+        byc = ccy * 0.55 + (H * 0.5) * 0.45
         for g in group:
             ang = rng.uniform(0, 2 * math.pi)
-            rad = minch * 0.55 * math.sqrt(rng.uniform(0.02, 1.0))
-            pos[g["id"]] = [ccx + math.cos(ang) * rad, ccy + math.sin(ang) * rad]
-            home[g["id"]] = (ccx, ccy)
+            rad = minch * 0.5 * math.sqrt(rng.uniform(0.05, 1.0))
+            hx, hy = bxc + math.cos(ang) * rad, byc + math.sin(ang) * rad
+            home[g["id"]] = (hx, hy)
+            pos[g["id"]] = [hx + rng.uniform(-40, 40), hy + rng.uniform(-40, 40)]
             clampb(pos[g["id"]])
 
     # Connectivity (roads) — geometry is drawn later from the final positions.
@@ -399,10 +414,11 @@ def layout(data, W, H):
             clampb(pos[i])
         temp *= 0.985
 
-    # Guarantee no overlap: hard separation passes at ~1.25x the tile size (tiles are
-    # ~0.46*minch wide), while still nudging out of the furniture zones.
-    SEP = minch * 0.58
-    for _ in range(220):
+    # Guarantee no overlap: hard separation passes above the tile size (tiles are
+    # ~0.38*minch wide). Furniture avoidance was handled in the force phase; here we
+    # only separate + clamp so the pass converges cleanly.
+    SEP = minch * 0.44
+    for _ in range(400):
         moved = False
         for i in range(len(ids)):
             for j in range(i + 1, len(ids)):
@@ -414,8 +430,6 @@ def layout(data, W, H):
                     b[0] -= ux * push; b[1] -= uy * push
                     moved = True
         for i in ids:
-            zx, zy = zone_disp(pos[i])
-            pos[i][0] += zx * 0.5; pos[i][1] += zy * 0.5
             clampb(pos[i])
         if not moved:
             break
@@ -613,7 +627,7 @@ def render(content_dir, out_dir, use_ai, W, H):
     for l in data["locations"]:
         cx, cy = pos[l["id"]]
         cid, _ = concept_for(l)
-        T = int(min(cw, ch) * 0.46)
+        T = int(min(cw, ch) * 0.38)
         tile = Image.new("RGBA", (T, T), (0, 0, 0, 0))
         lcx, lcy = T / 2, T * 0.42
         R = T * 0.3
@@ -747,7 +761,7 @@ def main():
     ap.add_argument("--content", help="game-data dir")
     ap.add_argument("--out", default=os.path.join(HERE, "..", "..", "..", "web", "public", "worldmap"))
     ap.add_argument("--no-ai", action="store_true", help="procedural icons only (offline)")
-    ap.add_argument("--size", default="3200x2400", help="canvas WxH")
+    ap.add_argument("--size", default="3600x2700", help="canvas WxH")
     a = ap.parse_args()
     W, H = (int(v) for v in a.size.lower().split("x"))
     content = find_content_dir(a.content)
