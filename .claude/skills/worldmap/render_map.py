@@ -296,12 +296,14 @@ def layout(data, W, H):
     # Frame furniture (compass / sea-monster / title / legend) sits on top — model
     # each as a soft circular repulsor so places drift out from behind it.
     zone_rects = [
-        (W - M * 0.6 - minch * 0.5, M * 0.4, W - M * 0.4, M * 0.6 + minch * 0.5),       # compass TR
-        (M * 0.6, H - M * 0.7 - minch * 0.5, M * 0.7 + minch * 0.5, H - M * 0.5),        # monster BL
-        (W * 0.3, M * 0.35, W * 0.7, M * 0.35 + minch * 0.4),                            # title top
-        (W - M * 0.6 - cw * 0.9, H - M * 0.6 - ch * 0.95, W - M * 0.5, H - M * 0.5),     # legend BR
+        (W - M * 0.6 - minch * 0.5, M * 0.35, W - M * 0.35, M * 0.6 + minch * 0.5),      # compass TR
+        (M * 0.55, H - M * 0.7 - minch * 0.5, M * 0.7 + minch * 0.5, H - M * 0.45),       # monster BL
+        (W * 0.25, M * 0.25, W * 0.75, M * 0.4 + minch * 0.42),                          # title top
+        (W - M * 0.6 - cw * 0.92, H - M * 0.6 - ch * 0.97, W - M * 0.4, H - M * 0.4),    # legend BR
     ]
-    pad = 18
+    # expand each zone by a tile half-width so a place's TILE (not just its centre)
+    # stays clear of the furniture — nothing ever gets covered.
+    pad = int(minch * 0.22)
     zone_pad = [(x0 - pad, y0 - pad, x1 + pad, y1 + pad) for (x0, y0, x1, y1) in zone_rects]
 
     def zone_disp(p):
@@ -316,6 +318,17 @@ def layout(data, W, H):
                 elif m == dt: fy -= dt + 10
                 else: fy += db + 10
         return fx, fy
+
+    def eject(p):
+        """Hard guarantee: shove a point out of any furniture rect it lands in."""
+        for x0, y0, x1, y1 in zone_pad:
+            if x0 <= p[0] <= x1 and y0 <= p[1] <= y1:
+                dl, dr, dt, db = p[0] - x0, x1 - p[0], p[1] - y0, y1 - p[1]
+                m = min(dl, dr, dt, db)
+                if m == dl: p[0] = x0 - 2
+                elif m == dr: p[0] = x1 + 2
+                elif m == dt: p[1] = y0 - 2
+                else: p[1] = y1 + 2
 
     # Initial scatter: seeded random jitter around each cell centre (organic, not a grid).
     rng = random.Random(11)
@@ -414,12 +427,12 @@ def layout(data, W, H):
             clampb(pos[i])
         temp *= 0.985
 
-    # Guarantee no overlap: hard separation passes above the tile size (tiles are
-    # ~0.38*minch wide). Furniture avoidance was handled in the force phase; here we
-    # only separate + clamp so the pass converges cleanly.
+    # Guarantee no overlap AND nothing under the furniture: hard separation passes
+    # above the tile size, then eject any place that lands in a furniture rect and
+    # clamp back into the oval. Run a fixed number of passes so the eject keeps
+    # holding even once the separation has converged.
     SEP = minch * 0.44
-    for _ in range(400):
-        moved = False
+    for _ in range(320):
         for i in range(len(ids)):
             for j in range(i + 1, len(ids)):
                 a, b = pos[ids[i]], pos[ids[j]]
@@ -428,11 +441,8 @@ def layout(data, W, H):
                     push = (SEP - d) / 2
                     a[0] += ux * push; a[1] += uy * push
                     b[0] -= ux * push; b[1] -= uy * push
-                    moved = True
         for i in ids:
-            clampb(pos[i])
-        if not moved:
-            break
+            eject(pos[i]); clampb(pos[i])
 
     cell_pos = {cid: cell_center(c) for cid, c in cells.items()}
     return cells, node_loc, pos, roads, M, cw, ch, cell_pos
