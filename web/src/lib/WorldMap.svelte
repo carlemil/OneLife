@@ -6,7 +6,7 @@
   // /api/worldmap (places you've visited; rollback-safe).
   import { api } from './api.js';
 
-  let { onClose, isAdmin = false } = $props();
+  let { onClose, isAdmin = false, onGo } = $props();
   let revealAll = $state(false);     // admin-only: temporarily un-fog the whole map
   const BASE = '/worldmap';
   const DISPLAY_W = 1180;            // on-screen width; everything scales from the meta
@@ -16,7 +16,6 @@
   let nodes = $state(new Set());
   let current = $state(null);
   let error = $state('');
-  let sel = $state(null);
 
   let scale = $derived(meta ? DISPLAY_W / meta.width : 1);
   const px = (v) => v * (meta ? DISPLAY_W / meta.width : 1);
@@ -79,7 +78,8 @@
             {#if locShown(l)}
               <img class="wm-tile wm-anim" src="{BASE}/{l.tile}" alt="" draggable="false"
                    style="left:{px(l.bbox[0])}px; top:{px(l.bbox[1])}px; width:{px(l.bbox[2])}px; height:{px(l.bbox[3])}px" />
-              <button class="wm-hit" title={l.name} aria-label={l.name} onclick={() => (sel = l)}
+              <button class="wm-hit" title={`Travel to ${l.name}`} aria-label={`Travel to ${l.name}`}
+                   onclick={() => onGo?.(l.id)}
                    style="left:{px(l.x) - 26}px; top:{px(l.y) - 26}px"></button>
             {/if}
           {/each}
@@ -106,8 +106,7 @@
           {/if}
         </div>
       </div>
-      {#if sel}<p class="wm-sel"><b>{sel.name}</b> <button class="link" onclick={() => (sel = null)}>×</button></p>{/if}
-      <p class="sub wm-foot">Undiscovered places stay hidden — explore to reveal the map. The school reveals room by room.</p>
+      <p class="sub wm-foot">Click a place to travel there. Undiscovered places stay hidden — explore to reveal the map.</p>
     {/if}
   </div>
 </div>

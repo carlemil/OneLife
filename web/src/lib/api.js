@@ -57,6 +57,7 @@ export const api = {
   // world & maps
   world: () => req('/api/world'),
   worldMap: () => req('/api/worldmap'),
+  worldMapTravel: (location_id) => req('/api/worldmap/travel', { method: 'POST', body: { location_id } }),
   travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),
 
   // atmosphere

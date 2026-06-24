@@ -214,6 +214,9 @@ class RollbackBody(BaseModel):
 class TravelBody(BaseModel):
     cell_id: str
 
+class WorldmapTravelBody(BaseModel):
+    location_id: str
+
 class ContentImportBody(BaseModel):
     text: str
 
@@ -618,6 +621,57 @@ async def get_worldmap(authorization: str | None = Header(default=None)):
         "revealed_nodes": sorted({r["node_id"] for r in rows}),
         "current_location": cur["location_id"] if cur else None,
     }
+
+
+@app.post("/api/worldmap/travel")
+async def worldmap_travel(body: WorldmapTravelBody,
+                          authorization: str | None = Header(default=None)):
+    """Fast-travel from the illustrated map: move the player to a clicked place.
+    Lands on a safe representative node there (a 'location'-type / world-access node,
+    never a death node; falls back to the cell's arrival node). Non-admins may only
+    travel to places they've ALREADY discovered (so this can't skip gates/puzzles);
+    admins (who can reveal the whole map) may jump anywhere."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            loc = await conn.fetchrow(
+                "SELECT id, name, cell_id FROM locations WHERE id=$1", body.location_id)
+            if loc is None:
+                raise HTTPException(404, "no such place")
+            if not _is_admin(sess):
+                visited = await conn.fetchval(
+                    """SELECT 1 FROM log_entries le JOIN story_nodes n ON n.id = le.node_id
+                       WHERE le.log_id=$1 AND NOT le.rolled_back AND n.location_id=$2 LIMIT 1""",
+                    sess["log_id"], body.location_id)
+                if not visited:
+                    raise HTTPException(400, "you haven't discovered that place yet")
+            target = await conn.fetchval(
+                """SELECT id FROM story_nodes WHERE location_id=$1
+                   ORDER BY (type='location') DESC, world_access DESC, is_death ASC, id
+                   LIMIT 1""", body.location_id)
+            if target is None:
+                target = await conn.fetchval(
+                    "SELECT arrival_node FROM world_cells WHERE id=$1", loc["cell_id"])
+            if not target:
+                raise HTTPException(400, "there's no way to reach that place")
+            if target == sess["current_node"]:
+                return await engine.render_state(conn, sess["player_id"], sess)
+            seq, story_time = await engine.apply_action(
+                conn, sess["player_id"], sess["log_id"], node_id=target,
+                effects={"log": f"You make your way to {loc['name']}."},
+                story_time=sess["story_time"], kind="action")
+            await conn.execute(
+                "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
+                target, story_time, sess["token"])
+            sess["current_node"] = target
+            sess["story_time"] = story_time
+            await engine.discover_clues(
+                conn, sess["player_id"], sess["log_id"], story_time, target)
+            await _reveal_cells_around(
+                conn, sess["player_id"], target, seq, sess["log_id"], story_time)
+        return await engine.render_state(conn, sess["player_id"], sess)
 
 
 @app.post("/api/travel")

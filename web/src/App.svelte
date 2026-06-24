@@ -789,6 +789,17 @@
     } catch (e) { error = e.message; } finally { busy = false; }
   }
 
+  // Fast-travel from the illustrated world map: clicking a place moves the player
+  // there and closes the map.
+  async function onWorldMapGo(locationId) {
+    busy = true;
+    try {
+      game = await api.worldMapTravel(locationId);
+      logEntries = (await api.log()).entries;
+      showWorldMap = false;
+    } catch (e) { error = e.message; } finally { busy = false; }
+  }
+
   async function onEdge(id) {
     busy = true;
     gateReply = ''; gatePassed = false; puzzleResult = ''; puzzleHintLine = '';   // a fresh scene clears the last reply
@@ -1078,7 +1089,7 @@
   {/if}
 
   {#if showWorldMap}
-    <WorldMap onClose={() => (showWorldMap = false)} {isAdmin} />
+    <WorldMap onClose={() => (showWorldMap = false)} {isAdmin} onGo={onWorldMapGo} />
   {/if}
 
   {#if showMap && world}
