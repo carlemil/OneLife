@@ -5,6 +5,7 @@
   import { SvelteFlow, Background, Controls } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import StoryNode from './lib/StoryNode.svelte';
+  import StoryEdge from './lib/StoryEdge.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -117,6 +118,7 @@
   let logHead = $state(0);
   let canRedo = $derived(logRows.some((e) => e.seq > logHead));
   const nodeTypes = { story: StoryNode };
+  const edgeTypes = { story: StoryEdge };
 
   // atmosphere (image + Spotify soundtrack)
   let atmo = $state(null);
@@ -575,11 +577,22 @@
       position: stored[n.id] ?? auto[n.id] ?? { x: 0, y: 0 },
       data: { ntype: n.type, rec: n },
     }));
+    // Group edges by unordered endpoint pair so parallel/antiparallel siblings can
+    // fan their labels apart (see StoryEdge). `sign` keeps the fan consistent for a
+    // pair's reversed twin (canonical source = the lexically smaller node id).
+    const pairKey = (e) => (e.from < e.to ? `${e.from}|${e.to}` : `${e.to}|${e.from}`);
+    const groups = {};
+    for (const e of content.edges) (groups[pairKey(e)] ??= []).push(e);
+    const pairMeta = {};
+    for (const k in groups) {
+      const arr = groups[k], canon = k.split('|')[0];
+      arr.forEach((e, i) => { pairMeta[e.id] = { pairIndex: i, pairCount: arr.length, sign: e.from === canon ? 1 : -1 }; });
+    }
     flowEdges = content.edges.map((e) => ({
-      id: e.id, source: e.from, target: e.to, label: e.label || '',
+      id: e.id, source: e.from, target: e.to, type: 'story', label: e.label || '',
       markerEnd: { type: 'arrowclosed' },
       style: e.danger ? 'stroke:#c0563a;stroke-width:2' : '',
-      data: { rec: e },
+      data: { rec: e, ...pairMeta[e.id] },
     }));
   }
   async function setGraphView() {
@@ -1209,7 +1222,7 @@
         {:else}
           <div class="graphwrap">
             <div class="canvas">
-              <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} fitView
+              <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} {edgeTypes} fitView
                 minZoom={0.25} fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }}
                 onnodeclick={onNodeClick} onedgeclick={onEdgeClick}
                 onconnect={onConnect} onnodedragstop={onNodeDragStop}
