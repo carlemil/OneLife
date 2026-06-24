@@ -43,6 +43,7 @@ python .claude/skills/worldmap/render_map.py
 | `marker-*.png` | a skull at death spots, an X at the ending |
 | `frame.png` | border + compass rose + title cartouche + legend (always on top) |
 | `preview.png` | everything flattened — **open this to eyeball the result** |
+| `thumb.jpg` | small flattened thumbnail for the in-game “Map” button |
 | `world-map.meta.json` | the coordinate metadata (see below) |
 
 `world-map.meta.json`:

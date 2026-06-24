@@ -918,7 +918,6 @@
   {:else if phase === 'game' && game}
     <div class="topbar">
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
-      <button class="link" title="World map" onclick={() => (showWorldMap = true)}>🗺</button>
       {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
       {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
@@ -927,11 +926,17 @@
       <section class="story">
         <!-- The current moment: where the player acts next. -->
         <div class="scene" bind:this={sceneEl}>
-          {#if atmo?.image_url}
-            <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
-          {:else if atmo?.image_svg}
-            <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
-          {/if}
+          <div class="bannerrow">
+            {#if atmo?.image_url}
+              <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
+            {:else if atmo?.image_svg}
+              <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
+            {/if}
+            <button class="mapthumb" onclick={() => (showWorldMap = true)} title="Open the world map">
+              <img src="/worldmap/thumb.jpg" alt="World map" />
+              <span class="maplabel">Map</span>
+            </button>
+          </div>
           <h2>{game.node.title}</h2>
           <p class="body">{game.node.body}</p>
           <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
@@ -1345,8 +1350,17 @@
   .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
   .puzzle-prompt { font-size:1.1rem; line-height:1.6; color:#e8e8f0; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.7rem .9rem; margin:1rem 0 .5rem; }
   .puzzle-hint { color:#d8c89a; font-size:.95rem; margin:.25rem 0 .5rem; }
-  .banner { position:relative; border-radius:8px; overflow:hidden; margin-bottom:1rem; border:1px solid #2a2e3e; }
+  .bannerrow { display:flex; gap:.6rem; align-items:stretch; margin-bottom:1rem; }
+  .banner { position:relative; flex:1 1 auto; min-width:0; border-radius:8px; overflow:hidden; border:1px solid #2a2e3e; }
   .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
+  .mapthumb { flex:0 0 auto; width:180px; height:140px; position:relative; padding:0; cursor:pointer;
+    border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
+  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; }
+  .mapthumb .maplabel { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font-size:1.5rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#f3e9d2;
+    text-shadow:0 1px 4px #000, 0 0 14px #000; background:rgba(20,12,6,.22); transition:background .15s; }
+  .mapthumb:hover { border-color:#cdbb9a; }
+  .mapthumb:hover .maplabel { background:rgba(20,12,6,.05); }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
   .vol { display:flex; align-items:center; gap:.5rem; margin:.6rem 0 0; font-size:.9rem; color:#9a9ab0; }
   .vol input[type=range] { flex:1; accent-color:#7a7ad0; cursor:pointer; }

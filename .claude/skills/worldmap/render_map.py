@@ -663,7 +663,12 @@ def render(content_dir, out_dir, use_ai, W, H):
         for it in grp:
             t = Image.open(os.path.join(out_dir, it["tile"])); preview.alpha_composite(t, (it["bbox"][0], it["bbox"][1]))
     preview.alpha_composite(frame, (0, 0))
-    preview.convert("RGB").save(os.path.join(out_dir, "preview.png"))
+    flat = preview.convert("RGB")
+    flat.save(os.path.join(out_dir, "preview.png"))
+    # a small committed thumbnail for the in-game "Map" button
+    tw = 640
+    flat.resize((tw, int(H * tw / W))).save(
+        os.path.join(out_dir, "thumb.jpg"), quality=82, optimize=True)
 
     print(f"Wrote {len(meta['locations'])} locations, {len(meta['roads'])} roads "
           f"to {out_dir}\n  open {os.path.join(out_dir, 'preview.png')} to eyeball it.")
