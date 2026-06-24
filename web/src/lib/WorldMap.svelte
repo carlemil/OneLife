@@ -6,7 +6,8 @@
   // /api/worldmap (places you've visited; rollback-safe).
   import { api } from './api.js';
 
-  let { onClose } = $props();
+  let { onClose, isAdmin = false } = $props();
+  let revealAll = $state(false);     // admin-only: temporarily un-fog the whole map
   const BASE = '/worldmap';
   const DISPLAY_W = 1180;            // on-screen width; everything scales from the meta
 
@@ -33,9 +34,10 @@
   }
   load();
 
-  const roadShown = (r) => locs.has(r.from) && locs.has(r.to);
-  const regionShown = (reg) => (reg.reveal_locations || []).some((id) => locs.has(id));
-  const markerShown = (m) => (m.reveal_node && nodes.has(m.reveal_node))
+  const locShown = (l) => revealAll || locs.has(l.id);
+  const roadShown = (r) => revealAll || (locs.has(r.from) && locs.has(r.to));
+  const regionShown = (reg) => revealAll || (reg.reveal_locations || []).some((id) => locs.has(id));
+  const markerShown = (m) => revealAll || (m.reveal_node && nodes.has(m.reveal_node))
     || (m.reveal_location && locs.has(m.reveal_location));
   function here() {
     if (!meta || !current) return null;
@@ -48,7 +50,11 @@
   <div class="wm-card" onclick={(e) => e.stopPropagation()}>
     <div class="wm-head">
       <h2>🗺 World Map</h2>
-      <span class="sub">{locs.size} place(s) discovered</span>
+      <span class="sub">{revealAll ? 'admin: revealing all' : `${locs.size} place(s) discovered`}</span>
+      {#if isAdmin}
+        <button class="link wm-toggle" class:on={revealAll} onclick={() => (revealAll = !revealAll)}
+                title="Admin: temporarily reveal the whole map">👁 reveal all</button>
+      {/if}
       <button class="link" onclick={() => load()} title="Refresh">⟳</button>
       <button class="link wm-x" onclick={onClose} title="Close">✕</button>
     </div>
@@ -70,7 +76,7 @@
           {/each}
 
           {#each meta.locations as l}
-            {#if !l.is_building && locs.has(l.id)}
+            {#if locShown(l)}
               <img class="wm-tile wm-anim" src="{BASE}/{l.tile}" alt="" draggable="false"
                    style="left:{px(l.bbox[0])}px; top:{px(l.bbox[1])}px; width:{px(l.bbox[2])}px; height:{px(l.bbox[3])}px" />
               <button class="wm-hit" title={l.name} aria-label={l.name} onclick={() => (sel = l)}
@@ -114,6 +120,8 @@
   .wm-head { display:flex; align-items:center; gap:.7rem; margin-bottom:.6rem; }
   .wm-head h2 { margin:0; font-size:1.1rem; }
   .wm-x { margin-left:auto; }
+  .wm-toggle { border:1px solid #2a2e3e; border-radius:6px; padding:.15rem .5rem; }
+  .wm-toggle.on { color:#1a1d28; background:#cdbb9a; border-color:#cdbb9a; font-weight:600; }
   .wm-scroll { overflow:auto; border:1px solid #2a2e3e; border-radius:8px; background:#0d0e14; }
   .wm-stage { position:relative; }
   .wm-full { position:absolute; left:0; top:0; width:100%; height:100%; }

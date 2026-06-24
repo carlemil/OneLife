@@ -1078,7 +1078,7 @@
   {/if}
 
   {#if showWorldMap}
-    <WorldMap onClose={() => (showWorldMap = false)} />
+    <WorldMap onClose={() => (showWorldMap = false)} {isAdmin} />
   {/if}
 
   {#if showMap && world}
