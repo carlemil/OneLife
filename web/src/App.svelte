@@ -614,28 +614,45 @@
     catch (e) { editorMsg = e.message; }
   }
   // Force-directed layout of ONE connected cluster: repel every node, pull
-  // connected nodes toward an ideal edge length K, then push apart any boxes that
-  // still overlap. Deterministic (seeded on a ring, no RNG). Returns {id:{x,y}}.
-  function _simulate(nodeIds, edgePairs, K) {
+  // connected nodes toward an ideal edge length K, repel overlapping EDGE LABELS
+  // (so the graph opens up to give labels room), then resolve node-box overlaps.
+  // edgeList entries are [fromId, toId, own] where `own` is the label's fraction
+  // along the edge (matches StoryEdge). Deterministic. Returns {id:{x,y}}.
+  function _simulate(nodeIds, edgeList, K) {
     const N = nodeIds.length;
     const idx = Object.fromEntries(nodeIds.map((id, i) => [id, i]));
     const px = new Array(N), py = new Array(N);
     const R = K * Math.max(1, Math.sqrt(N) / 1.6);
     for (let i = 0; i < N; i++) { const a = (i / N) * Math.PI * 2; px[i] = Math.cos(a) * R; py[i] = Math.sin(a) * R; }
-    const edges = edgePairs.map(([a, b]) => [idx[a], idx[b]]);
+    const E = edgeList.map(([a, b, own]) => [idx[a], idx[b], own ?? 0.5]).filter(([a, b]) => a !== undefined && b !== undefined);
+    const LW = 160, LH = 48;                          // edge-label box (wrapped labels)
     let temp = K;
-    for (let it = 0; it < 400; it++) {
+    for (let it = 0; it < 420; it++) {
       const dx = new Array(N).fill(0), dy = new Array(N).fill(0);
-      for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {     // repulsion
+      for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {     // node repulsion
         let vx = px[i] - px[j], vy = py[i] - py[j], d2 = vx * vx + vy * vy;
         if (d2 < 0.01) { vx = (i - j) || 1; vy = 1; d2 = vx * vx + vy * vy; }
         const d = Math.sqrt(d2), f = (K * K) / d, ux = vx / d, uy = vy / d;
         dx[i] += ux * f; dy[i] += uy * f; dx[j] -= ux * f; dy[j] -= uy * f;
       }
-      for (const [a, b] of edges) {                                    // attraction along edges
+      for (const [a, b] of E) {                                        // edge springs
         let vx = px[a] - px[b], vy = py[a] - py[b];
         const d = Math.hypot(vx, vy) || 0.01, f = (d * d) / K, ux = vx / d, uy = vy / d;
         dx[a] -= ux * f; dy[a] -= uy * f; dx[b] += ux * f; dy[b] += uy * f;
+      }
+      // Edge-label repulsion: when two labels' boxes overlap, push their edges
+      // (both endpoints) apart, opening up room for the labels.
+      for (let i = 0; i < E.length; i++) {
+        const [ai, bi, oi] = E[i], lix = px[ai] + (px[bi] - px[ai]) * oi, liy = py[ai] + (py[bi] - py[ai]) * oi;
+        for (let j = i + 1; j < E.length; j++) {
+          const [aj, bj, oj] = E[j], ljx = px[aj] + (px[bj] - px[aj]) * oj, ljy = py[aj] + (py[bj] - py[aj]) * oj;
+          const vx = lix - ljx, vy = liy - ljy, ox = LW - Math.abs(vx), oy = LH - Math.abs(vy);
+          if (ox > 0 && oy > 0) {                                      // label boxes overlap
+            const len = Math.hypot(vx, vy) || 0.01, ux = vx / len, uy = vy / len, f = Math.min(ox, oy) * 0.5;
+            dx[ai] += ux * f; dy[ai] += uy * f; dx[bi] += ux * f; dy[bi] += uy * f;
+            dx[aj] -= ux * f; dy[aj] -= uy * f; dx[bj] -= ux * f; dy[bj] -= uy * f;
+          }
+        }
       }
       for (let i = 0; i < N; i++) {                                    // integrate, capped by temperature
         const d = Math.hypot(dx[i], dy[i]) || 0.01;
@@ -644,7 +661,7 @@
       temp = Math.max(temp * 0.985, K * 0.05);
     }
     const NW = 220, NH = 96;                          // node footprint + margin
-    for (let pass = 0; pass < 90; pass++) {           // resolve any remaining box overlaps
+    for (let pass = 0; pass < 90; pass++) {           // resolve any remaining node-box overlaps
       let hit = false;
       for (let i = 0; i < N; i++) for (let j = i + 1; j < N; j++) {
         const vx = px[j] - px[i], vy = py[j] - py[i], ox = NW - Math.abs(vx), oy = NH - Math.abs(vy);
@@ -667,9 +684,15 @@
   function forceLayout(fnodes, fedges) {
     const ids = fnodes.map((n) => n.id);
     const idset = new Set(ids);
-    const pairs = fedges.filter((e) => idset.has(e.source) && idset.has(e.target)).map((e) => [e.source, e.target]);
+    const ownOf = (e) => {                                     // label's fraction along the edge (matches StoryEdge)
+      const c = e.data?.pairCount ?? 1; if (c < 2) return 0.5;
+      const i = e.data?.pairIndex ?? 0, s = e.data?.sign ?? 1;
+      const f = Math.min(0.88, Math.max(0.12, 0.5 + (i - (c - 1) / 2) * 0.2));
+      return s > 0 ? f : 1 - f;
+    };
+    const edges = fedges.filter((e) => idset.has(e.source) && idset.has(e.target)).map((e) => [e.source, e.target, ownOf(e)]);
     const adj = {}; ids.forEach((id) => (adj[id] = []));
-    for (const [a, b] of pairs) { adj[a].push(b); adj[b].push(a); }
+    for (const [a, b] of edges) { adj[a].push(b); adj[b].push(a); }
     const compOf = {}; const comps = [];                       // connected components (BFS)
     for (const id of ids) {
       if (compOf[id] !== undefined) continue;
@@ -679,13 +702,13 @@
     }
     const K = 200;   // ideal edge length / spacing (tightened 1.5x from 300)
     const blocks = comps.map((group, ci) => {
-      const pos = _simulate(group, pairs.filter(([a]) => compOf[a] === ci), K);
+      const pos = _simulate(group, edges.filter(([a]) => compOf[a] === ci), K);
       let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
       for (const id of group) { const p = pos[id]; if (p.x < minx) minx = p.x; if (p.y < miny) miny = p.y; if (p.x > maxx) maxx = p.x; if (p.y > maxy) maxy = p.y; }
       return { group, pos, minx, miny, w: maxx - minx, h: maxy - miny };
     });
     let sum = 0, cnt = 0;                                       // average neighbour (edge) distance
-    for (const [a, b] of pairs) { const pa = blocks[compOf[a]].pos[a], pb = blocks[compOf[b]].pos[b]; sum += Math.hypot(pa.x - pb.x, pa.y - pb.y); cnt++; }
+    for (const [a, b] of edges) { const pa = blocks[compOf[a]].pos[a], pb = blocks[compOf[b]].pos[b]; sum += Math.hypot(pa.x - pb.x, pa.y - pb.y); cnt++; }
     const GAP = 2 * (cnt ? sum / cnt : K);
     const order = blocks.map((b, i) => i).sort((i, j) => blocks[j].h - blocks[i].h);  // shelf-pack, tallest first
     const rowW = Math.max(Math.sqrt(blocks.reduce((s, b) => s + (b.w + GAP) * (b.h + GAP), 0)), ...blocks.map((b) => b.w));
