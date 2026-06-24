@@ -111,6 +111,7 @@
   let editorView = $state('list');  // 'list' | 'graph'
   let flowNodes = $state.raw([]);
   let flowEdges = $state.raw([]);
+  let autoSpreadDone = false;        // auto-arrange once if the server has no saved positions
   let hover = $state(null);         // {kind:'node'|'edge', rec, x, y}
   let logRows = $state([]);
   let logHead = $state(0);
@@ -585,6 +586,12 @@
     editorView = 'graph';
     if (!content) { try { content = await api.contentAll(); } catch (e) { editorMsg = e.message; return; } }
     buildFlow();
+    // First open ever on this server (no positions saved yet) → arrange once.
+    // Spreading persists positions, so it never auto-runs again.
+    if (!autoSpreadDone && !Object.keys(content.positions ?? {}).length) {
+      autoSpreadDone = true;
+      await spreadOut();
+    }
   }
   function onNodeClick({ node }) { editKind = 'nodes'; pickEntity(node.id); }
   function onEdgeClick({ edge }) { editKind = 'edges'; pickEntity(edge.id); }
@@ -1392,9 +1399,10 @@
   .canvas :global(.svelte-flow__controls-button:hover) { background:#2e3450; }
   .canvas :global(.svelte-flow__controls-button svg) { fill:#e8e8f0; max-width:15px; max-height:15px; }
   .canvas :global(.svelte-flow__controls-button:hover svg) { fill:#fff; }
-  /* Edge labels: black text on a light pill so they read against any edge/bg. */
-  .canvas :global(.svelte-flow__edge-text) { fill:#000; font-weight:600; }
-  .canvas :global(.svelte-flow__edge-textbg) { fill:#e6e8f0; }
+  /* Edge labels are HTML pills whose colour is var-driven; the dark theme default
+     renders them light-on-dark. They're portaled out of .canvas, so target them
+     unscoped and force black text on a light pill. */
+  :global(.svelte-flow__edge-label) { color:#000 !important; background:#e6e8f0 !important; font-weight:600; padding:1px 5px; border-radius:4px; }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
   /* right panel: drag its inner (left) edge to resize width; content fills width.
