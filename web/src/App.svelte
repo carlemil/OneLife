@@ -592,7 +592,7 @@
       id: e.id, source: e.from, target: e.to, type: 'story', label: e.label || '',
       markerEnd: { type: 'arrowclosed' },
       style: e.danger ? 'stroke:#c0563a;stroke-width:2' : '',
-      data: { rec: e, ...pairMeta[e.id] },
+      data: { rec: e, ...pairMeta[e.id], onLabelClick: () => onEdgeClick({ edge: { id: e.id } }) },
     }));
   }
   async function setGraphView() {
@@ -1446,7 +1446,7 @@
     color:#000 !important; background:#e6e8f0 !important; font-weight:600;
     padding:2px 6px; border-radius:4px;
     max-width:150px; white-space:normal; overflow-wrap:break-word;
-    text-align:center; line-height:1.2; font-size:11px;
+    text-align:center; line-height:1.2; font-size:11px; cursor:pointer;
   }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }

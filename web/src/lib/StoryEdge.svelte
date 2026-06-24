@@ -1,6 +1,6 @@
 <script>
-  import { BaseEdge, getBezierPath } from '@xyflow/svelte';
-  // data carries { rec, pairIndex, pairCount, sign } — see buildFlow in App.svelte.
+  import { BaseEdge, EdgeLabel, getBezierPath } from '@xyflow/svelte';
+  // data carries { rec, pairIndex, pairCount, sign, onLabelClick } — see buildFlow.
   let {
     sourceX, sourceY, targetX, targetY,
     sourcePosition, targetPosition,
@@ -28,4 +28,11 @@
   });
 </script>
 
-<BaseEdge path={bezier[0]} {label} labelX={lbl.x} labelY={lbl.y} {markerEnd} {style} />
+<BaseEdge path={bezier[0]} {markerEnd} {style} />
+{#if label}
+  <!-- Render the label ourselves so clicking it opens the edge's side-panel editor,
+       just like clicking the edge line does (onLabelClick → App.onEdgeClick). -->
+  <EdgeLabel x={lbl.x} y={lbl.y} onclick={() => data?.onLabelClick?.()}>
+    {label}
+  </EdgeLabel>
+{/if}
