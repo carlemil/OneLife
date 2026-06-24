@@ -217,6 +217,9 @@ class TravelBody(BaseModel):
 class WorldmapTravelBody(BaseModel):
     location_id: str
 
+class WorldmapPositionsBody(BaseModel):
+    positions: dict   # {location_id: {"x": float, "y": float}}
+
 class ContentImportBody(BaseModel):
     text: str
 
@@ -672,6 +675,45 @@ async def worldmap_travel(body: WorldmapTravelBody,
             await _reveal_cells_around(
                 conn, sess["player_id"], target, seq, sess["log_id"], story_time)
         return await engine.render_state(conn, sess["player_id"], sess)
+
+
+# The map output dir is mounted into this container (see docker-compose.yml); the
+# admin map editor saves manual node positions here, and render_map.py reads them.
+WORLDMAP_DIR = "/worldmap"
+WORLDMAP_POSITIONS = os.path.join(WORLDMAP_DIR, "world-map.positions.json")
+
+
+@app.get("/api/admin/worldmap/positions")
+async def get_worldmap_positions(authorization: str | None = Header(default=None)):
+    await _admin_session(authorization)
+    try:
+        with open(WORLDMAP_POSITIONS, encoding="utf-8") as fh:
+            return {"positions": json.load(fh)}
+    except (FileNotFoundError, json.JSONDecodeError):
+        return {"positions": {}}
+
+
+@app.post("/api/admin/worldmap/positions")
+async def save_worldmap_positions(body: WorldmapPositionsBody,
+                                  authorization: str | None = Header(default=None)):
+    """Persist manual map node positions (location_id -> {x,y} in canvas pixels).
+    A re-render of the worldmap skill picks these up to place the places by hand."""
+    await _admin_session(authorization)
+    clean = {}
+    for lid, xy in (body.positions or {}).items():
+        try:
+            clean[str(lid)] = {"x": float(xy["x"]), "y": float(xy["y"])}
+        except (KeyError, TypeError, ValueError):
+            continue
+    try:
+        os.makedirs(WORLDMAP_DIR, exist_ok=True)
+        tmp = WORLDMAP_POSITIONS + ".tmp"
+        with open(tmp, "w", encoding="utf-8") as fh:
+            json.dump(clean, fh, ensure_ascii=False, indent=2)
+        os.replace(tmp, WORLDMAP_POSITIONS)
+    except OSError as e:
+        raise HTTPException(500, f"could not save positions: {e}")
+    return {"ok": True, "count": len(clean)}
 
 
 @app.post("/api/travel")

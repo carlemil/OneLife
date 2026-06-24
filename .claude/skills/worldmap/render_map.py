@@ -580,6 +580,20 @@ def render(content_dir, out_dir, use_ai, W, H):
     cells, node_loc, pos, roads, M, cw, ch, cell_pos = layout(data, W, H)
     locs = {l["id"]: l for l in data["locations"]}
     os.makedirs(out_dir, exist_ok=True)
+
+    # Manual overrides from the in-UI map editor (location_id -> {x,y} in canvas px).
+    # Anything listed here wins over the automatic layout, so hand-placed nodes stick.
+    try:
+        with open(os.path.join(out_dir, "world-map.positions.json"), encoding="utf-8") as fh:
+            manual = json.load(fh)
+        moved = 0
+        for lid, xy in manual.items():
+            if lid in pos:
+                pos[lid] = [float(xy["x"]), float(xy["y"])]; moved += 1
+        if moved:
+            print(f"Applied {moved} manual node position(s) from world-map.positions.json")
+    except (FileNotFoundError, json.JSONDecodeError, KeyError, TypeError, ValueError):
+        pass
     cache = os.path.join(out_dir, "iconcache")
 
     label_font = load_font(int(min(cw, ch) * 0.058))

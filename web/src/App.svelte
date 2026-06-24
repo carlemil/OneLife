@@ -7,6 +7,8 @@
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
   import WorldMap from './lib/WorldMap.svelte';
+  import WorldMapEditor from './lib/WorldMapEditor.svelte';
+  import MiniMap from './lib/MiniMap.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -77,6 +79,21 @@
   let world = $state(null);
   let showMap = $state(false);
   let showWorldMap = $state(false);
+  let showMapEditor = $state(false);
+  // Fog-of-war reveal state for the live minimap; refreshed on every world change.
+  let mapRevealed = $state({ locations: new Set(), nodes: new Set(), current: null });
+  async function refreshMapRevealed() {
+    try {
+      const r = await api.worldMap();
+      mapRevealed = { locations: new Set(r.revealed_locations || []),
+                      nodes: new Set(r.revealed_nodes || []), current: r.current_location };
+    } catch { /* not onboarded yet / map missing */ }
+  }
+  $effect(() => {
+    const _node = game?.node?.id;          // re-run when the player's location changes
+    const _len = logEntries.length;        // ...or anything is logged (reveals, rollback)
+    if (phase === 'game' && _node) refreshMapRevealed();
+  });
 
   // in-game help
   let showHelp = $state(false);
@@ -920,6 +937,7 @@
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
       {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
+      {#if isAdmin}<button class="link" title="Edit map layout (drag nodes)" onclick={() => (showMapEditor = true)}>📍</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
@@ -932,10 +950,7 @@
             {:else if atmo?.image_svg}
               <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
             {/if}
-            <button class="mapthumb" onclick={() => (showWorldMap = true)} title="Open the world map">
-              <img src="/worldmap/thumb.jpg" alt="World map" />
-              <span class="maplabel">Map</span>
-            </button>
+            <MiniMap revealed={mapRevealed} onOpen={() => (showWorldMap = true)} />
           </div>
           <h2>{game.node.title}</h2>
           <p class="body">{game.node.body}</p>
@@ -1095,6 +1110,10 @@
 
   {#if showWorldMap}
     <WorldMap onClose={() => (showWorldMap = false)} {isAdmin} onGo={onWorldMapGo} />
+  {/if}
+
+  {#if showMapEditor}
+    <WorldMapEditor onClose={() => (showMapEditor = false)} />
   {/if}
 
   {#if showMap && world}

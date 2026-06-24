@@ -58,6 +58,8 @@ export const api = {
   world: () => req('/api/world'),
   worldMap: () => req('/api/worldmap'),
   worldMapTravel: (location_id) => req('/api/worldmap/travel', { method: 'POST', body: { location_id } }),
+  getWorldmapPositions: () => req('/api/admin/worldmap/positions'),
+  saveWorldmapPositions: (positions) => req('/api/admin/worldmap/positions', { method: 'POST', body: { positions } }),
   travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),
 
   // atmosphere

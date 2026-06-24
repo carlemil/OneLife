@@ -62,6 +62,9 @@ services:
     volumes:
       # Sibling data repo (override with ${GAME_DATA_DIR}); see OneLife-KBK-mystery.
       - ${GAME_DATA_DIR:-../OneLife-KBK-mystery}:/content:ro
+      # The rendered world-map output dir (where render_map.py reads/writes). The
+      # in-UI map editor saves node positions here so a re-render picks them up.
+      - ./web/public/worldmap:/worldmap:rw
     # Loopback-only: in production Caddy reaches the api via the compose network
     # (api:8000), so it never needs to be published to the host's LAN/internet.
     ports:
