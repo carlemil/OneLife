@@ -657,7 +657,7 @@
       while (q.length) { const x = q.shift(); group.push(x); for (const t of adj[x]) if (compOf[t] === undefined) { compOf[t] = ci; q.push(t); } }
       comps.push(group);
     }
-    const K = 300;
+    const K = 200;   // ideal edge length / spacing (tightened 1.5x from 300)
     const blocks = comps.map((group, ci) => {
       const pos = _simulate(group, pairs.filter(([a]) => compOf[a] === ci), K);
       let minx = Infinity, miny = Infinity, maxx = -Infinity, maxy = -Infinity;
@@ -1392,6 +1392,9 @@
   .canvas :global(.svelte-flow__controls-button:hover) { background:#2e3450; }
   .canvas :global(.svelte-flow__controls-button svg) { fill:#e8e8f0; max-width:15px; max-height:15px; }
   .canvas :global(.svelte-flow__controls-button:hover svg) { fill:#fff; }
+  /* Edge labels: black text on a light pill so they read against any edge/bg. */
+  .canvas :global(.svelte-flow__edge-text) { fill:#000; font-weight:600; }
+  .canvas :global(.svelte-flow__edge-textbg) { fill:#e6e8f0; }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
   /* right panel: drag its inner (left) edge to resize width; content fills width.
