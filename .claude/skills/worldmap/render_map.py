@@ -13,7 +13,7 @@ Output is a STACK of PNG layers so the game can reveal it place-by-place
   base.png         always-on parchment canvas
   loc-<id>.png      one transparent tile per location  (icon + label + terrain)
   road-<id>.png     one transparent tile per road
-  room-<nodeid>.png the school's interior nodes, drawn as rooms
+  region-<cell>.png a ribbon banner per region; marker-*.png skull/ending X
   frame.png         border + compass + title + legend (always on top)
   world-map.meta.json   pixel positions of every place + road polygons + tile bboxes
 
@@ -541,12 +541,8 @@ def render(content_dir, out_dir, use_ai, W, H):
                               "tile": r["id"] + ".png", "bbox": [int(bx0), int(by0), tw, th],
                               "polygon": [[round(x, 1), round(y, 1)] for x, y in pts]})
 
-    # ---- locations (skip the school location; it becomes a building) ----
-    SCHOOL = "killebackskolan"
-    school_nodes = [n for n in data["nodes"] if n.get("location") == SCHOOL]
+    # ---- locations (every location is a single illustrated place) ----
     for l in data["locations"]:
-        if l["id"] == SCHOOL and len(school_nodes) >= 3:
-            continue
         cx, cy = pos[l["id"]]
         cid, _ = concept_for(l)
         T = int(min(cw, ch) * 0.46)
@@ -565,56 +561,6 @@ def render(content_dir, out_dir, use_ai, W, H):
             "tile": f"loc-{l['id']}.png", "bbox": [bx, by, T, T],
             "reveal_nodes": [n["id"] for n in data["nodes"] if n.get("location") == l["id"]],
         })
-
-    # ---- the school as a building of rooms ----
-    if len(school_nodes) >= 3:
-        cx, cy = pos[SCHOOL]
-        cols = 3
-        rowsN = math.ceil(len(school_nodes) / cols)
-        room_w, room_h = int(min(cw, ch) * 0.34), int(min(cw, ch) * 0.2)
-        bw = cols * room_w + 40
-        bh = rowsN * room_h + 90
-        bx0, by0 = int(cx - bw / 2), int(cy - bh / 2)
-        # building shell tile
-        shell = Image.new("RGBA", (bw, bh), (0, 0, 0, 0))
-        sd = ImageDraw.Draw(shell, "RGBA")
-        sd.rectangle([6, 50, bw - 6, bh - 6], fill=PARCH_DARK + (180,), outline=INK + (255,), width=6)
-        sd.polygon([(0, 52), (bw / 2, 4), (bw, 52)], fill=PARCH + (220,), outline=INK + (255,))
-        sd.text((bw / 2 - label_font.getlength("Killebäckskolan") / 2, bh - 44),
-                "Killebäckskolan", font=label_font, fill=INK + (255,))
-        shell.save(os.path.join(out_dir, "building-school.png"))
-        rooms, doors = [], []
-        room_xy = {}
-        for i, n in enumerate(school_nodes):
-            rc, rr = i % cols, i // cols
-            rx = bx0 + 20 + rc * room_w + room_w / 2
-            ry = by0 + 70 + rr * room_h + room_h / 2
-            room_xy[n["id"]] = (rx, ry)
-            rt = Image.new("RGBA", (room_w + 8, room_h + 8), (0, 0, 0, 0))
-            rd = ImageDraw.Draw(rt, "RGBA")
-            rd.rectangle([4, 4, room_w, room_h], outline=INK + (220,), width=4)
-            nm = (n.get("title") or n["id"]).replace("kbk-", "")
-            draw_label(rt, nm, (room_w + 8) / 2, room_h * 0.34, small_font, room_w * 0.92)
-            rt.save(os.path.join(out_dir, f"room-{n['id']}.png"))
-            rooms.append({"node_id": n["id"], "name": n.get("title") or n["id"],
-                          "x": round(rx, 1), "y": round(ry, 1),
-                          "tile": f"room-{n['id']}.png",
-                          "bbox": [int(rx - (room_w + 8) / 2), int(ry - (room_h + 8) / 2),
-                                   room_w + 8, room_h + 8]})
-        # doors = edges among school nodes
-        for n in school_nodes:
-            for ed in (n.get("edges") or []):
-                if isinstance(ed, dict) and node_loc.get(ed.get("to")) == SCHOOL and ed.get("to") in room_xy:
-                    doors.append([n["id"], ed["to"]])
-        meta["building"] = {"id": SCHOOL, "name": "Killebäckskolan",
-                            "shell": "building-school.png",
-                            "footprint": [bx0, by0, bw, bh],
-                            "rooms": rooms, "doors": doors}
-        meta["locations"].append({"id": SCHOOL, "name": "Killebäckskolan", "cell": "sandby",
-                                  "x": round(cx, 1), "y": round(cy, 1), "concept": "school",
-                                  "is_building": True, "tile": "building-school.png",
-                                  "bbox": [bx0, by0, bw, bh],
-                                  "reveal_nodes": [n["id"] for n in school_nodes]})
 
     # ---- region banners (shown once any place in that region is discovered) ----
     locs_by_cell = {}
@@ -640,15 +586,9 @@ def render(content_dir, out_dir, use_ai, W, H):
         if not (n.get("type") == "death" or n.get("is_death")):
             continue
         loc = n.get("location")
-        if loc == SCHOOL and meta["building"]:
-            rm = next((r for r in meta["building"]["rooms"] if r["node_id"] == n["id"]), None)
-            if not rm:
-                continue
-            mx, my, rev = rm["x"], rm["y"], {"reveal_node": n["id"]}
-        elif loc in pos:
-            mx, my, rev = pos[loc][0], pos[loc][1], {"reveal_location": loc}
-        else:
+        if loc not in pos:
             continue
+        mx, my, rev = pos[loc][0], pos[loc][1], {"reveal_location": loc}
         skull.resize((msz, msz)).save(os.path.join(out_dir, f"marker-skull-{n['id']}.png"))
         meta["markers"].append({"type": "skull", "node": n["id"],
                                 "tile": f"marker-skull-{n['id']}.png",
@@ -719,9 +659,6 @@ def render(content_dir, out_dir, use_ai, W, H):
         t = Image.open(os.path.join(out_dir, r["tile"])); preview.alpha_composite(t, (r["bbox"][0], r["bbox"][1]))
     for l in meta["locations"]:
         t = Image.open(os.path.join(out_dir, l["tile"])); preview.alpha_composite(t, (l["bbox"][0], l["bbox"][1]))
-    if meta["building"]:
-        for rm in meta["building"]["rooms"]:
-            t = Image.open(os.path.join(out_dir, rm["tile"])); preview.alpha_composite(t, (rm["bbox"][0], rm["bbox"][1]))
     for grp in (meta["regions"], meta["markers"]):
         for it in grp:
             t = Image.open(os.path.join(out_dir, it["tile"])); preview.alpha_composite(t, (it["bbox"][0], it["bbox"][1]))

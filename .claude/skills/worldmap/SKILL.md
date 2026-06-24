@@ -39,7 +39,8 @@ python .claude/skills/worldmap/render_map.py
 | `base.png` | always-on parchment canvas (the undiscovered/“fog” backdrop) |
 | `loc-<id>.png` | one transparent tile per location — terrain patch + ink icon + label |
 | `road-<id>.png` | one transparent tile per road (a hand-inked wobbly line) |
-| `building-school.png` + `room-<nodeid>.png` | the school drawn as a building of rooms (its interior nodes) |
+| `region-<cell>.png` | a ribbon banner per region |
+| `marker-*.png` | a skull at death spots, an X at the ending |
 | `frame.png` | border + compass rose + title cartouche + legend (always on top) |
 | `preview.png` | everything flattened — **open this to eyeball the result** |
 | `world-map.meta.json` | the coordinate metadata (see below) |
@@ -47,18 +48,16 @@ python .claude/skills/worldmap/render_map.py
 `world-map.meta.json`:
 - `width,height,base,frame`
 - `locations[]` — `{id,name,cell,x,y,concept,tile,bbox:[x,y,w,h],reveal_nodes:[…]}`
-  (the school entry has `is_building:true` and a `building` block with `rooms[]` + `doors[]`)
 - `roads[]` — `{id,from,to,label,tile,bbox,polygon:[[x,y]…]}` (the polygon is the
   road's hand-drawn centreline)
-- `legend[]`
+- `regions[]` — ribbon banners; `markers[]` — skull/X; `legend[]`
 
 ## Fog of war (how the layers are meant to be used)
 
 Stack `base.png`, then only the **revealed** `loc-/road-/room-` tiles (positioned by
 their `bbox`), then `frame.png` on top. A place is revealed once the player has
 **visited a node there** (the in-game view derives the revealed set from the
-player's log → `story_nodes.location`; rolling back re-fogs them). The school
-reveals **room-by-room** as each `kbk-*` node is entered.
+player's log → `story_nodes.location`; rolling back re-fogs them).
 
 ## Tuning the look
 
@@ -66,8 +65,6 @@ reveals **room-by-room** as each `kbk-*` node is entered.
   `render_map.py`). Add a keyword/concept there to change what a place draws.
 - **Terrain** per place (forest/water/fields) is in `terrain_patch()`; palette
   constants (`PARCH`, `INK`, `WATER`, `FOREST`, …) are at the top.
-- The school special-case triggers for any location with ≥3 interior (non-
-  `world_access`) nodes.
 - Re-run after editing; check `preview.png`. The coordinates in `world-map.meta.json`
   always match the rendered tiles, so the in-game fog-of-war view stays in sync.
 

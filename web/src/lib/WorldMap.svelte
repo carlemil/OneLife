@@ -37,8 +37,6 @@
   const regionShown = (reg) => (reg.reveal_locations || []).some((id) => locs.has(id));
   const markerShown = (m) => (m.reveal_node && nodes.has(m.reveal_node))
     || (m.reveal_location && locs.has(m.reveal_location));
-  const building = $derived(meta?.building);
-  const schoolShown = $derived(building ? locs.has(building.id) : false);
   function here() {
     if (!meta || !current) return null;
     const l = meta.locations.find((x) => x.id === current);
@@ -79,17 +77,6 @@
                    style="left:{px(l.x) - 26}px; top:{px(l.y) - 26}px"></button>
             {/if}
           {/each}
-
-          {#if building && schoolShown}
-            <img class="wm-tile wm-anim" src="{BASE}/{building.shell}" alt="" draggable="false"
-                 style="left:{px(building.footprint[0])}px; top:{px(building.footprint[1])}px; width:{px(building.footprint[2])}px; height:{px(building.footprint[3])}px" />
-            {#each building.rooms as rm}
-              {#if nodes.has(rm.node_id)}
-                <img class="wm-tile wm-anim" src="{BASE}/{rm.tile}" alt="" draggable="false"
-                     style="left:{px(rm.bbox[0])}px; top:{px(rm.bbox[1])}px; width:{px(rm.bbox[2])}px; height:{px(rm.bbox[3])}px" />
-              {/if}
-            {/each}
-          {/if}
 
           {#each meta.regions || [] as reg}
             {#if regionShown(reg)}

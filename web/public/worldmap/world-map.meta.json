@@ -5,6 +5,31 @@
   "frame": "frame.png",
   "locations": [
     {
+      "id": "killebackskolan",
+      "name": "Killebäckskolan",
+      "cell": "sandby",
+      "x": 2248.3,
+      "y": 1014.6,
+      "concept": "school",
+      "tile": "loc-killebackskolan.png",
+      "bbox": [
+        2104,
+        871,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "kbk-wake",
+        "kbk-entrance-hall",
+        "kbk-janitor-gate",
+        "kbk-boiler-room",
+        "kbk-cabinet-note",
+        "kbk-caught",
+        "kbk-classroom",
+        "kbk-chalk-letters"
+      ]
+    },
+    {
       "id": "lund-library",
       "name": "The Cathedral Library",
       "cell": "lund",
@@ -497,32 +522,6 @@
       ],
       "reveal_nodes": [
         "woods-path"
-      ]
-    },
-    {
-      "id": "killebackskolan",
-      "name": "Killebäckskolan",
-      "cell": "sandby",
-      "x": 2248.3,
-      "y": 1014.6,
-      "concept": "school",
-      "is_building": true,
-      "tile": "building-school.png",
-      "bbox": [
-        1910,
-        783,
-        676,
-        462
-      ],
-      "reveal_nodes": [
-        "kbk-wake",
-        "kbk-entrance-hall",
-        "kbk-janitor-gate",
-        "kbk-boiler-room",
-        "kbk-cabinet-note",
-        "kbk-caught",
-        "kbk-classroom",
-        "kbk-chalk-letters"
       ]
     }
   ],
@@ -2328,173 +2327,7 @@
       ]
     }
   ],
-  "building": {
-    "id": "killebackskolan",
-    "name": "Killebäckskolan",
-    "shell": "building-school.png",
-    "footprint": [
-      1910,
-      783,
-      676,
-      462
-    ],
-    "rooms": [
-      {
-        "node_id": "kbk-wake",
-        "name": "Déjà Vu",
-        "x": 2036.0,
-        "y": 915.0,
-        "tile": "room-kbk-wake.png",
-        "bbox": [
-          1926,
-          849,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-entrance-hall",
-        "name": "The Entrance Hall",
-        "x": 2248.0,
-        "y": 915.0,
-        "tile": "room-kbk-entrance-hall.png",
-        "bbox": [
-          2138,
-          849,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-janitor-gate",
-        "name": "The Janitor",
-        "x": 2460.0,
-        "y": 915.0,
-        "tile": "room-kbk-janitor-gate.png",
-        "bbox": [
-          2350,
-          849,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-boiler-room",
-        "name": "The Boiler Room",
-        "x": 2036.0,
-        "y": 1039.0,
-        "tile": "room-kbk-boiler-room.png",
-        "bbox": [
-          1926,
-          973,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-cabinet-note",
-        "name": "Inside the Cabinet",
-        "x": 2248.0,
-        "y": 1039.0,
-        "tile": "room-kbk-cabinet-note.png",
-        "bbox": [
-          2138,
-          973,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-caught",
-        "name": "In the Dark",
-        "x": 2460.0,
-        "y": 1039.0,
-        "tile": "room-kbk-caught.png",
-        "bbox": [
-          2350,
-          973,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-classroom",
-        "name": "The Classroom",
-        "x": 2036.0,
-        "y": 1163.0,
-        "tile": "room-kbk-classroom.png",
-        "bbox": [
-          1926,
-          1097,
-          220,
-          132
-        ]
-      },
-      {
-        "node_id": "kbk-chalk-letters",
-        "name": "The Chalk Letters",
-        "x": 2248.0,
-        "y": 1163.0,
-        "tile": "room-kbk-chalk-letters.png",
-        "bbox": [
-          2138,
-          1097,
-          220,
-          132
-        ]
-      }
-    ],
-    "doors": [
-      [
-        "kbk-wake",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-entrance-hall",
-        "kbk-janitor-gate"
-      ],
-      [
-        "kbk-entrance-hall",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-entrance-hall",
-        "kbk-boiler-room"
-      ],
-      [
-        "kbk-entrance-hall",
-        "kbk-caught"
-      ],
-      [
-        "kbk-janitor-gate",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-boiler-room",
-        "kbk-cabinet-note"
-      ],
-      [
-        "kbk-boiler-room",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-cabinet-note",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-classroom",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-chalk-letters",
-        "kbk-entrance-hall"
-      ],
-      [
-        "kbk-chalk-letters",
-        "kbk-entrance-hall"
-      ]
-    ]
-  },
+  "building": null,
   "legend": [
     {
       "concept": "school",
@@ -2617,12 +2450,12 @@
       "node": "kbk-caught",
       "tile": "marker-skull-kbk-caught.png",
       "bbox": [
-        2410,
-        954,
+        2198,
+        930,
         99,
         99
       ],
-      "reveal_node": "kbk-caught"
+      "reveal_location": "killebackskolan"
     },
     {
       "type": "ending",
