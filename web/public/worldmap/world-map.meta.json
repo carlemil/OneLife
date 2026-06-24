@@ -1,0 +1,2532 @@
+{
+  "width": 3200,
+  "height": 2400,
+  "base": "base.jpg",
+  "frame": "frame.png",
+  "locations": [
+    {
+      "id": "lund-library",
+      "name": "The Cathedral Library",
+      "cell": "lund",
+      "x": 936.0,
+      "y": 907.0,
+      "concept": "library",
+      "tile": "loc-lund-library.png",
+      "bbox": [
+        792,
+        763,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-library"
+      ]
+    },
+    {
+      "id": "lund-cellar",
+      "name": "The Supper Club Cellar",
+      "cell": "lund",
+      "x": 1101.7,
+      "y": 1105.8,
+      "concept": "cellar",
+      "tile": "loc-lund-cellar.png",
+      "bbox": [
+        958,
+        962,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-cellar"
+      ]
+    },
+    {
+      "id": "lund-lodgings",
+      "name": "Holm's Lodgings",
+      "cell": "lund",
+      "x": 1268.7,
+      "y": 1303.1,
+      "concept": "lodgings",
+      "tile": "loc-lund-lodgings.png",
+      "bbox": [
+        1125,
+        1159,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-lodgings"
+      ]
+    },
+    {
+      "id": "lund-manor",
+      "name": "The Manor Outside Lund",
+      "cell": "lund",
+      "x": 1017.4,
+      "y": 1344.6,
+      "concept": "manor",
+      "tile": "loc-lund-manor.png",
+      "bbox": [
+        873,
+        1201,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-manor",
+        "lund-orlok-candle"
+      ]
+    },
+    {
+      "id": "lund-botanical",
+      "name": "The Botanical Garden",
+      "cell": "lund",
+      "x": 592.4,
+      "y": 1195.2,
+      "concept": "garden",
+      "tile": "loc-lund-botanical.png",
+      "bbox": [
+        448,
+        1051,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-botanical",
+        "lund-vinne-specimen"
+      ]
+    },
+    {
+      "id": "lund-apothecary",
+      "name": "The Old Apothecary",
+      "cell": "lund",
+      "x": 849.9,
+      "y": 1147.5,
+      "concept": "apothecary",
+      "tile": "loc-lund-apothecary.png",
+      "bbox": [
+        706,
+        1003,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-apothecary"
+      ]
+    },
+    {
+      "id": "lund-crypt",
+      "name": "The Cathedral Crypt",
+      "cell": "lund",
+      "x": 1193.3,
+      "y": 863.5,
+      "concept": "crypt",
+      "tile": "loc-lund-crypt.png",
+      "bbox": [
+        1049,
+        720,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-crypt"
+      ]
+    },
+    {
+      "id": "malmo-harbor",
+      "name": "The Harbour",
+      "cell": "malmo",
+      "x": 422.7,
+      "y": 1672.5,
+      "concept": "harbour",
+      "tile": "loc-malmo-harbor.png",
+      "bbox": [
+        279,
+        1528,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-harbor",
+        "malmo-harbor-fog"
+      ]
+    },
+    {
+      "id": "malmo-crossing",
+      "name": "The End of the Pier",
+      "cell": "malmo",
+      "x": 929.1,
+      "y": 1591.6,
+      "concept": "harbour",
+      "tile": "loc-malmo-crossing.png",
+      "bbox": [
+        785,
+        1448,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-crossing"
+      ]
+    },
+    {
+      "id": "malmo-locker",
+      "name": "Harbour Lockers",
+      "cell": "malmo",
+      "x": 1083.8,
+      "y": 1791.8,
+      "concept": "harbour",
+      "tile": "loc-malmo-locker.png",
+      "bbox": [
+        940,
+        1648,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-locker"
+      ]
+    },
+    {
+      "id": "malmo-rosengard",
+      "name": "Rosengård",
+      "cell": "malmo",
+      "x": 1250.3,
+      "y": 1990.7,
+      "concept": "estate",
+      "tile": "loc-malmo-rosengard.png",
+      "bbox": [
+        1106,
+        1847,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-rosengard"
+      ]
+    },
+    {
+      "id": "malmo-server-basement",
+      "name": "The Basement Server Room",
+      "cell": "malmo",
+      "x": 997.6,
+      "y": 2028.1,
+      "concept": "cellar",
+      "tile": "loc-malmo-server-basement.png",
+      "bbox": [
+        854,
+        1884,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-server-basement"
+      ]
+    },
+    {
+      "id": "malmo-police",
+      "name": "Police Headquarters",
+      "cell": "malmo",
+      "x": 741.8,
+      "y": 2076.5,
+      "concept": "police",
+      "tile": "loc-malmo-police.png",
+      "bbox": [
+        598,
+        1932,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-police",
+        "malmo-vallmo-lock"
+      ]
+    },
+    {
+      "id": "malmo-stortorget",
+      "name": "Stortorget",
+      "cell": "malmo",
+      "x": 837.5,
+      "y": 1835.9,
+      "concept": "square",
+      "tile": "loc-malmo-stortorget.png",
+      "bbox": [
+        694,
+        1692,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-stortorget"
+      ]
+    },
+    {
+      "id": "malmo-lilla-torg",
+      "name": "Lilla Torg",
+      "cell": "malmo",
+      "x": 1180.9,
+      "y": 1549.0,
+      "concept": "square",
+      "tile": "loc-malmo-lilla-torg.png",
+      "bbox": [
+        1037,
+        1405,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-lilla-torg"
+      ]
+    },
+    {
+      "id": "malmo-castle",
+      "name": "Malmöhus Castle",
+      "cell": "malmo",
+      "x": 1341.4,
+      "y": 1752.2,
+      "concept": "castle",
+      "tile": "loc-malmo-castle.png",
+      "bbox": [
+        1197,
+        1608,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-castle"
+      ]
+    },
+    {
+      "id": "malmo-turning-torso",
+      "name": "The Turning Torso",
+      "cell": "malmo",
+      "x": 1158.5,
+      "y": 2233.7,
+      "concept": "harbour",
+      "tile": "loc-malmo-turning-torso.png",
+      "bbox": [
+        1015,
+        2090,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-turning-torso"
+      ]
+    },
+    {
+      "id": "malmo-pildamms",
+      "name": "Pildammsparken",
+      "cell": "malmo",
+      "x": 902.4,
+      "y": 2254.8,
+      "concept": "lake",
+      "tile": "loc-malmo-pildamms.png",
+      "bbox": [
+        758,
+        2111,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-pildamms"
+      ]
+    },
+    {
+      "id": "malmo-cemetery",
+      "name": "The Old Cemetery",
+      "cell": "malmo",
+      "x": 578.5,
+      "y": 1875.7,
+      "concept": "church",
+      "tile": "loc-malmo-cemetery.png",
+      "bbox": [
+        435,
+        1732,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-cemetery",
+        "malmo-cemetery-stones"
+      ]
+    },
+    {
+      "id": "malmo-citytunnel",
+      "name": "Triangeln Station",
+      "cell": "malmo",
+      "x": 672.9,
+      "y": 1634.6,
+      "concept": "station",
+      "tile": "loc-malmo-citytunnel.png",
+      "bbox": [
+        529,
+        1491,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "malmo-citytunnel"
+      ]
+    },
+    {
+      "id": "sandby-church",
+      "name": "Sandby Church",
+      "cell": "sandby",
+      "x": 2452.7,
+      "y": 1171.6,
+      "concept": "church",
+      "tile": "loc-sandby-church.png",
+      "bbox": [
+        2309,
+        1028,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "sandby-church",
+        "sandby-church-bell",
+        "sandby-dodblek-count"
+      ]
+    },
+    {
+      "id": "sandby-quarry",
+      "name": "The Gravel-Pit Lake",
+      "cell": "sandby",
+      "x": 2417.7,
+      "y": 1428.2,
+      "concept": "lake",
+      "tile": "loc-sandby-quarry.png",
+      "bbox": [
+        2274,
+        1284,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "sandby-quarry"
+      ]
+    },
+    {
+      "id": "sandby-crooked-house",
+      "name": "The Crooked House",
+      "cell": "sandby",
+      "x": 2008.6,
+      "y": 1112.6,
+      "concept": "crooked",
+      "tile": "loc-sandby-crooked-house.png",
+      "bbox": [
+        1865,
+        969,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "sandby-crooked-house",
+        "sandby-pippa-shadow"
+      ]
+    },
+    {
+      "id": "sandby-street",
+      "name": "Sandby Street",
+      "cell": "sandby",
+      "x": 2212.7,
+      "y": 1273.0,
+      "concept": "village",
+      "tile": "loc-sandby-street.png",
+      "bbox": [
+        2069,
+        1129,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "sandby-street"
+      ]
+    },
+    {
+      "id": "lund-square",
+      "name": "Cathedral Square",
+      "cell": "lund",
+      "x": 683.5,
+      "y": 952.9,
+      "concept": "square",
+      "tile": "loc-lund-square.png",
+      "bbox": [
+        539,
+        809,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-square"
+      ]
+    },
+    {
+      "id": "lund-station",
+      "name": "Lund Station",
+      "cell": "lund",
+      "x": 763.6,
+      "y": 1388.4,
+      "concept": "station",
+      "tile": "loc-lund-station.png",
+      "bbox": [
+        620,
+        1244,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "lund-station-board",
+        "lund-station"
+      ]
+    },
+    {
+      "id": "skane-woods",
+      "name": "Forest Path",
+      "cell": "skane-woods",
+      "x": 2268.0,
+      "y": 576.0,
+      "concept": "forest",
+      "tile": "loc-skane-woods.png",
+      "bbox": [
+        2124,
+        432,
+        287,
+        287
+      ],
+      "reveal_nodes": [
+        "woods-path"
+      ]
+    },
+    {
+      "id": "killebackskolan",
+      "name": "Killebäckskolan",
+      "cell": "sandby",
+      "x": 2248.3,
+      "y": 1014.6,
+      "concept": "school",
+      "is_building": true,
+      "tile": "building-school.png",
+      "bbox": [
+        1910,
+        783,
+        676,
+        462
+      ],
+      "reveal_nodes": [
+        "kbk-wake",
+        "kbk-entrance-hall",
+        "kbk-janitor-gate",
+        "kbk-boiler-room",
+        "kbk-cabinet-note",
+        "kbk-caught",
+        "kbk-classroom",
+        "kbk-chalk-letters"
+      ]
+    }
+  ],
+  "roads": [
+    {
+      "id": "road-lund-square--lund-library",
+      "from": "lund-square",
+      "to": "lund-library",
+      "label": "Try the door to the cathedral library",
+      "tile": "road-lund-square--lund-library.png",
+      "bbox": [
+        653,
+        870,
+        312,
+        125
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          700.7,
+          944.9
+        ],
+        [
+          721.0,
+          954.2
+        ],
+        [
+          741.7,
+          965.5
+        ],
+        [
+          758.8,
+          957.1
+        ],
+        [
+          770.3,
+          917.9
+        ],
+        [
+          795.0,
+          951.6
+        ],
+        [
+          810.9,
+          936.1
+        ],
+        [
+          829.7,
+          937.2
+        ],
+        [
+          842.6,
+          905.6
+        ],
+        [
+          864.1,
+          921.8
+        ],
+        [
+          878.9,
+          900.3
+        ],
+        [
+          900.7,
+          917.7
+        ],
+        [
+          919.9,
+          920.8
+        ],
+        [
+          936.0,
+          907.0
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--lund-cellar",
+      "from": "lund-square",
+      "to": "lund-cellar",
+      "label": "Take the stairs beneath the unmarked door",
+      "tile": "road-lund-square--lund-cellar.png",
+      "bbox": [
+        653,
+        922,
+        478,
+        212
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          707.9,
+          978.8
+        ],
+        [
+          743.9,
+          972.8
+        ],
+        [
+          768.3,
+          998.8
+        ],
+        [
+          801.5,
+          1000.7
+        ],
+        [
+          827.1,
+          1023.3
+        ],
+        [
+          862.3,
+          1019.7
+        ],
+        [
+          894.6,
+          1023.8
+        ],
+        [
+          921.3,
+          1043.4
+        ],
+        [
+          943.9,
+          1074.4
+        ],
+        [
+          981.3,
+          1064.6
+        ],
+        [
+          1010.4,
+          1077.8
+        ],
+        [
+          1043.0,
+          1081.2
+        ],
+        [
+          1077.3,
+          1079.8
+        ],
+        [
+          1101.7,
+          1105.8
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--lund-lodgings",
+      "from": "lund-square",
+      "to": "lund-lodgings",
+      "label": "Climb to the smoke-filled lodgings",
+      "tile": "road-lund-square--lund-lodgings.png",
+      "bbox": [
+        653,
+        922,
+        645,
+        410
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          735.6,
+          960.6
+        ],
+        [
+          776.1,
+          987.9
+        ],
+        [
+          807.0,
+          1031.0
+        ],
+        [
+          849.5,
+          1055.0
+        ],
+        [
+          901.8,
+          1062.4
+        ],
+        [
+          939.1,
+          1094.9
+        ],
+        [
+          971.3,
+          1135.9
+        ],
+        [
+          1008.9,
+          1168.0
+        ],
+        [
+          1071.6,
+          1158.2
+        ],
+        [
+          1106.0,
+          1195.4
+        ],
+        [
+          1149.0,
+          1218.5
+        ],
+        [
+          1174.9,
+          1270.1
+        ],
+        [
+          1218.1,
+          1292.8
+        ],
+        [
+          1268.7,
+          1303.1
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--lund-manor",
+      "from": "lund-square",
+      "to": "lund-manor",
+      "label": "Follow the drive to the manor past the edge of town",
+      "tile": "road-lund-square--lund-manor.png",
+      "bbox": [
+        653,
+        922,
+        393,
+        451
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          693.8,
+          992.4
+        ],
+        [
+          736.7,
+          1004.1
+        ],
+        [
+          770.3,
+          1023.8
+        ],
+        [
+          767.8,
+          1074.2
+        ],
+        [
+          809.6,
+          1086.9
+        ],
+        [
+          814.7,
+          1130.9
+        ],
+        [
+          841.6,
+          1156.3
+        ],
+        [
+          856.7,
+          1191.7
+        ],
+        [
+          886.9,
+          1214.3
+        ],
+        [
+          917.1,
+          1236.8
+        ],
+        [
+          942.5,
+          1263.5
+        ],
+        [
+          984.0,
+          1276.4
+        ],
+        [
+          984.8,
+          1324.1
+        ],
+        [
+          1017.4,
+          1344.6
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--lund-botanical",
+      "from": "lund-square",
+      "to": "lund-botanical",
+      "label": "Slip into the lit glasshouse of the botanical garden",
+      "tile": "road-lund-square--lund-botanical.png",
+      "bbox": [
+        560,
+        922,
+        153,
+        302
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          658.1,
+          963.1
+        ],
+        [
+          671.7,
+          987.9
+        ],
+        [
+          653.1,
+          1000.7
+        ],
+        [
+          643.7,
+          1016.9
+        ],
+        [
+          641.6,
+          1035.9
+        ],
+        [
+          627.6,
+          1050.4
+        ],
+        [
+          646.9,
+          1077.4
+        ],
+        [
+          621.1,
+          1087.5
+        ],
+        [
+          610.2,
+          1103.1
+        ],
+        [
+          619.7,
+          1126.4
+        ],
+        [
+          604.2,
+          1140.4
+        ],
+        [
+          590.3,
+          1154.9
+        ],
+        [
+          591.7,
+          1175.2
+        ],
+        [
+          592.4,
+          1195.2
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--lund-apothecary",
+      "from": "lund-square",
+      "to": "lund-apothecary",
+      "label": "Look in at the shuttered old apothecary",
+      "tile": "road-lund-square--lund-apothecary.png",
+      "bbox": [
+        653,
+        922,
+        226,
+        256
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          683.5,
+          976.9
+        ],
+        [
+          719.4,
+          970.2
+        ],
+        [
+          700.6,
+          1010.4
+        ],
+        [
+          742.3,
+          998.9
+        ],
+        [
+          724.5,
+          1038.1
+        ],
+        [
+          773.6,
+          1020.2
+        ],
+        [
+          782.1,
+          1037.0
+        ],
+        [
+          773.8,
+          1068.2
+        ],
+        [
+          791.2,
+          1077.3
+        ],
+        [
+          808.0,
+          1087.0
+        ],
+        [
+          810.5,
+          1109.0
+        ],
+        [
+          840.5,
+          1107.4
+        ],
+        [
+          819.0,
+          1149.8
+        ],
+        [
+          849.9,
+          1147.5
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-library--lund-crypt",
+      "from": "lund-library",
+      "to": "lund-crypt",
+      "label": "Take the worn steps down into the crypt",
+      "tile": "road-lund-library--lund-crypt.png",
+      "bbox": [
+        905,
+        833,
+        317,
+        115
+      ],
+      "polygon": [
+        [
+          936.0,
+          907.0
+        ],
+        [
+          955.7,
+          911.6
+        ],
+        [
+          969.8,
+          883.3
+        ],
+        [
+          994.8,
+          919.2
+        ],
+        [
+          1007.4,
+          882.1
+        ],
+        [
+          1031.8,
+          914.9
+        ],
+        [
+          1045.7,
+          885.3
+        ],
+        [
+          1068.8,
+          909.8
+        ],
+        [
+          1086.5,
+          902.9
+        ],
+        [
+          1102.1,
+          883.0
+        ],
+        [
+          1121.9,
+          888.5
+        ],
+        [
+          1141.0,
+          889.7
+        ],
+        [
+          1155.7,
+          864.9
+        ],
+        [
+          1175.6,
+          870.7
+        ],
+        [
+          1193.3,
+          863.5
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-crossing",
+      "from": "malmo-harbor",
+      "to": "malmo-crossing",
+      "label": "Walk out to the end of the pier, where the fog has drawn back at last",
+      "tile": "road-malmo-harbor--malmo-crossing.png",
+      "bbox": [
+        392,
+        1555,
+        566,
+        146
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          456.0,
+          1648.3
+        ],
+        [
+          493.6,
+          1651.7
+        ],
+        [
+          533.1,
+          1666.9
+        ],
+        [
+          565.6,
+          1637.9
+        ],
+        [
+          606.7,
+          1663.1
+        ],
+        [
+          639.0,
+          1633.1
+        ],
+        [
+          672.0,
+          1607.5
+        ],
+        [
+          709.7,
+          1611.3
+        ],
+        [
+          747.8,
+          1618.0
+        ],
+        [
+          784.9,
+          1617.8
+        ],
+        [
+          823.1,
+          1624.7
+        ],
+        [
+          853.9,
+          1585.6
+        ],
+        [
+          893.9,
+          1603.6
+        ],
+        [
+          929.1,
+          1591.6
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-rosengard",
+      "from": "malmo-harbor",
+      "to": "malmo-rosengard",
+      "label": "Take the road up to the Rosengård estates",
+      "tile": "road-malmo-harbor--malmo-rosengard.png",
+      "bbox": [
+        392,
+        1642,
+        887,
+        378
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          490.2,
+          1673.4
+        ],
+        [
+          548.4,
+          1698.7
+        ],
+        [
+          603.0,
+          1733.1
+        ],
+        [
+          653.4,
+          1778.3
+        ],
+        [
+          723.8,
+          1771.7
+        ],
+        [
+          778.0,
+          1807.3
+        ],
+        [
+          828.4,
+          1852.7
+        ],
+        [
+          894.9,
+          1856.2
+        ],
+        [
+          956.9,
+          1871.6
+        ],
+        [
+          1022.6,
+          1877.2
+        ],
+        [
+          1066.2,
+          1940.1
+        ],
+        [
+          1124.4,
+          1965.3
+        ],
+        [
+          1199.5,
+          1946.5
+        ],
+        [
+          1250.3,
+          1990.7
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-server-basement",
+      "from": "malmo-harbor",
+      "to": "malmo-server-basement",
+      "label": "Find the stair behind the dead shopfront",
+      "tile": "road-malmo-harbor--malmo-server-basement.png",
+      "bbox": [
+        392,
+        1642,
+        634,
+        415
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          455.0,
+          1712.1
+        ],
+        [
+          496.2,
+          1737.3
+        ],
+        [
+          542.0,
+          1755.1
+        ],
+        [
+          599.4,
+          1753.9
+        ],
+        [
+          624.6,
+          1805.0
+        ],
+        [
+          661.2,
+          1837.6
+        ],
+        [
+          710.0,
+          1850.5
+        ],
+        [
+          739.8,
+          1894.2
+        ],
+        [
+          792.3,
+          1901.1
+        ],
+        [
+          825.8,
+          1938.8
+        ],
+        [
+          873.4,
+          1953.5
+        ],
+        [
+          922.9,
+          1965.4
+        ],
+        [
+          958.0,
+          2000.4
+        ],
+        [
+          997.6,
+          2028.1
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-police",
+      "from": "malmo-harbor",
+      "to": "malmo-police",
+      "label": "Go to the one lit window of the police house",
+      "tile": "road-malmo-harbor--malmo-police.png",
+      "bbox": [
+        392,
+        1642,
+        379,
+        464
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          454.0,
+          1694.7
+        ],
+        [
+          468.1,
+          1730.3
+        ],
+        [
+          492.1,
+          1758.3
+        ],
+        [
+          513.4,
+          1788.3
+        ],
+        [
+          529.5,
+          1822.4
+        ],
+        [
+          540.0,
+          1861.0
+        ],
+        [
+          600.0,
+          1860.5
+        ],
+        [
+          604.1,
+          1904.1
+        ],
+        [
+          646.7,
+          1917.3
+        ],
+        [
+          632.4,
+          1975.5
+        ],
+        [
+          692.7,
+          1974.7
+        ],
+        [
+          695.6,
+          2019.3
+        ],
+        [
+          720.1,
+          2046.8
+        ],
+        [
+          741.8,
+          2076.5
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-stortorget",
+      "from": "malmo-harbor",
+      "to": "malmo-stortorget",
+      "label": "Walk inland to the great square",
+      "tile": "road-malmo-harbor--malmo-stortorget.png",
+      "bbox": [
+        392,
+        1631,
+        474,
+        236
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          461.4,
+          1661.1
+        ],
+        [
+          479.4,
+          1702.4
+        ],
+        [
+          512.7,
+          1704.7
+        ],
+        [
+          543.5,
+          1713.5
+        ],
+        [
+          570.5,
+          1731.6
+        ],
+        [
+          606.4,
+          1727.5
+        ],
+        [
+          621.5,
+          1776.0
+        ],
+        [
+          659.3,
+          1767.0
+        ],
+        [
+          680.4,
+          1800.3
+        ],
+        [
+          721.9,
+          1781.7
+        ],
+        [
+          757.6,
+          1778.1
+        ],
+        [
+          779.2,
+          1810.2
+        ],
+        [
+          802.8,
+          1837.2
+        ],
+        [
+          837.5,
+          1835.9
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-castle",
+      "from": "malmo-harbor",
+      "to": "malmo-castle",
+      "label": "Cross to the moated castle",
+      "tile": "road-malmo-harbor--malmo-castle.png",
+      "bbox": [
+        392,
+        1630,
+        978,
+        158
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          489.9,
+          1660.4
+        ],
+        [
+          555.2,
+          1670.2
+        ],
+        [
+          618.1,
+          1706.9
+        ],
+        [
+          686.2,
+          1684.3
+        ],
+        [
+          752.1,
+          1686.2
+        ],
+        [
+          818.1,
+          1687.1
+        ],
+        [
+          882.1,
+          1711.8
+        ],
+        [
+          947.5,
+          1719.9
+        ],
+        [
+          1013.6,
+          1720.5
+        ],
+        [
+          1077.2,
+          1749.2
+        ],
+        [
+          1142.5,
+          1759.2
+        ],
+        [
+          1209.5,
+          1748.6
+        ],
+        [
+          1275.0,
+          1755.1
+        ],
+        [
+          1341.4,
+          1752.2
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-turning-torso",
+      "from": "malmo-harbor",
+      "to": "malmo-turning-torso",
+      "label": "Follow the quay out to the twisting tower",
+      "tile": "road-malmo-harbor--malmo-turning-torso.png",
+      "bbox": [
+        392,
+        1642,
+        795,
+        621
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          464.9,
+          1726.2
+        ],
+        [
+          534.4,
+          1744.0
+        ],
+        [
+          590.0,
+          1780.1
+        ],
+        [
+          642.4,
+          1820.4
+        ],
+        [
+          690.3,
+          1866.7
+        ],
+        [
+          737.8,
+          1913.4
+        ],
+        [
+          781.9,
+          1964.5
+        ],
+        [
+          851.0,
+          1982.9
+        ],
+        [
+          898.1,
+          2030.2
+        ],
+        [
+          940.7,
+          2083.4
+        ],
+        [
+          1007.8,
+          2104.3
+        ],
+        [
+          1058.8,
+          2146.5
+        ],
+        [
+          1103.0,
+          2197.5
+        ],
+        [
+          1158.5,
+          2233.7
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-pildamms",
+      "from": "malmo-harbor",
+      "to": "malmo-pildamms",
+      "label": "Head inland to the dark lakeside park",
+      "tile": "road-malmo-harbor--malmo-pildamms.png",
+      "bbox": [
+        392,
+        1642,
+        539,
+        642
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          463.6,
+          1708.6
+        ],
+        [
+          472.3,
+          1771.2
+        ],
+        [
+          535.6,
+          1789.0
+        ],
+        [
+          553.4,
+          1844.1
+        ],
+        [
+          585.1,
+          1887.8
+        ],
+        [
+          641.2,
+          1911.4
+        ],
+        [
+          645.8,
+          1977.4
+        ],
+        [
+          687.6,
+          2012.8
+        ],
+        [
+          724.5,
+          2052.2
+        ],
+        [
+          751.2,
+          2100.0
+        ],
+        [
+          795.5,
+          2133.4
+        ],
+        [
+          831.4,
+          2173.7
+        ],
+        [
+          880.1,
+          2203.4
+        ],
+        [
+          902.4,
+          2254.8
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-cemetery",
+      "from": "malmo-harbor",
+      "to": "malmo-cemetery",
+      "label": "Cut through the old cemetery",
+      "tile": "road-malmo-harbor--malmo-cemetery.png",
+      "bbox": [
+        392,
+        1642,
+        215,
+        263
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          447.2,
+          1676.7
+        ],
+        [
+          430.6,
+          1712.6
+        ],
+        [
+          471.8,
+          1704.0
+        ],
+        [
+          468.0,
+          1729.9
+        ],
+        [
+          494.0,
+          1733.1
+        ],
+        [
+          494.2,
+          1755.9
+        ],
+        [
+          501.7,
+          1773.2
+        ],
+        [
+          501.0,
+          1796.8
+        ],
+        [
+          510.7,
+          1812.4
+        ],
+        [
+          523.0,
+          1826.0
+        ],
+        [
+          539.0,
+          1836.8
+        ],
+        [
+          571.5,
+          1835.0
+        ],
+        [
+          574.7,
+          1855.6
+        ],
+        [
+          578.5,
+          1875.7
+        ]
+      ]
+    },
+    {
+      "id": "road-malmo-harbor--malmo-citytunnel",
+      "from": "malmo-harbor",
+      "to": "malmo-citytunnel",
+      "label": "Ride the escalator down to the deep platform",
+      "tile": "road-malmo-harbor--malmo-citytunnel.png",
+      "bbox": [
+        392,
+        1592,
+        310,
+        118
+      ],
+      "polygon": [
+        [
+          422.7,
+          1672.5
+        ],
+        [
+          437.6,
+          1649.8
+        ],
+        [
+          460.6,
+          1681.0
+        ],
+        [
+          478.2,
+          1676.5
+        ],
+        [
+          491.3,
+          1642.3
+        ],
+        [
+          510.5,
+          1648.3
+        ],
+        [
+          532.5,
+          1672.9
+        ],
+        [
+          545.4,
+          1637.4
+        ],
+        [
+          564.6,
+          1643.4
+        ],
+        [
+          581.7,
+          1635.6
+        ],
+        [
+          600.7,
+          1640.5
+        ],
+        [
+          618.0,
+          1634.3
+        ],
+        [
+          640.2,
+          1659.8
+        ],
+        [
+          652.7,
+          1622.1
+        ],
+        [
+          672.9,
+          1634.6
+        ]
+      ]
+    },
+    {
+      "id": "road-sandby-street--sandby-church",
+      "from": "sandby-street",
+      "to": "sandby-church",
+      "label": "Climb the hill to the old church",
+      "tile": "road-sandby-street--sandby-church.png",
+      "bbox": [
+        2182,
+        1129,
+        300,
+        173
+      ],
+      "polygon": [
+        [
+          2212.7,
+          1273.0
+        ],
+        [
+          2223.3,
+          1250.5
+        ],
+        [
+          2240.9,
+          1244.2
+        ],
+        [
+          2258.7,
+          1238.5
+        ],
+        [
+          2271.9,
+          1222.0
+        ],
+        [
+          2304.4,
+          1251.0
+        ],
+        [
+          2320.6,
+          1241.6
+        ],
+        [
+          2325.4,
+          1205.2
+        ],
+        [
+          2353.5,
+          1223.8
+        ],
+        [
+          2374.9,
+          1226.7
+        ],
+        [
+          2384.1,
+          1200.7
+        ],
+        [
+          2404.8,
+          1201.8
+        ],
+        [
+          2415.6,
+          1179.6
+        ],
+        [
+          2427.6,
+          1160.0
+        ],
+        [
+          2452.7,
+          1171.6
+        ]
+      ]
+    },
+    {
+      "id": "road-sandby-street--sandby-quarry",
+      "from": "sandby-street",
+      "to": "sandby-quarry",
+      "label": "Follow the east road to the gravel-pit lake",
+      "tile": "road-sandby-street--sandby-quarry.png",
+      "bbox": [
+        2182,
+        1243,
+        265,
+        215
+      ],
+      "polygon": [
+        [
+          2212.7,
+          1273.0
+        ],
+        [
+          2214.8,
+          1300.7
+        ],
+        [
+          2232.4,
+          1307.8
+        ],
+        [
+          2253.8,
+          1310.0
+        ],
+        [
+          2263.5,
+          1327.6
+        ],
+        [
+          2291.3,
+          1321.2
+        ],
+        [
+          2300.7,
+          1339.3
+        ],
+        [
+          2324.6,
+          1338.1
+        ],
+        [
+          2318.9,
+          1376.1
+        ],
+        [
+          2359.5,
+          1352.9
+        ],
+        [
+          2348.3,
+          1398.1
+        ],
+        [
+          2363.1,
+          1409.0
+        ],
+        [
+          2395.7,
+          1396.3
+        ],
+        [
+          2409.2,
+          1408.9
+        ],
+        [
+          2417.7,
+          1428.2
+        ]
+      ]
+    },
+    {
+      "id": "road-sandby-street--sandby-crooked-house",
+      "from": "sandby-street",
+      "to": "sandby-crooked-house",
+      "label": "Walk out to where the streetlamps end",
+      "tile": "road-sandby-street--sandby-crooked-house.png",
+      "bbox": [
+        1978,
+        1082,
+        264,
+        220
+      ],
+      "polygon": [
+        [
+          2212.7,
+          1273.0
+        ],
+        [
+          2203.8,
+          1254.4
+        ],
+        [
+          2173.7,
+          1262.6
+        ],
+        [
+          2157.5,
+          1253.2
+        ],
+        [
+          2141.9,
+          1243.0
+        ],
+        [
+          2135.7,
+          1220.9
+        ],
+        [
+          2136.8,
+          1189.5
+        ],
+        [
+          2119.7,
+          1181.3
+        ],
+        [
+          2101.2,
+          1174.8
+        ],
+        [
+          2075.3,
+          1177.8
+        ],
+        [
+          2058.4,
+          1169.3
+        ],
+        [
+          2057.9,
+          1140.0
+        ],
+        [
+          2047.3,
+          1123.4
+        ],
+        [
+          2008.7,
+          1142.4
+        ],
+        [
+          2008.6,
+          1112.6
+        ]
+      ]
+    },
+    {
+      "id": "road-killebackskolan--sandby-street",
+      "from": "killebackskolan",
+      "to": "sandby-street",
+      "label": "Climb out through the broken window beside the entrance",
+      "tile": "road-killebackskolan--sandby-street.png",
+      "bbox": [
+        2172,
+        984,
+        127,
+        318
+      ],
+      "polygon": [
+        [
+          2248.3,
+          1014.6
+        ],
+        [
+          2269.8,
+          1036.4
+        ],
+        [
+          2260.2,
+          1053.9
+        ],
+        [
+          2249.2,
+          1071.2
+        ],
+        [
+          2250.9,
+          1090.2
+        ],
+        [
+          2235.4,
+          1106.9
+        ],
+        [
+          2236.9,
+          1125.9
+        ],
+        [
+          2224.5,
+          1143.0
+        ],
+        [
+          2211.4,
+          1160.0
+        ],
+        [
+          2242.8,
+          1183.2
+        ],
+        [
+          2234.4,
+          1200.8
+        ],
+        [
+          2235.5,
+          1219.8
+        ],
+        [
+          2215.6,
+          1235.8
+        ],
+        [
+          2202.8,
+          1252.9
+        ],
+        [
+          2212.7,
+          1273.0
+        ]
+      ]
+    },
+    {
+      "id": "road-sandby-street--skane-woods",
+      "from": "sandby-street",
+      "to": "skane-woods",
+      "label": "",
+      "tile": "road-sandby-street--skane-woods.png",
+      "bbox": [
+        2182,
+        546,
+        115,
+        757
+      ],
+      "polygon": [
+        [
+          2212.7,
+          1273.0
+        ],
+        [
+          2219.7,
+          1223.5
+        ],
+        [
+          2226.6,
+          1173.9
+        ],
+        [
+          2224.1,
+          1123.6
+        ],
+        [
+          2218.9,
+          1073.1
+        ],
+        [
+          2234.4,
+          1024.3
+        ],
+        [
+          2236.6,
+          974.3
+        ],
+        [
+          2261.4,
+          926.2
+        ],
+        [
+          2226.3,
+          873.3
+        ],
+        [
+          2248.3,
+          824.9
+        ],
+        [
+          2251.8,
+          775.1
+        ],
+        [
+          2241.5,
+          724.2
+        ],
+        [
+          2256.6,
+          675.3
+        ],
+        [
+          2266.2,
+          626.0
+        ],
+        [
+          2268.0,
+          576.0
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--malmo-harbor",
+      "from": "lund-square",
+      "to": "malmo-harbor",
+      "label": "",
+      "tile": "road-lund-square--malmo-harbor.png",
+      "bbox": [
+        392,
+        922,
+        320,
+        779
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          661.7,
+          1003.1
+        ],
+        [
+          641.6,
+          1054.0
+        ],
+        [
+          609.4,
+          1100.5
+        ],
+        [
+          604.0,
+          1156.7
+        ],
+        [
+          601.6,
+          1214.0
+        ],
+        [
+          550.2,
+          1253.5
+        ],
+        [
+          535.9,
+          1306.5
+        ],
+        [
+          529.8,
+          1362.4
+        ],
+        [
+          539.2,
+          1423.9
+        ],
+        [
+          482.3,
+          1461.5
+        ],
+        [
+          483.4,
+          1520.0
+        ],
+        [
+          475.2,
+          1575.2
+        ],
+        [
+          425.1,
+          1615.2
+        ],
+        [
+          422.7,
+          1672.5
+        ]
+      ]
+    },
+    {
+      "id": "road-lund-square--sandby-street",
+      "from": "lund-square",
+      "to": "sandby-street",
+      "label": "",
+      "tile": "road-lund-square--sandby-street.png",
+      "bbox": [
+        653,
+        922,
+        1589,
+        380
+      ],
+      "polygon": [
+        [
+          683.5,
+          952.9
+        ],
+        [
+          790.3,
+          987.1
+        ],
+        [
+          899.7,
+          1009.4
+        ],
+        [
+          1008.2,
+          1035.4
+        ],
+        [
+          1123.5,
+          1029.7
+        ],
+        [
+          1233.0,
+          1051.2
+        ],
+        [
+          1336.4,
+          1101.5
+        ],
+        [
+          1450.0,
+          1103.5
+        ],
+        [
+          1560.3,
+          1121.3
+        ],
+        [
+          1667.6,
+          1153.7
+        ],
+        [
+          1773.4,
+          1193.0
+        ],
+        [
+          1888.5,
+          1187.8
+        ],
+        [
+          1994.8,
+          1224.6
+        ],
+        [
+          2103.2,
+          1251.2
+        ],
+        [
+          2212.7,
+          1273.0
+        ]
+      ]
+    }
+  ],
+  "building": {
+    "id": "killebackskolan",
+    "name": "Killebäckskolan",
+    "shell": "building-school.png",
+    "footprint": [
+      1910,
+      783,
+      676,
+      462
+    ],
+    "rooms": [
+      {
+        "node_id": "kbk-wake",
+        "name": "Déjà Vu",
+        "x": 2036.0,
+        "y": 915.0,
+        "tile": "room-kbk-wake.png",
+        "bbox": [
+          1926,
+          849,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-entrance-hall",
+        "name": "The Entrance Hall",
+        "x": 2248.0,
+        "y": 915.0,
+        "tile": "room-kbk-entrance-hall.png",
+        "bbox": [
+          2138,
+          849,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-janitor-gate",
+        "name": "The Janitor",
+        "x": 2460.0,
+        "y": 915.0,
+        "tile": "room-kbk-janitor-gate.png",
+        "bbox": [
+          2350,
+          849,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-boiler-room",
+        "name": "The Boiler Room",
+        "x": 2036.0,
+        "y": 1039.0,
+        "tile": "room-kbk-boiler-room.png",
+        "bbox": [
+          1926,
+          973,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-cabinet-note",
+        "name": "Inside the Cabinet",
+        "x": 2248.0,
+        "y": 1039.0,
+        "tile": "room-kbk-cabinet-note.png",
+        "bbox": [
+          2138,
+          973,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-caught",
+        "name": "In the Dark",
+        "x": 2460.0,
+        "y": 1039.0,
+        "tile": "room-kbk-caught.png",
+        "bbox": [
+          2350,
+          973,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-classroom",
+        "name": "The Classroom",
+        "x": 2036.0,
+        "y": 1163.0,
+        "tile": "room-kbk-classroom.png",
+        "bbox": [
+          1926,
+          1097,
+          220,
+          132
+        ]
+      },
+      {
+        "node_id": "kbk-chalk-letters",
+        "name": "The Chalk Letters",
+        "x": 2248.0,
+        "y": 1163.0,
+        "tile": "room-kbk-chalk-letters.png",
+        "bbox": [
+          2138,
+          1097,
+          220,
+          132
+        ]
+      }
+    ],
+    "doors": [
+      [
+        "kbk-wake",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-entrance-hall",
+        "kbk-janitor-gate"
+      ],
+      [
+        "kbk-entrance-hall",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-entrance-hall",
+        "kbk-boiler-room"
+      ],
+      [
+        "kbk-entrance-hall",
+        "kbk-caught"
+      ],
+      [
+        "kbk-janitor-gate",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-boiler-room",
+        "kbk-cabinet-note"
+      ],
+      [
+        "kbk-boiler-room",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-cabinet-note",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-classroom",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-chalk-letters",
+        "kbk-entrance-hall"
+      ],
+      [
+        "kbk-chalk-letters",
+        "kbk-entrance-hall"
+      ]
+    ]
+  },
+  "legend": [
+    {
+      "concept": "school",
+      "label": "School / building"
+    },
+    {
+      "concept": "church",
+      "label": "Church"
+    },
+    {
+      "concept": "harbour",
+      "label": "Harbour & sea"
+    },
+    {
+      "concept": "forest",
+      "label": "Woods"
+    },
+    {
+      "concept": "castle",
+      "label": "Castle"
+    },
+    {
+      "concept": "cemetery",
+      "label": "Cemetery"
+    },
+    {
+      "concept": "station",
+      "label": "Station"
+    },
+    {
+      "concept": "village",
+      "label": "Village / town"
+    }
+  ]
+}

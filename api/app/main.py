@@ -596,6 +596,30 @@ async def get_world(authorization: str | None = Header(default=None)):
             "can_travel": can_travel, "cells": out}
 
 
+@app.get("/api/worldmap")
+async def get_worldmap(authorization: str | None = Header(default=None)):
+    """Fog-of-war reveal state for the illustrated world map (web/public/worldmap).
+    A place is revealed once the player has visited a node there; the school's rooms
+    reveal per visited node. Derived from the (non-rolled-back) log, so it is
+    rollback-safe automatically. The PNG layers + meta are served as static assets."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            """SELECT DISTINCT n.location_id, n.id AS node_id
+                 FROM log_entries le JOIN story_nodes n ON n.id = le.node_id
+                WHERE le.log_id=$1 AND NOT le.rolled_back AND le.node_id IS NOT NULL""",
+            sess["log_id"])
+        cur = await conn.fetchrow(
+            "SELECT location_id FROM story_nodes WHERE id=$1", sess["current_node"])
+    return {
+        "revealed_locations": sorted({r["location_id"] for r in rows if r["location_id"]}),
+        "revealed_nodes": sorted({r["node_id"] for r in rows}),
+        "current_location": cur["location_id"] if cur else None,
+    }
+
+
 @app.post("/api/travel")
 async def travel(body: TravelBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)

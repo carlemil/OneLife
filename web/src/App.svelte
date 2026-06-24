@@ -6,6 +6,7 @@
   import '@xyflow/svelte/dist/style.css';
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
+  import WorldMap from './lib/WorldMap.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -75,6 +76,7 @@
   // world map
   let world = $state(null);
   let showMap = $state(false);
+  let showWorldMap = $state(false);
 
   // in-game help
   let showHelp = $state(false);
@@ -905,6 +907,7 @@
   {:else if phase === 'game' && game}
     <div class="topbar">
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
+      <button class="link" title="World map" onclick={() => (showWorldMap = true)}>🗺</button>
       {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
       {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
@@ -1072,6 +1075,10 @@
         </div>
       </aside>
     </div>
+  {/if}
+
+  {#if showWorldMap}
+    <WorldMap onClose={() => (showWorldMap = false)} />
   {/if}
 
   {#if showMap && world}
