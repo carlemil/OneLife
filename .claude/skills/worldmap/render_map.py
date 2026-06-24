@@ -28,6 +28,7 @@ import io
 import glob
 import json
 import math
+import random
 import argparse
 import hashlib
 import urllib.parse
@@ -277,9 +278,40 @@ def layout(data, W, H):
         return (M + (c["grid_x"] - minx + 0.5) * cw,
                 M + (c["grid_y"] - miny + 0.5) * ch)
 
-    # group locations by cell; hub at centre, the rest on concentric rings
-    pos = {}
-    home = {}
+    minch = min(cw, ch)
+    PAD = M * 0.78           # margin: room to spread without tiles hitting the frame
+    bx0, by0, bx1, by1 = PAD, PAD, W - PAD, H - PAD
+
+    def clampb(p):
+        p[0] = min(bx1, max(bx0, p[0])); p[1] = min(by1, max(by0, p[1]))
+
+    # Frame furniture (compass / sea-monster / title / legend) sits on top — model
+    # each as a soft circular repulsor so places drift out from behind it.
+    zone_rects = [
+        (W - M * 0.6 - minch * 0.5, M * 0.4, W - M * 0.4, M * 0.6 + minch * 0.5),       # compass TR
+        (M * 0.6, H - M * 0.7 - minch * 0.5, M * 0.7 + minch * 0.5, H - M * 0.5),        # monster BL
+        (W * 0.3, M * 0.35, W * 0.7, M * 0.35 + minch * 0.4),                            # title top
+        (W - M * 0.6 - cw * 0.9, H - M * 0.6 - ch * 0.95, W - M * 0.5, H - M * 0.5),     # legend BR
+    ]
+    pad = 18
+    zone_pad = [(x0 - pad, y0 - pad, x1 + pad, y1 + pad) for (x0, y0, x1, y1) in zone_rects]
+
+    def zone_disp(p):
+        """Soft push toward the nearest edge of any furniture rect the point is in."""
+        fx = fy = 0.0
+        for x0, y0, x1, y1 in zone_pad:
+            if x0 <= p[0] <= x1 and y0 <= p[1] <= y1:
+                dl, dr, dt, db = p[0] - x0, x1 - p[0], p[1] - y0, y1 - p[1]
+                m = min(dl, dr, dt, db)
+                if m == dl: fx -= dl + 10
+                elif m == dr: fx += dr + 10
+                elif m == dt: fy -= dt + 10
+                else: fy += db + 10
+        return fx, fy
+
+    # Initial scatter: seeded random jitter around each cell centre (organic, not a grid).
+    rng = random.Random(11)
+    pos, home = {}, {}
     by_cell = {}
     for l in locs:
         by_cell.setdefault(l.get("cell"), []).append(l)
@@ -288,59 +320,26 @@ def layout(data, W, H):
         if not c:
             continue
         ccx, ccy = cell_center(c)
-        hub_loc = node_loc.get(c.get("arrival_node"))
-        ring = [g for g in group if g["id"] != hub_loc]
-        if hub_loc and any(g["id"] == hub_loc for g in group):
-            pos[hub_loc] = [ccx, ccy]; home[hub_loc] = (ccx, ccy)
-        r0, per = min(cw, ch) * 0.26, 6
-        for i, g in enumerate(ring):
-            rr, k = i // per, i % per
-            cnt = min(per, len(ring) - rr * per)
-            a = (k / max(1, cnt)) * 2 * math.pi - math.pi / 2 + rr * 0.5
-            rad = r0 + rr * min(cw, ch) * 0.24
-            pos[g["id"]] = [ccx + math.cos(a) * rad, ccy + math.sin(a) * rad * 0.85]
+        for g in group:
+            ang = rng.uniform(0, 2 * math.pi)
+            rad = minch * 0.55 * math.sqrt(rng.uniform(0.02, 1.0))
+            pos[g["id"]] = [ccx + math.cos(ang) * rad, ccy + math.sin(ang) * rad]
             home[g["id"]] = (ccx, ccy)
-        if hub_loc not in pos and group:
-            pos[group[0]["id"]] = [ccx, ccy]; home[group[0]["id"]] = (ccx, ccy)
+            clampb(pos[g["id"]])
 
-    # relaxation: strong repulsion to avoid overlap + a gentle spring home so
-    # each cell's places stay loosely in their region while spreading out.
-    ids = list(pos)
-    SEP = min(cw, ch) * 0.42
-    for _ in range(300):
-        for i in range(len(ids)):
-            for j in range(i + 1, len(ids)):
-                a, b = pos[ids[i]], pos[ids[j]]
-                dx, dy = b[0] - a[0], b[1] - a[1]
-                d = math.hypot(dx, dy) or 0.01
-                if d < SEP:
-                    push = (SEP - d) / 2
-                    ux, uy = dx / d, dy / d
-                    a[0] -= ux * push; a[1] -= uy * push
-                    b[0] += ux * push; b[1] += uy * push
-        for k in ids:
-            p, (hx, hy) = pos[k], home[k]
-            p[0] += (hx - p[0]) * 0.012; p[1] += (hy - p[1]) * 0.012
-    for p in pos.values():
-        p[0] = min(W - M * 0.55, max(M * 0.55, p[0]))
-        p[1] = min(H - M * 0.55, max(M * 0.55, p[1]))
-
-    # roads: cross-location story edges + inter-cell hub adjacency
-    roads = []
-    seen = set()
+    # Connectivity (roads) — geometry is drawn later from the final positions.
+    roads, seen = [], set()
     for e in data["edges"] + [ed for n in nodes for ed in (n.get("edges") or [])
                               if isinstance(ed, dict)]:
-        a = e.get("from"); b = e.get("to")
-        # embedded edges have implicit `from` = their node; resolve via node_loc
-        la = node_loc.get(a, a); lb = node_loc.get(b, b)
+        la = node_loc.get(e.get("from"), e.get("from"))
+        lb = node_loc.get(e.get("to"), e.get("to"))
         if not la or not lb or la == lb or la not in pos or lb not in pos:
             continue
         key = tuple(sorted((la, lb)))
         if key in seen:
             continue
         seen.add(key)
-        roads.append({"id": f"road-{la}--{lb}", "from": la, "to": lb,
-                      "label": e.get("label", "")})
+        roads.append({"id": f"road-{la}--{lb}", "from": la, "to": lb, "label": e.get("label", "")})
     for c1 in cells.values():
         for c2 in cells.values():
             if c1["id"] >= c2["id"]:
@@ -352,6 +351,75 @@ def layout(data, W, H):
                     seen.add(tuple(sorted((l1, l2))))
                     roads.append({"id": f"road-{l1}--{l2}", "from": l1, "to": l2,
                                   "label": "", "intercell": True})
+    edge_pairs = [(r["from"], r["to"]) for r in roads]
+
+    def sep_dir(a, b, i, j):
+        """Unit vector from b->a, with a deterministic fallback when they coincide."""
+        dx, dy = a[0] - b[0], a[1] - b[1]
+        d = math.hypot(dx, dy)
+        if d < 1.0:
+            ang = ((i * 7 + j * 13) % 360) * math.pi / 180
+            return math.cos(ang), math.sin(ang), 0.0
+        return dx / d, dy / d, d
+
+    # Force-directed layout (Fruchterman-Reingold): repulsion spreads the places to
+    # fill the whole canvas evenly, edge springs keep connected places together, a
+    # light pull home biases them toward their real region, and the frame furniture
+    # repels so nothing hides behind the compass / legend / title.
+    ids = list(pos)
+    k = math.sqrt((bx1 - bx0) * (by1 - by0) / max(1, len(ids))) * 0.82
+    temp = (bx1 - bx0) * 0.16
+    for _ in range(260):
+        disp = {i: [0.0, 0.0] for i in ids}
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                ux, uy, d = sep_dir(pos[ids[i]], pos[ids[j]], i, j)
+                f = k * k / max(d, 0.5)
+                disp[ids[i]][0] += ux * f; disp[ids[i]][1] += uy * f
+                disp[ids[j]][0] -= ux * f; disp[ids[j]][1] -= uy * f
+        for u, v in edge_pairs:
+            a, b = pos[u], pos[v]
+            dx, dy = a[0] - b[0], a[1] - b[1]
+            d = math.hypot(dx, dy) or 0.01
+            f = d * d / k
+            ux, uy = dx / d, dy / d
+            disp[u][0] -= ux * f; disp[u][1] -= uy * f
+            disp[v][0] += ux * f; disp[v][1] += uy * f
+        for i in ids:
+            hx, hy = home[i]
+            disp[i][0] += (hx - pos[i][0]) * 0.008
+            disp[i][1] += (hy - pos[i][1]) * 0.008
+            zx, zy = zone_disp(pos[i])
+            disp[i][0] += zx * 1.4; disp[i][1] += zy * 1.4
+        for i in ids:
+            dx, dy = disp[i]
+            dd = math.hypot(dx, dy) or 0.01
+            step = min(dd, temp)
+            pos[i][0] += dx / dd * step; pos[i][1] += dy / dd * step
+            clampb(pos[i])
+        temp *= 0.985
+
+    # Guarantee no overlap: hard separation passes at ~1.25x the tile size (tiles are
+    # ~0.46*minch wide), while still nudging out of the furniture zones.
+    SEP = minch * 0.58
+    for _ in range(220):
+        moved = False
+        for i in range(len(ids)):
+            for j in range(i + 1, len(ids)):
+                a, b = pos[ids[i]], pos[ids[j]]
+                ux, uy, d = sep_dir(a, b, i, j)
+                if d < SEP:
+                    push = (SEP - d) / 2
+                    a[0] += ux * push; a[1] += uy * push
+                    b[0] -= ux * push; b[1] -= uy * push
+                    moved = True
+        for i in ids:
+            zx, zy = zone_disp(pos[i])
+            pos[i][0] += zx * 0.5; pos[i][1] += zy * 0.5
+            clampb(pos[i])
+        if not moved:
+            break
+
     cell_pos = {cid: cell_center(c) for cid, c in cells.items()}
     return cells, node_loc, pos, roads, M, cw, ch, cell_pos
 
