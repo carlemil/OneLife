@@ -15,3 +15,6 @@ package-lock.json
 # World-map build artifacts — the map layers + meta ARE committed; these aren't
 web/public/worldmap/iconcache/
 web/public/worldmap/preview.png
+
+# mapsUpdate skill — style inputs + generated maps (not committed)
+/maps/
