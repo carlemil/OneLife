@@ -1,0 +1,31 @@
+# OneLife content — Skåne Woods, a wilderness cell north of Södra Sandby.
+# A single brooding forest node, a world-access travel hub. Reconciled here from
+# the live content DB so it lives in the data repo like every other cell, and so
+# the lane in from Sandby Street (see world.yaml edges) validates against it.
+
+cells:
+  - id: skane-woods
+    grid_x: 2
+    grid_y: 1
+    name: Skåne Woods
+    kind: wilderness
+    region: "the Skåne countryside"
+    arrival_node: woods-path
+
+locations:
+  - id: skane-woods
+    name: Forest Path
+    cell: skane-woods
+    description: "A track winding into the Skåne woods."
+    icon_description: "A narrow track winding into dense, dark pine forest, tall close-set conifers of the Skåne countryside."
+
+nodes:
+  - id: woods-path
+    pos: {x: 3530, y: 56}
+    arc: main
+    type: location
+    location: skane-woods
+    title: Forest Path
+    world_access: true
+    media: {image_theme: forest-dark, music_theme: low-dread, real_place: "a dense pine forest in the Skåne countryside, Sweden"}
+    body: "The track gives way to close-pressed pines. Something about the dark here feels older than the rest. You do not want to leave the path. The way back out is the world beyond the trees."

@@ -5,6 +5,7 @@
   // dispatches a walk (within the cell) or a travel (to an adjacent cell) from the
   // item's `action`/`target`. Coordinates are normalized 0..1 against the parchment.
   import { contentAsset } from './api.js';
+  import { roadPath } from './maputil.js';   // shared with the admin map editor
 
   let {
     block,                 // { image, nodes:[{id,title,icon,x,y,current,reachable,action,target}], roads:[{from,to}] }
@@ -18,28 +19,12 @@
   let imgOk = $state(true);
   let walk = $state(null);              // { d } while animating
   let walking = $state(false);
+  let hovered = $state(null);           // id of the icon under the mouse (big label)
 
   const nodes = $derived(block?.nodes ?? []);
   const roads = $derived(block?.roads ?? []);
   const byId = $derived(Object.fromEntries(nodes.map((n) => [n.id, n])));
   const cx = (n) => n.x * cw, cy = (n) => n.y * ch;
-
-  // A road is a Catmull-Rom spline through its endpoints + any saved waypoints
-  // (set by the map editor's "Redraw roads"); with no waypoints it's a straight line.
-  function roadPath(r) {
-    const a = byId[r.from], b = byId[r.to];
-    if (!a || !b) return '';
-    const pts = [[a.x, a.y], ...(r.points ?? []), [b.x, b.y]].map(([x, y]) => [x * cw, y * ch]);
-    if (pts.length === 2) return `M ${pts[0][0]},${pts[0][1]} L ${pts[1][0]},${pts[1][1]}`;
-    let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
-      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-    }
-    return d;
-  }
 
   async function pick(n) {
     if (walking || busy || !n.reachable) return;
@@ -56,7 +41,6 @@
 
 <div class="mo-modal" role="dialog" aria-label="Map" onclick={(e) => e.target === e.currentTarget && onClose?.()}>
   <div class="mo-card">
-    <button class="mo-close" aria-label="Close map" onclick={() => onClose?.()}>✕</button>
     <div class="mo" bind:clientWidth={cw} bind:clientHeight={ch}
          style={imgOk ? '' : 'aspect-ratio:4/3'}>
       <img class="mo-bg" src={contentAsset(block.image)} alt="" draggable="false"
@@ -82,7 +66,7 @@
           </defs>
           {#each roads as r, i}
             {#if byId[r.from] && byId[r.to]}
-              <path class="mo-road" fill="none" stroke={`url(#moroad${i})`} d={roadPath(r)} />
+              <path class="mo-road" fill="none" stroke={`url(#moroad${i})`} d={roadPath(byId, r, cw, ch)} />
             {/if}
           {/each}
           {#if walk}
@@ -95,12 +79,16 @@
                class:disabled={!n.reachable && !n.current}
                style={`left:${cx(n)}px; top:${cy(n)}px`}
                role="button" tabindex={n.reachable ? 0 : -1} aria-label={`Go to ${n.title}`}
-               onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}>
+               onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
+               onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
             <img class="mo-icon" style={`--mo-scale:${n.scale ?? 1}`}
                  src={contentAsset(n.icon)} alt={n.title} draggable="false" />
-            <span class="mo-label">{n.title}</span>
           </div>
         {/each}
+
+        {#if hovered && byId[hovered]}
+          <div class="mo-hover-lbl">{byId[hovered].title}</div>
+        {/if}
 
         {#if walk}
           <div class="mo-walker" style={`offset-path:path('${walk.d}'); --dur:${WALK_MS}ms`}></div>
@@ -116,10 +104,6 @@
     justify-content:center; background:rgba(0,0,0,.72); padding:1.5rem; }
   .mo-card { position:relative; width:min(1100px, 96vw); max-height:94vh; overflow:auto;
     border:1px solid transparent; border-radius:10px; line-height:0; }
-  .mo-close { position:absolute; top:8px; right:8px; z-index:3; width:32px; height:32px;
-    border-radius:50%; border:1px solid #00000055; background:rgba(20,16,10,.55);
-    color:#f3e9d2; font-size:15px; cursor:pointer; line-height:1; }
-  .mo-close:hover { background:rgba(40,30,18,.8); }
   .mo { position:relative; width:100%; }
   .mo-bg { display:block; width:100%; height:auto; border-radius:10px; }
   .mo-missing { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
@@ -127,14 +111,14 @@
   .mo-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
   .mo-road { stroke-width:4; stroke-linecap:round; }
 
-  .mo-node { position:absolute; transform:translate(-50%, -50%); display:flex;
-    flex-direction:column; align-items:center; gap:2px; width:max-content; }
+  .mo-node { position:absolute; transform:translate(-50%, -50%); }
   .mo-icon { width:calc(clamp(56px, 9.8vw, 101px) * var(--mo-scale, 1)); height:auto; display:block; line-height:0;
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); transition:transform .12s, filter .12s; }
-  .mo-label { font:600 12px Georgia, serif; color:#3a2a16; max-width:120px; text-align:center;
-    text-shadow:0 1px 0 rgba(255,250,240,.6); white-space:nowrap;
-    opacity:0; transition:opacity .12s; pointer-events:none; }
-  .mo-node:hover .mo-label, .mo-node:focus .mo-label, .mo-node:focus-visible .mo-label { opacity:1; }
+  /* The hovered icon's name, shown large and centred ~10% down from the top —
+     identical to the admin map editor. */
+  .mo-hover-lbl { position:absolute; left:50%; top:10%; transform:translate(-50%, -50%);
+    z-index:15; pointer-events:none; white-space:nowrap; font:700 clamp(20px, 3.2vw, 38px) Georgia, serif;
+    color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
   .mo-node.disabled { opacity:.45; filter:grayscale(.5); }
   .mo-node.reachable { cursor:pointer; }
   .mo-node.reachable:hover .mo-icon { transform:scale(1.12); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }

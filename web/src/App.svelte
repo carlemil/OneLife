@@ -36,6 +36,17 @@
   // game
   let game = $state(null);
   let logEntries = $state([]);
+  // Player clipboard: free-form notes, saved with the profile. Adopted from the
+  // server on first load; thereafter locally owned and saved (debounced) on edit.
+  let clipboard = $state('');
+  let clipLoaded = $state(false);
+  let clipTimer;
+  $effect(() => { if (game && !clipLoaded) { clipboard = game.clipboard ?? ''; clipLoaded = true; } });
+  async function saveClip() {
+    clearTimeout(clipTimer);
+    try { await api.saveClipboard(clipboard); } catch (_) { /* keep local text */ }
+  }
+  function onClipInput() { clearTimeout(clipTimer); clipTimer = setTimeout(saveClip, 600); }
   let myWindow = $state([]);
   let gateInput = $state('');
   let gateReply = $state('');           // latest NPC line, echoed by the input for immediacy
@@ -96,6 +107,7 @@
 
   // admin (hidden export/import)
   let isAdmin = $state(false);
+  let adminGame = $state('');
   let showAdmin = $state(false);
   let adminMsg = $state('');
   let adminPlayers = $state([]);
@@ -283,7 +295,7 @@
   function confirmLogout() { if (confirm('Log out? Your progress is saved — log back in any time.')) logout(); }
 
   function logout() {
-    api.logout(); game = null; phase = 'auth'; authMode = 'login';
+    api.logout(); game = null; clipLoaded = false; clipboard = ''; phase = 'auth'; authMode = 'login';
     email = ''; password = ''; code = ''; notice = '';
   }
 
@@ -312,7 +324,8 @@
     logEntries = (await api.log()).entries;
     myWindow = (await api.leaderboard({ around: 1 })).rows;
     error = ''; notice = ''; phase = 'game';
-    try { isAdmin = (await api.adminMe()).is_admin; } catch { isAdmin = false; }
+    try { const me = await api.adminMe(); isAdmin = me.is_admin; adminGame = me.game || ''; }
+    catch { isAdmin = false; }
   }
 
   // ---------- leaderboard page ----------
@@ -709,9 +722,7 @@
   {:else if phase === 'game' && game}
     <div class="topbar">
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
-      {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
-      {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
-      {#if isAdmin}<button class="link" title="Edit maps (place node ellipses)" onclick={() => (showMapEditor = true)}>📍</button>{/if}
+      {#if isAdmin}<button class="link" title="Admin & settings" onclick={openAdmin}>⚙</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
@@ -845,18 +856,17 @@
           {/if}
           {/if}
         </div>
-        {#if game.notes.length}
-          <div class="panel" class:collapsed={!panelOpen.notes}>
-            <h3 class="acc-head">
-              <button class="paneltoggle" aria-expanded={panelOpen.notes} onclick={() => togglePanel('notes')}>
-                <span class="chev">{panelOpen.notes ? '▲' : '▼'}</span> Notes
-              </button>
-            </h3>
-            {#if panelOpen.notes}
-            <ul class="notelist">{#each game.notes as n}<li>{n}</li>{/each}</ul>
-            {/if}
-          </div>
-        {/if}
+        <div class="panel" class:collapsed={!panelOpen.notes}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.notes} onclick={() => togglePanel('notes')}>
+              <span class="chev">{panelOpen.notes ? '▲' : '▼'}</span> Notes
+            </button>
+          </h3>
+          {#if panelOpen.notes}
+          <textarea class="clipboard" bind:value={clipboard} oninput={onClipInput} onblur={saveClip}
+            placeholder="Your private clipboard — type or paste anything. Saved with your profile."></textarea>
+          {/if}
+        </div>
         <div class="panel" class:collapsed={!panelOpen.log}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
@@ -938,14 +948,21 @@
   {#if showAdmin}
     <div class="modal" onclick={() => (showAdmin = false)}>
       <div class="modal-card admin" onclick={(e) => e.stopPropagation()}>
-        <h2>⚙ Admin</h2>
+        <h2>⚙ Admin &amp; settings</h2>
+        <p class="sub">Running game: <b>{adminGame || '—'}</b> <span class="sub">(games/{adminGame}/data)</span></p>
         {#if adminMsg}<div class="notice">{adminMsg}</div>{/if}
+
+        <div class="admin-sec">
+          <h3>Editors</h3>
+          <p class="sub">Authoring lives in the YAML files; these editors write changes back to them.</p>
+          <button onclick={() => { showAdmin = false; openGraph(); }}>Story graph…</button>
+          <button onclick={() => { showAdmin = false; showMapEditor = true; }}>Map editor…</button>
+        </div>
 
         <div class="admin-sec">
           <h3>Authored content</h3>
           <p class="sub">World, NPCs, story, puzzles — authored in the YAML files (the single source of truth). Seeding reconciles the DB to the files on every load.</p>
           <button onclick={exportContent}>Export YAML</button>
-          <button onclick={openGraph}>View story graph…</button>
         </div>
 
         <div class="admin-sec">
@@ -1123,6 +1140,10 @@
   .rollback { font-size:1rem; line-height:1; }
   .rollback.adminrb { color:#7da7d0; margin-left:.15rem; }   /* admin: roll back to ANY beat (distinct from the player ↩) */
   .notelist { list-style:disc; padding-left:1.1rem; margin:.3rem 0 0; font-size:.82rem; color:#cdbb9a; }
+  .clipboard { width:100%; min-height:9rem; margin-top:.4rem; box-sizing:border-box; resize:vertical;
+    background:#11131b; color:#e8e6df; border:1px solid #2a2e3e; border-radius:6px; padding:.55rem .65rem;
+    font:inherit; font-size:.85rem; line-height:1.45; }
+  .clipboard:focus { outline:none; border-color:#3a456a; }
   .spinner { display:inline-block; width:14px; height:14px; border:2px solid rgba(255,255,255,.3); border-top-color:#e8e8f0; border-radius:50%; animation:spin .6s linear infinite; vertical-align:middle; }
   @keyframes spin { to { transform: rotate(360deg); } }
   .error { background:#3a2330; border:1px solid #6a3346; padding:.5rem .8rem; border-radius:6px; margin-bottom:1rem; }

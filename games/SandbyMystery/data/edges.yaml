@@ -1,0 +1,441 @@
+# OneLife — all edges
+
+edges:
+
+  # --- from lund ---
+  - id: e-square-library
+    road: [[0.7571, 0.5517], [0.768, 0.5509]]
+    from: lund-square
+    to: lund-library
+    label: Try the door to the cathedral library
+    effects: {progress_points: 5, log: "You found the cathedral library."}
+    sort_order: 2
+  - id: e-square-cellar
+    road: [[0.7352, 0.5819], [0.7799, 0.5916]]
+    from: lund-square
+    to: lund-cellar
+    label: Take the stairs beneath the unmarked door
+    effects: {progress_points: 5, log: "You found the cellar supper club."}
+    sort_order: 3
+  - id: e-square-lodgings
+    road: [[0.6393, 0.5573], [0.6113, 0.5511]]
+    from: lund-square
+    to: lund-lodgings
+    label: Climb to the smoke-filled lodgings
+    effects: {progress_points: 5, log: "You found Holm's lodgings."}
+    sort_order: 4
+  - id: e-square-manor
+    road: [[0.6878, 0.5919], [0.6509, 0.6235]]
+    from: lund-square
+    to: lund-manor
+    label: Follow the drive to the manor past the edge of town
+    effects: {progress_points: 5, log: "You reached the manor outside Lund."}
+    sort_order: 5
+  - id: e-square-botanical
+    road: [[0.7271, 0.623], [0.7621, 0.6836]]
+    from: lund-square
+    to: lund-botanical
+    label: Slip into the lit glasshouse of the botanical garden
+    effects: {progress_points: 5, log: "You entered the botanical garden after dark."}
+    sort_order: 6
+  - id: e-square-apothecary
+    road: [[0.7087, 0.5492], [0.606, 0.4731]]
+    from: lund-square
+    to: lund-apothecary
+    label: Look in at the shuttered old apothecary
+    effects: {progress_points: 5, log: "You found the old apothecary."}
+    sort_order: 7
+  - id: e-crypt-from-library
+    road: [[0.6726, 0.4727], [0.6572, 0.4722]]
+    from: lund-library
+    to: lund-crypt
+    label: Take the worn steps down into the crypt
+    effects: {progress_points: 5, log: "You descended into the cathedral crypt."}
+    sort_order: 4
+  - id: e-station-board
+    from: lund-station
+    to: lund-station-board
+    label: Read the stuck departures board
+    effects: {progress_points: 5, log: "The departures board was stuck on a riddle."}
+    sort_order: 2
+  - id: e-manor-candle
+    from: lund-manor
+    to: lund-orlok-candle
+    label: Answer the count's riddle
+    conditions: {all: [{flag_set: met_orlok}]}
+    effects: {progress_points: 5, log: "Orlök posed you a riddle by candlelight."}
+    sort_order: 4
+  - id: e-botanical-specimen
+    from: lund-botanical
+    to: lund-vinne-specimen
+    label: Name von Vinné's specimen
+    conditions: {all: [{flag_set: met_vinne}]}
+    effects: {progress_points: 5, log: "Von Vinné challenged you to name a specimen."}
+    sort_order: 4
+  # --- random lateral shortcut: a damp passage links the apothecary and the crypt ---
+  - id: e-apothecary-crypt
+    road: [[0.6128, 0.4272], [0.6196, 0.4304]]
+    from: lund-apothecary
+    to: lund-crypt
+    label: Try the low door at the back of the apothecary
+    effects: {log: "A damp passage behind the apothecary let you down into the crypt."}
+    sort_order: 8
+  - id: e-crypt-apothecary
+    road: [[0.6196, 0.4304], [0.6128, 0.4272]]
+    from: lund-crypt
+    to: lund-apothecary
+    label: Take the damp passage out past the shuttered apothecary
+    effects: {log: "The passage from the crypt brought you up behind the apothecary."}
+    sort_order: 8
+  # --- real-world shortcut: the apothecary lies between the square and the station ---
+  - id: e-station-apothecary
+    road: [[0.5658, 0.4128], [0.5692, 0.4122]]
+    from: lund-station
+    to: lund-apothecary
+    label: Walk up into town to the shuttered apothecary
+    effects: {log: "You walked up from the station to the old apothecary."}
+    sort_order: 3
+  - id: e-apothecary-station
+    road: [[0.5692, 0.4122], [0.5658, 0.4128]]
+    from: lund-apothecary
+    to: lund-station
+    label: Head down toward the railway station
+    effects: {log: "You walked down from the apothecary to the station."}
+    sort_order: 8
+
+  # --- from malmo ---
+  # The final crossing — unlocks only when every puzzle in the game is solved.
+  - id: e-harbor-crossing
+    road: [[0.278, 0.4233], [0.244, 0.3935]]
+    from: malmo-harbor
+    to: malmo-crossing
+    label: Walk out to the end of the pier, where the fog has drawn back at last
+    conditions: {all: [{flag_set: knows_real_exit}, {flag_set: solved_marta_anagram}, {flag_set: solved_church_bell}, {flag_set: solved_dodblek_games}, {flag_set: solved_shadow}, {flag_set: solved_last_train}, {flag_set: solved_candle}, {flag_set: solved_elder}, {flag_set: opened_harbor_locker}, {flag_set: solved_fog}, {flag_set: solved_gravestone}, {flag_set: solved_ystad_lock}]}
+    effects: {progress_points: 40, log: "You walked out to the end of the pier. The fog had drawn back, and the far shore was waiting."}
+    sort_order: 1
+  - id: e-harbor-rosengard
+    road: [[0.3682, 0.4401], [0.3901, 0.4149]]
+    from: malmo-harbor
+    to: malmo-rosengard
+    label: Take the road up to the Rosengård estates
+    effects: {progress_points: 5, log: "You went up to Rosengård."}
+    sort_order: 2
+  - id: e-harbor-basement
+    road: [[0.3249, 0.5053], [0.3227, 0.5141]]
+    from: malmo-harbor
+    to: malmo-server-basement
+    label: Find the stair behind the dead shopfront
+    effects: {progress_points: 5, log: "You found the basement server room."}
+    sort_order: 3
+  - id: e-harbor-police
+    road: [[0.3883, 0.5474], [0.3931, 0.5535]]
+    from: malmo-harbor
+    to: malmo-police
+    label: Go to the one lit window of the police house
+    effects: {progress_points: 5, log: "You went to the police house."}
+    sort_order: 4
+  - id: e-harbor-stortorget
+    road: [[0.3788, 0.5068], [0.4492, 0.6016]]
+    from: malmo-harbor
+    to: malmo-stortorget
+    label: Walk inland to the great square
+    effects: {progress_points: 5, log: "You reached Stortorget."}
+    sort_order: 5
+  - id: e-harbor-castle
+    road: [[0.3325, 0.5955], [0.2785, 0.6546]]
+    from: malmo-harbor
+    to: malmo-castle
+    label: Cross to the moated castle
+    effects: {progress_points: 5, log: "You reached Malmöhus castle."}
+    sort_order: 6
+  - id: e-harbor-torso
+    road: [[0.2778, 0.4736], [0.2375, 0.4833]]
+    from: malmo-harbor
+    to: malmo-turning-torso
+    label: Follow the quay out to the twisting tower
+    effects: {progress_points: 5, log: "You reached the Turning Torso."}
+    sort_order: 7
+  - id: e-harbor-pildamms
+    road: [[0.3605, 0.6136], [0.3552, 0.636]]
+    from: malmo-harbor
+    to: malmo-pildamms
+    label: Head inland to the dark lakeside park
+    effects: {progress_points: 5, log: "You entered Pildammsparken."}
+    sort_order: 8
+  - id: e-harbor-cemetery
+    road: [[0.3564, 0.5306], [0.4106, 0.6797]]
+    from: malmo-harbor
+    to: malmo-cemetery
+    label: Cut through the old cemetery
+    effects: {progress_points: 5, log: "You entered the old cemetery."}
+    sort_order: 9
+  - id: e-harbor-citytunnel
+    road: [[0.3559, 0.4859], [0.4279, 0.506]]
+    from: malmo-harbor
+    to: malmo-citytunnel
+    label: Ride the escalator down to the deep platform
+    effects: {progress_points: 5, log: "You went down to Triangeln station."}
+    sort_order: 10
+  - id: e-harbor-fogwall
+    from: malmo-harbor
+    to: malmo-harbor-fog
+    label: Read the riddle scratched into the harbour wall
+    effects: {progress_points: 5, log: "You found a riddle cut into the harbour wall."}
+    sort_order: 11
+  - id: e-cemetery-stones
+    from: malmo-cemetery
+    to: malmo-cemetery-stones
+    label: Study the three newer stones
+    effects: {progress_points: 5, log: "You found three stones, one of them blank."}
+    sort_order: 2
+  - id: e-police-lock
+    from: malmo-police
+    to: malmo-vallmo-lock
+    label: Try the word-lock on Vallmo's evidence box
+    conditions: {all: [{flag_set: met_vallmo}]}
+    effects: {progress_points: 5, log: "Vallmo let you try the lock on his old evidence box."}
+    sort_order: 4
+  # --- random lateral shortcut: castle ↔ Turning Torso, both on the western water ---
+  - id: e-castle-torso
+    road: [[0.2307, 0.6428], [0.2015, 0.5953]]
+    from: malmo-castle
+    to: malmo-turning-torso
+    label: Follow the waterline out toward the twisting tower
+    effects: {log: "You followed the quay from the castle to the Turning Torso."}
+    sort_order: 8
+  - id: e-torso-castle
+    road: [[0.2015, 0.5953], [0.2307, 0.6428]]
+    from: malmo-turning-torso
+    to: malmo-castle
+    label: Walk back along the quay to the moated castle
+    effects: {log: "You walked back from the tower to the castle."}
+    sort_order: 8
+  # --- real-world shortcut: Stortorget down Södergatan to Triangeln station ---
+  - id: e-stortorget-citytunnel
+    road: [[0.4766, 0.6232], [0.4642, 0.5315]]
+    from: malmo-stortorget
+    to: malmo-citytunnel
+    label: Walk south down Södergatan to Triangeln station
+    effects: {log: "You walked south to Triangeln station."}
+    sort_order: 7
+  - id: e-citytunnel-stortorget
+    road: [[0.4642, 0.5315], [0.4766, 0.6232]]
+    from: malmo-citytunnel
+    to: malmo-stortorget
+    label: Climb up and walk north to the great square
+    effects: {log: "You came up from the station and walked to Stortorget."}
+    sort_order: 7
+  # --- real-world shortcut: Triangeln station sits right by Pildammsparken ---
+  - id: e-citytunnel-pildamms
+    road: [[0.4, 0.6208], [0.3866, 0.6499]]
+    from: malmo-citytunnel
+    to: malmo-pildamms
+    label: Leave the station for the lakeside park beside it
+    effects: {log: "You left Triangeln for Pildammsparken next door."}
+    sort_order: 8
+  - id: e-pildamms-citytunnel
+    road: [[0.3866, 0.6499], [0.4, 0.6208]]
+    from: malmo-pildamms
+    to: malmo-citytunnel
+    label: Cut back to Triangeln station
+    effects: {log: "You found your way back to Triangeln station."}
+    sort_order: 8
+  # --- real-world shortcut: Stortorget west through the old town to Malmöhus ---
+  - id: e-stortorget-castle
+    road: [[0.4343, 0.6402], [0.3194, 0.6603]]
+    from: malmo-stortorget
+    to: malmo-castle
+    label: Walk west through the old town to the castle
+    effects: {log: "You crossed the old town from the square to the castle."}
+    sort_order: 9
+  - id: e-castle-stortorget
+    road: [[0.3194, 0.6603], [0.4343, 0.6402]]
+    from: malmo-castle
+    to: malmo-stortorget
+    label: Head back east into the old town and its square
+    effects: {log: "You walked back from the castle to Stortorget."}
+    sort_order: 9
+  # --- real-world shortcut: Gamla kyrkogården lies just by Triangeln/the centre ---
+  - id: e-cemetery-citytunnel
+    road: [[0.4427, 0.7099], [0.4455, 0.5549]]
+    from: malmo-cemetery
+    to: malmo-citytunnel
+    label: Follow the path out to Triangeln station
+    effects: {log: "You left the cemetery for Triangeln station."}
+    sort_order: 8
+  - id: e-citytunnel-cemetery
+    road: [[0.4455, 0.5549], [0.4427, 0.7099]]
+    from: malmo-citytunnel
+    to: malmo-cemetery
+    label: Walk over to the old cemetery
+    effects: {log: "You walked from the station to the old cemetery."}
+    sort_order: 9
+  # --- real-world shortcut: green belt between Pildammsparken and the old cemetery ---
+  - id: e-pildamms-cemetery
+    road: [[0.3891, 0.8026], [0.42, 0.7674]]
+    from: malmo-pildamms
+    to: malmo-cemetery
+    label: Cross the green belt to the old cemetery
+    effects: {log: "You crossed from the park to the old cemetery."}
+    sort_order: 9
+  - id: e-cemetery-pildamms
+    road: [[0.42, 0.7674], [0.3891, 0.8026]]
+    from: malmo-cemetery
+    to: malmo-pildamms
+    label: Cut through to the dark lakeside park
+    effects: {log: "You crossed from the cemetery to Pildammsparken."}
+    sort_order: 9
+
+  # --- from marta ---
+  - id: e-hall-classroom
+    from: kbk-entrance-hall
+    to: kbk-classroom
+    label: Follow the sound of crying into a classroom
+    effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
+    sort_order: 4
+  - id: e-hall-chalk
+    from: kbk-entrance-hall
+    to: kbk-chalk-letters
+    label: Look at the chalk letters scattered on a classroom floor
+    effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
+    sort_order: 6
+
+  # --- from sandby ---
+  - id: e-street-church
+    road: [[0.5865, 0.2719], [0.5884, 0.249]]
+    from: sandby-street
+    to: sandby-church
+    label: Climb the hill to the old church
+    effects: {progress_points: 5, log: "You climbed to Sandby church."}
+    sort_order: 2
+  - id: e-street-quarry
+    road: [[0.6465, 0.3088], [0.6791, 0.29]]
+    from: sandby-street
+    to: sandby-quarry
+    label: Follow the east road to the gravel-pit lake
+    effects: {progress_points: 5, log: "You found the gravel-pit lake and its motel."}
+    sort_order: 3
+  - id: e-street-crooked
+    road: [[0.6008, 0.3148], [0.6804, 0.1803]]
+    from: sandby-street
+    to: sandby-crooked-house
+    label: Walk out to where the streetlamps end
+    effects: {progress_points: 5, log: "You reached the crooked house at the village edge."}
+    sort_order: 4
+  - id: e-church-bell
+    from: sandby-church
+    to: sandby-church-bell
+    label: Read the words cut over the lych-gate
+    effects: {progress_points: 5, log: "You found a riddle carved over the lych-gate."}
+    sort_order: 3
+  - id: e-church-count
+    from: sandby-church
+    to: sandby-dodblek-count
+    label: Take up Dödblek's wager
+    conditions: {all: [{flag_set: met_dodblek}]}
+    effects: {progress_points: 5, log: "Dödblek set you a wager of arithmetic."}
+    sort_order: 4
+  - id: e-crooked-shadow
+    from: sandby-crooked-house
+    to: sandby-pippa-shadow
+    label: Play Pippa's riddle-game
+    conditions: {all: [{flag_set: met_pippa}]}
+    effects: {progress_points: 5, log: "Pippa challenged you to a riddle."}
+    sort_order: 5
+  # --- random lateral shortcut: the dark edge of the village, quarry ↔ crooked house ---
+  - id: e-quarry-crooked
+    road: [[0.7189, 0.2308], [0.7136, 0.2146]]
+    from: sandby-quarry
+    to: sandby-crooked-house
+    label: Take the unlit track on toward the crooked house
+    effects: {log: "You followed the dark track from the lake to the crooked house."}
+    sort_order: 8
+  - id: e-crooked-quarry
+    road: [[0.7136, 0.2146], [0.7189, 0.2308]]
+    from: sandby-crooked-house
+    to: sandby-quarry
+    label: Follow the dark road back toward the gravel-pit lake
+    effects: {log: "You walked back from the crooked house to the lake."}
+    sort_order: 8
+  # --- real-world shortcut: a village footpath links the church hill and the edge ---
+  - id: e-church-crooked
+    road: [[0.6126, 0.2059], [0.6334, 0.1943]]
+    from: sandby-church
+    to: sandby-crooked-house
+    label: Take the footpath out to the crooked house at the village edge
+    effects: {log: "You took the footpath from the church to the crooked house."}
+    sort_order: 8
+  - id: e-crooked-church
+    road: [[0.6334, 0.1943], [0.6126, 0.2059]]
+    from: sandby-crooked-house
+    to: sandby-church
+    label: Walk back up the hill to the church
+    effects: {log: "You walked back up to the church."}
+    sort_order: 8
+
+  # --- from world ---
+  - id: e-hall-street
+    road: [[0.7804, 0.4158], [0.6245, 0.3469]]
+    from: kbk-entrance-hall
+    to: sandby-street
+    label: Climb out through the broken window beside the entrance
+    conditions: {all: [{flag_set: knows_real_exit}]}
+    effects: {progress_points: 5, log: "You climbed out through the broken entrance window into Södra Sandby."}
+    sort_order: 5
+  # --- Inter-cell links (two-way): rail lines between the station nodes, and the
+  #     lane from Sandby out into the Skåne woods. These are direct shortcuts that
+  #     bypass the world map — you walk them straight from the platform/street.
+  - id: e-triangeln-lund
+    road: [[0.4738, 0.4895], [0.5293, 0.4415]]
+    from: malmo-citytunnel
+    to: lund-station
+    label: Take the train north to Lund
+    effects: {log: "You rode the train north from Triangeln to Lund."}
+    sort_order: 6
+  - id: e-lund-triangeln
+    road: [[0.5293, 0.4415], [0.4738, 0.4895]]
+    from: lund-station
+    to: malmo-citytunnel
+    label: Take the train down to Malmö (Triangeln)
+    effects: {log: "You rode the train down to Triangeln in Malmö."}
+    sort_order: 6
+  - id: e-lund-sandby
+    road: [[0.5698, 0.3636], [0.5787, 0.3545]]
+    from: lund-station
+    to: sandby-street
+    label: Take the branch line out to Södra Sandby
+    effects: {log: "You took the branch line out to Södra Sandby."}
+    sort_order: 7
+  - id: e-sandby-lund
+    road: [[0.5787, 0.3545], [0.5698, 0.3636]]
+    from: sandby-street
+    to: lund-station
+    label: Ride the line in to Lund station
+    effects: {log: "You rode the line in to Lund station."}
+    sort_order: 6
+  - id: e-sandby-woods
+    road: [[0.5562, 0.3178], [0.5437, 0.3117]]
+    from: sandby-street
+    to: woods-path
+    label: Follow the lane east into the Skåne woods
+    effects: {log: "You followed the lane into the Skåne woods."}
+    sort_order: 7
+  - id: e-woods-sandby
+    road: [[0.5437, 0.3117], [0.5562, 0.3178]]
+    from: woods-path
+    to: sandby-street
+    label: Take the path back out toward Sandby
+    effects: {log: "You took the path back out toward Sandby."}
+    sort_order: 6
+  - id: e-lund-manor-lund-botanical
+    from: lund-manor
+    to: lund-botanical
+    label: "Go to The Botanical Garden"
+    effects: {log: "You went to The Botanical Garden."}
+    sort_order: 9
+  - id: e-lund-botanical-lund-manor
+    from: lund-botanical
+    to: lund-manor
+    label: "Go to The Manor Outside Lund"
+    effects: {log: "You went to The Manor Outside Lund."}
+    sort_order: 9

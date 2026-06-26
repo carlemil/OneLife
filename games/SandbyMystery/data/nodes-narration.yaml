@@ -1,0 +1,32 @@
+# OneLife nodes — type: narration
+
+nodes:
+
+  # --- from killebackskolan ---
+  - id: kbk-wake
+    pos: {x: 3508, y: 269}
+    arc: main
+    type: narration
+    location: killebackskolan
+    title: "Déjà Vu"
+    entry: true
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "You come to with a jolt. Fluorescent light hums overhead. The smell of floor polish and old paper. You are sitting on the cold tiles of a school you are certain you have stood in before — Killebäckskolan — though you cannot say when, or how you got here tonight. Rain ticks against the high windows. You should not be here."
+    edges:
+      - id: e-wake-bearings
+        to: kbk-entrance-hall
+        label: Get your bearings
+        effects: {progress_points: 5, log: "You got to your feet in the entrance hall."}
+  - id: kbk-cabinet-note
+    pos: {x: 3315, y: 713}
+    arc: main
+    type: narration
+    location: killebackskolan
+    title: Inside the Cabinet
+    media: {image_theme: boiler-room-dark, music_theme: revelation}
+    body: "The cabinet swings open on cold hinges. Stuck to the back wall on a curling slip of paper is a child's crayon drawing — the school's main entrance under a scribbled black night, every window scratched out in hard wax but one, drawn jaggedly shattered, and a small figure already halfway through the gap and climbing out into the empty street — and clipped beside it, a work order in the caretaker's cramped hand. \"PANNRUMSDÖRREN IGENMURAD EFTER BRANDEN -98. ENDA VÄG UT: DET KROSSADE FÖNSTRET VID HUVUDENTRÉN.\" The boiler-room door was bricked shut after the fire in '98. The way out was never down here in the dark. It is the broken window beside the front entrance — and a child drew it, knowing the way, long before you did."
+    edges:
+      - id: e-note-hall
+        to: kbk-entrance-hall
+        label: Pocket the drawing and head for the broken window
+        effects: {progress_points: 15, log: "The picture on the slip of paper stuck to the back of the cabinet shows the way out: a broken window beside the main entrance door."}

@@ -20,8 +20,10 @@ def _files():
 
 
 def _fmt(value: dict) -> str:
-    """Inline flow mapping in the house style, e.g. `{x: 0.42, y: 0.55, rx: 0.06, ry: 0.04}`."""
-    return "{" + ", ".join(f"{k}: {value[k]}" for k in ("x", "y", "rx", "ry") if k in value) + "}"
+    """Inline flow mapping in the house style, e.g.
+    `{x: 0.42, y: 0.55, rx: 0.06, ry: 0.04, scale: 1.5}` (only the keys present)."""
+    return "{" + ", ".join(f"{k}: {value[k]}" for k in ("x", "y", "rx", "ry", "scale")
+                           if k in value) + "}"
 
 
 def _section_bounds(lines: list[str], section: str):
@@ -146,3 +148,36 @@ def set_edge_road(edge_id: str, points) -> None:
 
 def set_cell_field(cell_id: str, field: str, value: dict) -> None:
     _write_field("cells", cell_id, field, value)
+
+
+def _yaml_str(s) -> str:
+    return '"' + str(s).replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def add_standalone_edge(edge: dict) -> str:
+    """Append a new edge to the top-level `edges:` section (e.g. edges.yaml), as an
+    inline-style block matching the house format. Returns the file path written."""
+    block = [
+        f"  - id: {edge['id']}",
+        f"    from: {edge['from']}",
+        f"    to: {edge['to']}",
+        f"    label: {_yaml_str(edge['label'])}",
+        f"    effects: {{log: {_yaml_str((edge.get('effects') or {}).get('log', ''))}}}",
+        f"    sort_order: {int(edge.get('sort_order', 9))}",
+    ]
+    for path in _files():
+        with open(path, encoding="utf-8", newline="") as fh:
+            lines = fh.read().splitlines(keepends=True)
+        bounds = _section_bounds([l.rstrip("\r\n") for l in lines], "edges")
+        if not bounds:
+            continue
+        _, sec_end = bounds
+        nl = "\r\n" if (lines and lines[0].endswith("\r\n")) else "\n"
+        if lines and not lines[-1].endswith(("\n", "\r\n")):
+            lines[-1] = lines[-1] + nl
+        blk = [b + nl for b in block]
+        lines[sec_end:sec_end] = blk     # append at end of the edges section
+        with open(path, "w", encoding="utf-8", newline="") as fh:
+            fh.write("".join(lines))
+        return path
+    raise FileNotFoundError("no YAML has a top-level `edges:` section")

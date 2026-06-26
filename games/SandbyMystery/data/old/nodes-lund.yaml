@@ -1,0 +1,219 @@
+# OneLife content — Lund deepened: the cathedral library and Inga, a third NPC.
+# Inga ties the 1998 memorial (the school) to the wider story, and — being a
+# third character — she also receives leaked memories from the janitor & Märta.
+
+nodes:
+  - id: lund-library
+    pos: {x: 2891, y: 1384}
+    map: {x: 0.4645, y: 0.3042, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-library
+    title: The Cathedral Library
+    gate: lund-inga
+    media: {image_theme: old-library, music_theme: cathedral-cold}
+    body: "Inside the cathedral annex, a night librarian shelves books beneath a single lamp. She glances up at you over her glasses, unsurprised."
+    body_variants:
+      - when: {all: [{gate_passed: lund-inga}]}
+        body: "Inside the cathedral annex, the night librarian shelves books beneath her single lamp. She has already told you what she carries — the fire at the school in 1998, the child that was lost, the caretaker who never spoke of it again. She watches you over her glasses, gentler now, as if she'd handed you something heavy and isn't sure she should have."
+    edges:
+      - id: e-library-square
+        road: [[0.6992, 0.5109], [0.5649, 0.485]]
+        to: lund-square
+        label: Back out to the square
+        effects: {log: "You left the library."}
+        sort_order: 9
+  # --- Hannibal Läcker: the supper club cellar ---
+  - id: lund-cellar
+    pos: {x: 2621, y: 1439}
+    map: {x: 0.6231, y: 0.5102, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-cellar
+    title: The Supper Club Cellar
+    gate: lund-hannibal
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "Stone stairs fall away beneath an unmarked door into a vaulted cellar warm with candlelight. One table is laid for two — heavy silver, a decanter, the air sweet with cardamom and something underneath it you decide not to name. A trim man in a pressed grey suit rises, delighted, and draws back the second chair. \"You'll forgive the short notice. Sit. Tell me about yourself.\" (He trades in confidences — give carefully.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-hannibal}]}
+        body: "The cellar is warm with candlelight, the table still laid for two. The host sits back, content — you have traded him a true piece of yourself, and he has given you a name off his guest list, a guest from the year the school burned. \"Do stay,\" he murmurs, refilling your glass. You think, this time, that you will not."
+    edges:
+      - id: e-cellar-square
+        road: [[0.588, 0.4947], [0.5332, 0.4692]]
+        to: lund-square
+        label: Make your excuses and climb back to the square
+        effects: {log: "You left the cellar — while you still could."}
+        sort_order: 9
+  # --- Skärlök Holm: the lodgings ---
+  - id: lund-lodgings
+    pos: {x: 2574, y: 1556}
+    map: {x: 0.2463, y: 0.7117, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-lodgings
+    title: Holm's Lodgings
+    gate: lund-holm
+    media: {image_theme: cluttered-study, music_theme: violin-restless}
+    body: "Up a narrow stair, a room boils with pipe-smoke and pinned paper — maps, clippings, a wall given over to one unsolved disappearance. A gaunt man in a long coat chews a stalk of wild garlic and does not turn around. \"Lost. Confused. Wet shoes from the square, soot still under your nails from somewhere older. You're not here for tea. Sit down and be interesting.\" (Bring him a real puzzle — and don't lie.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-holm}, {name_known: skarlok_holm}]}
+        body: "The room still boils with pipe-smoke and pinned paper. Holm has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
+      - when: {all: [{gate_passed: lund-holm}]}
+        body: "The room still boils with pipe-smoke and pinned paper. The gaunt detective has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
+    edges:
+      - id: e-lodgings-square
+        road: [[0.5794, 0.5307], [0.5264, 0.5019]]
+        to: lund-square
+        label: Show yourself back out to the square
+        effects: {log: "You left Holm to his clippings."}
+        sort_order: 9
+  # --- Greve Orlök: the manor ---
+  - id: lund-manor
+    pos: {x: 2649, y: 1616}
+    map: {x: 0.8314, y: 0.3608, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-manor
+    title: The Manor Outside Lund
+    gate: lund-orlok
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "Past the last streetlight a carriage-drive climbs to a manor the maps still call empty. Rats stream up the steps ahead of you, unafraid. The great door is already open. Within, by guttering candles, a tall bald figure waits with his back to a cold hearth, fingers like dark twigs folded before him. \"You came to the door yourself,\" he says, pleased and patient. \"Good. I never cross a threshold uninvited.\" (Be courteous — but invite him nowhere.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-orlok}]}
+        body: "The candles still gutter in the open hall and the rats still keep their distance. The count stands as before with his back to the cold hearth — but he has told you what he watched from these windows across the years, the school burning among them, and every threshold between you has stayed closed. \"You kept your doorways,\" he says, approving. \"So few do.\""
+    edges:
+      - id: e-manor-square
+        road: [[0.5785, 0.5644], [0.5567, 0.5088]]
+        to: lund-square
+        label: Step back across the threshold and go
+        effects: {log: "You left the manor, and were glad the door let you."}
+        sort_order: 9
+  # --- Karl von Vinné: the botanical garden ---
+  - id: lund-botanical
+    pos: {x: 2702, y: 1841}
+    map: {x: 0.3074, y: 0.8725, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-botanical
+    title: The Botanical Garden
+    gate: lund-vinne
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum, real_place: "the Botanical Garden (Botaniska trädgården) in Lund, Sweden, an old glasshouse"}
+    body: "The garden gates are chained, but a glasshouse glows green and fogged from within. Inside, among dripping leaves, a florid man in a fraying frock coat pins specimens to board after board, a wine bottle open at his elbow. \"Ah — a new genus blunders in,\" he beams, raising a magnifying glass to your face. \"Stand still. I shall have to name you.\" (Indulge the cataloguer — and ask what he found by the school.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-vinne}, {name_known: karl_von_vinne}]}
+        body: "The glasshouse still glows green and dripping. Von Vinné has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
+      - when: {all: [{gate_passed: lund-vinne}]}
+        body: "The glasshouse still glows green and dripping. The drunken cataloguer has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
+    edges:
+      - id: e-botanical-square
+        road: [[0.6087, 0.5947], [0.5434, 0.5415]]
+        to: lund-square
+        label: Leave him to his specimens
+        effects: {log: "You left the glasshouse and its collector."}
+        sort_order: 9
+  # --- atmosphere: the old apothecary ---
+  - id: lund-apothecary
+    pos: {x: 2524, y: 1193}
+    map: {x: 0.8545, y: 0.5759, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: location
+    location: lund-apothecary
+    title: The Old Apothecary
+    media: {image_theme: shuttered-pharmacy, music_theme: cathedral-cold}
+    body: "An old pharmacy off the square, shut for years behind a grille. Through the dusty glass, rows of porcelain jars stand labelled in a careful hand, their contents long since clouded. The back room exhales a faint smell of bitter almonds whenever the wind shifts. Nothing moves, and yet you feel kept track of."
+    edges:
+      - id: e-apothecary-square
+        road: [[0.5948, 0.4618], [0.5239, 0.4328]]
+        to: lund-square
+        label: Back to the cathedral square
+        effects: {log: "You left the shuttered apothecary."}
+        sort_order: 9
+  # --- atmosphere: the cathedral crypt ---
+  - id: lund-crypt
+    pos: {x: 2836, y: 1224}
+    map: {x: 0.3488, y: 0.4446, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: location
+    location: lund-crypt
+    title: The Cathedral Crypt
+    media: {image_theme: stone-crypt, music_theme: dread-drone, real_place: "the Romanesque crypt beneath Lund Cathedral, Sweden, with squat stone pillars"}
+    body: "Worn steps descend into the crypt beneath the cathedral, older than the church above. Squat pillars hold up the dark; one is gripped by the carved figure of the giant Finn, frozen mid-wrench as if still trying to bring the whole weight down. Water ticks somewhere onto stone. Your breath shows. The stairs back up to the square are a long way behind you."
+    edges:
+      - id: e-crypt-square
+        road: [[0.6857, 0.4168], [0.5542, 0.4594]]
+        to: lund-square
+        label: Climb back up to the square
+        effects: {log: "You climbed back out of the crypt."}
+        sort_order: 9
+  # --- puzzle: the stuck departures board at Lund station (last-train-time) ---
+  - id: lund-station-board
+    pos: {x: 3221, y: 1100}
+    arc: main
+    type: puzzle
+    location: lund-station
+    title: The Departures Board
+    puzzle: last-train-time
+    media: {image_theme: station-night, music_theme: distant-trains}
+    body: "The departures board flickers, resets, and refuses to show a timetable — only a single line, over and over: the last train to Malmö leaves at the one hour tonight whose four digits are all the same. (Give the time.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: last-train-time}]}
+        body: "The departures board has stopped its flickering. It holds the one time you read aloud, steady now, and far down the empty platform a single light has come on over a track where no train seems to be coming."
+    edges:
+      - id: e-board-solved
+        to: lund-station
+        label: The board settles — a platform light comes on
+        conditions: {all: [{puzzle_solved: last-train-time}]}
+        effects: {progress_points: 15, log: "You read the time aloud; the board settled and a single platform light came on."}
+      - id: e-board-back
+        to: lund-station
+        label: Step back from the board
+        effects: {log: "You left the board to its flickering."}
+        sort_order: 9
+  # --- puzzle: Orlök's candle riddle (candle-riddle), once you've met him ---
+  - id: lund-orlok-candle
+    pos: {x: 1982, y: 1575}
+    arc: main
+    type: puzzle
+    location: lund-manor
+    title: The Guttering Taper
+    puzzle: candle-riddle
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "Orlök lifts a guttering taper into the space between you, the flame leaning toward his words. \"Name the thing in my hand,\" he says, almost gently, \"before it names its own end.\" (Answer the count's riddle.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: candle-riddle}]}
+        body: "\"A candle,\" the count agrees, and pinches the flame out between two pale fingers, satisfied. The riddle is answered; he folds his twig-thin hands and waits, in no apparent hurry, for whatever you will ask next."
+    edges:
+      - id: e-candle-solved
+        to: lund-manor
+        label: Leave the count, the riddle answered
+        conditions: {all: [{puzzle_solved: candle-riddle}]}
+        effects: {progress_points: 15, log: "You named it; the count pinched the flame out himself, satisfied."}
+      - id: e-candle-back
+        to: lund-manor
+        label: Look away from the flame
+        effects: {log: "You left the riddle unanswered."}
+        sort_order: 8
+  # --- puzzle: von Vinné's specimen (elder-specimen), once you've met him ---
+  - id: lund-vinne-specimen
+    pos: {x: 2246, y: 1958}
+    arc: main
+    type: puzzle
+    location: lund-botanical
+    title: Name the Specimen
+    puzzle: elder-specimen
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "Von Vinné thrusts a pinned sprig under your nose, eyes shining behind the magnifier. \"Sambucus nigra! Name it as the farmwives do, and I shall enter you in my catalogue.\" (Give the common name.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: elder-specimen}]}
+        body: "\"Elder! Fläder! Of course!\" Von Vinné crows, inking a flourish into his catalogue — a new species, he insists, named after you. The naming is done; he beams at you over the magnifier, ready to be indulged further or simply left to his pins."
+    edges:
+      - id: e-specimen-solved
+        to: lund-botanical
+        label: Let von Vinné enter you in his catalogue
+        conditions: {all: [{puzzle_solved: elder-specimen}]}
+        effects: {progress_points: 15, log: "He crowed with delight and inked a new species into his book — named, he said, after you."}
+      - id: e-specimen-back
+        to: lund-botanical
+        label: Leave the specimen unnamed
+        effects: {log: "You left the glasshouse without naming it."}
+        sort_order: 8

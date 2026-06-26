@@ -1,0 +1,201 @@
+# OneLife content — the opening at Killebäckskolan (Södra Sandby).
+# Authored content, loaded into Postgres by the seed pipeline. See AUTHORING.md.
+
+arcs:
+  - id: main
+    title: The Killebäck Awakening
+    is_spine: true
+
+characters:
+  - id: the-janitor
+    name: The Janitor
+    reveal_name: Arne
+    persona: "A wary old caretaker. Speaks in short, clipped sentences. Suspicious of strangers, but softens if treated with kindness or pity. He has worked here for decades and knows the building's secrets. He does NOT know anything about the world outside Sandby or the larger mystery, and deflects such questions."
+
+locations:
+  - id: killebackskolan
+    name: Killebäckskolan
+    cell: sandby
+    description: "A school in Södra Sandby. It should be empty at this hour."
+    icon_description: "A low 1970s Swedish brick schoolhouse with a flat roof, a long row of windows and a small flagpole by the entrance. Viewed from the front it is wide and consists of several parts of slightly different height and size."
+
+nodes:
+  - id: kbk-wake
+    pos: {x: 3508, y: 269}
+    arc: main
+    type: narration
+    location: killebackskolan
+    title: "Déjà Vu"
+    entry: true
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "You come to with a jolt. Fluorescent light hums overhead. The smell of floor polish and old paper. You are sitting on the cold tiles of a school you are certain you have stood in before — Killebäckskolan — though you cannot say when, or how you got here tonight. Rain ticks against the high windows. You should not be here."
+    edges:
+      - id: e-wake-bearings
+        to: kbk-entrance-hall
+        label: Get your bearings
+        effects: {progress_points: 5, log: "You got to your feet in the entrance hall."}
+
+  - id: kbk-entrance-hall
+    pos: {x: 3400, y: 457}
+    map: {x: 0.1983, y: 0.6665, rx: 0.05, ry: 0.045}
+    arc: main
+    type: location
+    location: killebackskolan
+    title: The Entrance Hall
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "The entrance hall stretches before you, lined with dented lockers. A mop bucket sits abandoned beside a heavy door marked PANNRUM. By the lockers, an old janitor works a rag over a brass plaque, pretending not to watch you."
+    # The room's description reacts to the state of the gate the janitor holds:
+    # once he has let slip how to get out, the PANNRUM door reads differently.
+    body_variants:
+      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+        body: "The entrance hall stretches before you, lined with dented lockers. The heavy door marked PANNRUM holds your eye now — the janitor as good as told you it's the only way out after dark. He has bent back to his brass plaque, as if the two of you had never spoken."
+    edges:
+      - id: e-hall-janitor
+        to: kbk-janitor-gate
+        label: Approach the old janitor
+        effects: {progress_points: 5, log: "You approached the janitor."}
+      - id: e-hall-plaque
+        to: kbk-entrance-hall
+        label: Examine the brass plaque the janitor is polishing
+        conditions: {all: [{not: {flag_set: examined_plaque}}]}
+        effects: {progress_points: 10, set_flag: examined_plaque, log: "You read the memorial plaque: \"IN MEMORIAM — 1998\"."}
+      - id: e-hall-pannrum
+        to: kbk-boiler-room
+        label: Open the PANNRUM (boiler room) door
+        conditions: {all: [{flag_set: knows_boiler_exit}]}
+        effects: {progress_points: 15, log: "You slipped through the boiler-room door."}
+      - id: e-hall-force
+        to: kbk-caught
+        label: Force the PANNRUM door open
+        conditions: {all: [{not: {flag_set: knows_boiler_exit}}]}
+        effects: {log: "You forced the door."}
+        danger: 2
+
+  - id: kbk-janitor-gate
+    pos: {x: 3236, y: 597}
+    arc: main
+    type: gate
+    location: killebackskolan
+    title: The Janitor
+    gate: kbk-janitor-find-the-exit
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "The old man keeps his eyes on the brass. \"School's closed,\" he mutters. \"You shouldn't be here.\" (Talk to him — try to find out how to get out.)"
+    # A character's description can also react to a gate that affects them — here,
+    # what Märta told you (her gate) colours how the janitor reads to you.
+    body_variants:
+      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+        body: "The old man has gone back to his brass, rubbing at a name only he can read. He's told you what you needed — the boiler-room door, the only way out after dark — and won't be drawn into another word. \"Go on, then,\" he mutters, not looking up."
+      - when: {all: [{gate_passed: kbk-marta-calm}]}
+        body: "The old man keeps his eyes on the brass. \"School's closed,\" he mutters. \"You shouldn't be here.\" You think of what the girl whispered — him, creeping down to the boiler room in the dark — and find it harder to hold his gaze. (Talk to him — try to find out how to get out.)"
+    edges:
+      - id: e-gate-leave
+        to: kbk-entrance-hall
+        label: Step back into the hall
+        effects: {log: "You stepped back from the janitor."}
+        sort_order: 9
+
+  - id: kbk-boiler-room
+    pos: {x: 3224, y: 514}
+    arc: main
+    type: puzzle
+    location: killebackskolan
+    title: The Boiler Room
+    puzzle: boiler-cabinet-code
+    media: {image_theme: boiler-room-dark, music_theme: low-dread}
+    body: "The boiler room is hot and close, pipes groaning in the dark. Against the far wall stands a rusted steel cabinet, secured with a 4-digit padlock."
+    body_variants:
+      - when: {all: [{puzzle_solved: boiler-cabinet-code}]}
+        body: "The boiler room is hot and close, pipes groaning in the dark. The rusted steel cabinet stands open against the far wall now, its padlock hanging sprung from the hasp, the dark inside it waiting to be looked into."
+    edges:
+      - id: e-boiler-solved
+        to: kbk-cabinet-note
+        label: Look inside the open cabinet
+        conditions: {all: [{puzzle_solved: boiler-cabinet-code}]}
+        effects: {progress_points: 25, log: "You opened the cabinet."}
+      - id: e-boiler-leave
+        to: kbk-entrance-hall
+        label: Go back to the hall
+        effects: {log: "You returned to the hall."}
+        sort_order: 9
+
+  - id: kbk-cabinet-note
+    pos: {x: 3315, y: 713}
+    arc: main
+    type: narration
+    location: killebackskolan
+    title: Inside the Cabinet
+    media: {image_theme: boiler-room-dark, music_theme: revelation}
+    body: "The cabinet swings open on cold hinges. Stuck to the back wall on a curling slip of paper is a child's crayon drawing — the school's main entrance under a scribbled black night, every window scratched out in hard wax but one, drawn jaggedly shattered, and a small figure already halfway through the gap and climbing out into the empty street — and clipped beside it, a work order in the caretaker's cramped hand. \"PANNRUMSDÖRREN IGENMURAD EFTER BRANDEN -98. ENDA VÄG UT: DET KROSSADE FÖNSTRET VID HUVUDENTRÉN.\" The boiler-room door was bricked shut after the fire in '98. The way out was never down here in the dark. It is the broken window beside the front entrance — and a child drew it, knowing the way, long before you did."
+    edges:
+      - id: e-note-hall
+        to: kbk-entrance-hall
+        label: Pocket the drawing and head for the broken window
+        effects: {progress_points: 15, log: "The picture on the slip of paper stuck to the back of the cabinet shows the way out: a broken window beside the main entrance door."}
+
+  - id: kbk-caught
+    pos: {x: 3576, y: 854}
+    arc: main
+    type: death
+    location: killebackskolan
+    title: In the Dark
+    media: {image_theme: boiler-room-dark, music_theme: low-dread}
+    body: "You throw your shoulder against the PANNRUM door. It gives with a shriek of metal — into pure black. Something in that dark had been waiting a very long time. It does not hesitate. ▒ You have died. ▒"
+
+gates:
+  - id: kbk-janitor-find-the-exit
+    location: killebackskolan
+    character: the-janitor
+    intent: Get the janitor to reveal how to leave the locked school.
+    criteria:
+      - {id: established_trust, desc: "Player has CLEARLY and genuinely earned the wary old man's trust — through real warmth, respect, or patience toward HIM, or sincere, vulnerable honesty — not merely a passing pleasantry. A single line whose only purpose is to extract the exit does NOT count; he must actually feel he can trust this stranger."}
+      - {id: asked_about_exit, desc: "Player asks, directly or indirectly, how to get out, where a door is, or how to leave."}
+    success_rule: "established_trust AND asked_about_exit"
+    knowledge_boundary:
+      knows:
+        - "the only way out after dark is the boiler-room (PANNRUM) door, broken since 1998 — but he reveals this ONLY once he genuinely trusts the stranger"
+        - "the newcomer looks like someone he saw here years ago"
+      refuses:
+        - "the way out — withhold the boiler-room exit and deflect (change the subject, tell them to leave, test them) until the stranger has CLEARLY earned your trust through real warmth, patience, or honest vulnerability; a stranger who simply demands the exit gets nothing"
+        - "anything about the world outside Sandby"
+        - "the larger mystery of why the player is here"
+      tone: "wary, guarded old man; short clipped sentences; slow to trust, but warms if treated with genuine kindness or patience"
+    hint_ladder:
+      - "He grumbles and keeps polishing, volunteering nothing. He does not trust you."
+      - "He softens a fraction, but still won't say. \"And why should I be telling you anything?\""
+      - "Won over at last, he sighs. \"That boiler-room door's been broke since '98. Only way out after dark. Now leave me be.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 40
+      set_flag: knows_boiler_exit
+      story_node_next: kbk-entrance-hall
+      log: "The janitor let slip that the boiler-room door is the way out after dark."
+      write_memory: {owner: the-janitor, content: "Told the newcomer about the boiler-room exit.", leakable: true}
+
+puzzles:
+  - id: boiler-cabinet-code
+    type: combination
+    prompt: "The rusted cabinet has a 4-digit padlock."
+    solution: {kind: exact, value: "1998"}
+    required_clues: [year-1998-graffiti, janitor-said-98, plaque-1998]
+    hint_ladder:
+      - "The number feels like a year."
+      - "The janitor, the graffiti, and the memorial plaque all circle the same year."
+      - "Try 1998."
+    on_solve: {progress_points: 60, set_flag: knows_real_exit, log: "The padlock clicks open — and what's inside changes everything."}
+
+clues:
+  - id: year-1998-graffiti
+    puzzle: boiler-cabinet-code
+    placement: {kind: location_text, location_id: killebackskolan}
+    reveal_text: "Scratched into a locker door: \"DET HÄNDE HÄR '98\" (it happened here '98)."
+    discover_conditions: {all: [{node_visited: kbk-entrance-hall}]}
+  - id: janitor-said-98
+    puzzle: boiler-cabinet-code
+    placement: {kind: dialogue, character_id: the-janitor}
+    reveal_text: "The janitor said the boiler door has been broken since '98."
+    discover_conditions: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+  - id: plaque-1998
+    puzzle: boiler-cabinet-code
+    placement: {kind: interaction, location_id: killebackskolan}
+    reveal_text: "The brass memorial plaque reads: IN MEMORIAM — 1998."
+    discover_conditions: {all: [{flag_set: examined_plaque}]}

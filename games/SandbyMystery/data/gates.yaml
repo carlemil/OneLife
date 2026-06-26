@@ -1,0 +1,365 @@
+# OneLife — all gates
+
+gates:
+
+  # --- from killebackskolan ---
+  - id: kbk-janitor-find-the-exit
+    location: killebackskolan
+    character: the-janitor
+    intent: Get the janitor to reveal how to leave the locked school.
+    criteria:
+      - {id: established_trust, desc: "Player has CLEARLY and genuinely earned the wary old man's trust — through real warmth, respect, or patience toward HIM, or sincere, vulnerable honesty — not merely a passing pleasantry. A single line whose only purpose is to extract the exit does NOT count; he must actually feel he can trust this stranger."}
+      - {id: asked_about_exit, desc: "Player asks, directly or indirectly, how to get out, where a door is, or how to leave."}
+    success_rule: "established_trust AND asked_about_exit"
+    knowledge_boundary:
+      knows:
+        - "the only way out after dark is the boiler-room (PANNRUM) door, broken since 1998 — but he reveals this ONLY once he genuinely trusts the stranger"
+        - "the newcomer looks like someone he saw here years ago"
+      refuses:
+        - "the way out — withhold the boiler-room exit and deflect (change the subject, tell them to leave, test them) until the stranger has CLEARLY earned your trust through real warmth, patience, or honest vulnerability; a stranger who simply demands the exit gets nothing"
+        - "anything about the world outside Sandby"
+        - "the larger mystery of why the player is here"
+      tone: "wary, guarded old man; short clipped sentences; slow to trust, but warms if treated with genuine kindness or patience"
+    hint_ladder:
+      - "He grumbles and keeps polishing, volunteering nothing. He does not trust you."
+      - "He softens a fraction, but still won't say. \"And why should I be telling you anything?\""
+      - "Won over at last, he sighs. \"That boiler-room door's been broke since '98. Only way out after dark. Now leave me be.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 40
+      set_flag: knows_boiler_exit
+      story_node_next: kbk-entrance-hall
+      log: "The janitor let slip that the boiler-room door is the way out after dark."
+      write_memory: {owner: the-janitor, content: "Told the newcomer about the boiler-room exit.", leakable: true}
+
+  # --- from lund ---
+  - id: lund-inga
+    location: lund-library
+    character: inga
+    intent: Get the night librarian to talk about the school and what happened in 1998.
+    criteria:
+      - {id: civil, desc: "Player engages in good faith — is actively polite or warm, OR shows genuine curiosity, OR explains they are trying to understand something. A bare greeting, gibberish, or filler does NOT count."}
+      - {id: asked_about_past, desc: "Player asks about the school, the year 1998, a fire or accident, or the memorial."}
+    success_rule: "civil AND asked_about_past"
+    knowledge_boundary:
+      knows:
+        - "there was a fire at Killebäckskolan in 1998 and a child was lost"
+        - "the caretaker, Arne, has never spoken of it since that night"
+      refuses:
+        - "who the stranger really is"
+        - "the larger mystery of why the stranger is here"
+      tone: "soft-spoken night librarian, precise, a little sad"
+    hint_ladder:
+      - "She keeps shelving books, watching you over her glasses."
+      - "She sets a book down. \"You're asking about the school, aren't you.\""
+      - "She says quietly: \"There was a fire. 1998. A child was lost. Arne — the caretaker — never spoke of it again.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_inga
+      story_node_next: lund-library
+      log: "Inga told you about the 1998 fire at the school."
+      write_memory: {owner: inga, content: "Told a stranger about the 1998 fire at the school and the child who was lost.", leakable: true}
+  - id: lund-hannibal
+    location: lund-cellar
+    character: hannibal_lacker
+    intent: Trade enough of yourself to the host that he gives up what he knows about the ones who never left his table.
+    criteria:
+      - {id: courteous, desc: "Player actively matches his manners — answers with composure and courtesy, engaging with his questions rather than threatening, panicking, or stalling. A bare greeting, gibberish, or filler does NOT count."}
+      - {id: gave_something_true, desc: "Player offers a genuine confidence about themselves, a fear, or why they are here."}
+    success_rule: "courteous AND gave_something_true"
+    knowledge_boundary:
+      knows:
+        - "he keeps a guest list of everyone who has dined here and never left, and a name on it ties back to the school"
+        - "he finds the stranger's particular case unusually appetizing"
+      refuses:
+        - "what, precisely, is served at his table"
+        - "the larger mystery of why the stranger is here"
+      tone: "low, precise, almost loving; turns your own words back on you; never raises his voice"
+    hint_ladder:
+      - "He fills your glass without asking and waits, smiling, for you to speak first."
+      - "\"Manners cost nothing, and they buy so much. Tell me one true thing and I'll tell you one.\""
+      - "\"There is a name on my guest list you would know — someone who dined the year your school burned, and stayed for good. Be honest with me, and it is yours.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 55
+      set_flag: met_hannibal
+      story_node_next: lund-cellar
+      log: "Hannibal traded you a name off his guest list — for a piece of yourself."
+      write_memory: {owner: hannibal_lacker, content: "A stranger dined with me, kept their manners, and traded me a true confidence for a name off my guest list — a guest from the year the school burned.", leakable: true}
+  - id: lund-holm
+    location: lund-lodgings
+    character: skarlok_holm
+    intent: Interest the detective enough that he shares what he found in the old reports on the disappearance and the fire.
+    criteria:
+      - {id: brought_him_something, desc: "Player offers him a genuine puzzle, observation, or new fact — something to relieve his boredom."}
+      - {id: did_not_lie, desc: "Player is straight with him and does not get caught in an obvious bluff."}
+    success_rule: "brought_him_something AND did_not_lie"
+    knowledge_boundary:
+      knows:
+        - "a man vanished in Lund and the police — a tired detective named Vallmo, over in Malmö — let the case die"
+        - "he has read the old reports and is certain the 1998 school fire was set, not an accident"
+      refuses:
+        - "how he obtains his information"
+        - "the larger mystery of why the stranger is here"
+      tone: "rapid, condescending, theatrical; narrates your secrets back to you; sighs a great deal"
+    hint_ladder:
+      - "He keeps his back to you, but you can tell he is listening for something worth turning around for."
+      - "\"Bore me and leave. Bring me one fact I don't have and I'm yours.\""
+      - "\"The fire was set — I've read what Vallmo wouldn't chase. Give me something real and I'll show you how I know.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_holm
+      story_node_next: lund-lodgings
+      log: "Holm laid out his case: the fire was set, and the police let it die."
+      write_memory: {owner: skarlok_holm, content: "A stranger brought me something worth my time, so I told them the 1998 school fire was arson and that Vallmo let the disappearance go cold.", leakable: true}
+  - id: lund-orlok
+    location: lund-manor
+    character: greve_orlok
+    intent: Speak with the count without inviting him anywhere, and learn what he has watched over this region.
+    criteria:
+      - {id: stayed_composed, desc: "Player is courteous and keeps their distance — does not flee, and crucially does not invite him in or out."}
+      - {id: asked_what_he_watched, desc: "Player asks about the sickness downwind, what he is, or what he has seen here over the years."}
+    success_rule: "stayed_composed AND asked_what_he_watched"
+    knowledge_boundary:
+      knows:
+        - "the sickness in the village downwind began the season he arrived"
+        - "he has watched this region a long time and remembers the school burning from his windows"
+      refuses:
+        - "any invitation across a threshold, and what he truly is"
+        - "the larger mystery of why the stranger is here"
+      tone: "slow, archaic, formal; long pauses, then a single quiet request you find hard to refuse; candles gutter as he speaks"
+    hint_ladder:
+      - "He does not approach. He waits, as if your next word matters a great deal."
+      - "\"Ask what you came to ask. But do not ask me in, and do not offer to lead me out.\""
+      - "\"I saw your school burn from these windows. I have seen this country sicken and heal and sicken again. Ask, and keep your doorways closed, and I will tell you.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 55
+      set_flag: met_orlok
+      story_node_next: lund-manor
+      log: "Greve Orlök told you what he has watched from the manor windows — and you kept every threshold closed."
+      write_memory: {owner: greve_orlok, content: "A stranger came to my door, kept their distance and their thresholds, and I told them what I have watched over this region — including the night the school burned.", leakable: true}
+  - id: lund-vinne
+    location: lund-botanical
+    character: karl_von_vinne
+    intent: Indulge the drunk taxonomist until he tells you about the specimen he catalogued by the school.
+    criteria:
+      - {id: indulged_him, desc: "Player shows interest in his catalogue or lets him lecture, rather than mocking or hurrying him."}
+      - {id: asked_about_specimen, desc: "Player asks about his catalogue, the school, or the things he says should not exist."}
+    success_rule: "indulged_him AND asked_about_specimen"
+    knowledge_boundary:
+      knows:
+        - "he catalogued a plant growing in the ashes by the school that should not grow in Skåne, and pressed it"
+        - "he counts 'three things that should not exist' and keeps the third hidden"
+      refuses:
+        - "where he keeps the third thing"
+        - "the larger mystery of why the stranger is here"
+      tone: "grand, Latin-sprinkled, lecturing; slurs the longer he talks; names you after a species he invents"
+    hint_ladder:
+      - "He turns a pressed leaf to the lamp and waits to see if you're worth lecturing."
+      - "\"Every living thing wants a name. Show interest, genus Curiosus, and I'll show you my finest find.\""
+      - "\"By your burnt school I found a thing flowering in the ash that has no business in this hemisphere. I pressed it. Ask nicely and look.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_vinne
+      story_node_next: lund-botanical
+      log: "Von Vinné showed you the impossible specimen he pressed from the ashes of the school."
+      write_memory: {owner: karl_von_vinne, content: "A curious stranger let me lecture, so I showed them the specimen I pressed from the ash by the burnt school — a thing that should not grow here.", leakable: true}
+
+  # --- from malmo ---
+  - id: malmo-zoltan
+    location: malmo-rosengard
+    character: zoltan_ibrahimson
+    intent: Earn the big man's respect so he gives you a name moving through the harbour.
+    criteria:
+      - {id: showed_spine, desc: "Player stands up to him with confidence or humour — neither grovels nor disrespects him."}
+      - {id: asked_for_help, desc: "Player asks him for a name, for help, or about what moves through the harbour."}
+    success_rule: "showed_spine AND asked_for_help"
+    knowledge_boundary:
+      knows:
+        - "he knows everyone in Malmö and who moves what through the old harbour"
+        - "a name connected to the locked harbour locker, and that it leads back toward Sandby"
+      refuses:
+        - "the debts people owe him"
+        - "the larger mystery of why the stranger is here"
+      tone: "booming, boastful, third person ('Zoltan does not wait'); the bragging hides real loyalty"
+    hint_ladder:
+      - "He keeps the ball moving and watches how you carry yourself."
+      - "\"Zoltan helps people he respects. So — do you flinch, or do you talk?\""
+      - "\"You want the harbour locker. Zoltan knows the name on it. Stand up straight, ask Zoltan properly, and it's yours.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_zoltan
+      story_node_next: malmo-rosengard
+      log: "Zoltan respected you enough to hand over the name on the harbour locker."
+      write_memory: {owner: zoltan_ibrahimson, content: "A stranger came to Rosengård with spine, so Zoltan gave them the name on the harbour locker — the one that leads back to Sandby.", leakable: true}
+  - id: malmo-lisbet
+    location: malmo-server-basement
+    character: lisbet_salamander
+    intent: Give the hacker a reason not to throw you out, and learn what she dug up on the 1998 fire.
+    criteria:
+      - {id: was_direct, desc: "Player gets to the point — no small talk, no flattery, no wasting her time."}
+      - {id: offered_trade_or_question, desc: "Player offers a real trade or asks a precise, specific question."}
+    success_rule: "was_direct AND offered_trade_or_question"
+    knowledge_boundary:
+      knows:
+        - "she pulled the records on the 1998 school fire and a name had been scrubbed from the file by someone official"
+        - "she can find anyone from almost nothing — including who the stranger has been"
+      refuses:
+        - "her methods and her sources"
+        - "the larger mystery of why the stranger is here"
+      tone: "clipped, distrustful, scalding when she does open up; hates small talk and flattery"
+    hint_ladder:
+      - "She keeps typing, one eyebrow up, waiting for you to bore her."
+      - "\"Trade or question. Pick one. Don't make me wait.\""
+      - "\"The 1998 fire file? Somebody scrubbed a name out of it. Give me something real and I'll tell you whose it was.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_lisbet
+      story_node_next: malmo-server-basement
+      log: "Lisbet showed you the scrubbed name in the 1998 fire file."
+      write_memory: {owner: lisbet_salamander, content: "A stranger was direct enough not to annoy me, so I showed them the name someone scrubbed out of the 1998 school-fire file.", leakable: true}
+  - id: malmo-vallmo
+    location: malmo-police
+    character: kurt_vallmo
+    intent: Win the tired detective's trust so he tells you about the case he never closed and the missing fire file.
+    criteria:
+      - {id: was_straight, desc: "Player is honest and patient with him, not evasive or pushy."}
+      - {id: asked_about_case, desc: "Player asks about an old case, the disappearance, or the 1998 fire."}
+    success_rule: "was_straight AND asked_about_case"
+    knowledge_boundary:
+      knows:
+        - "the Lund disappearance he was made to drop, and that he never believed it was nothing"
+        - "the 1998 school-fire file was signed out of the archive and never came back"
+      refuses:
+        - "naming a suspect he can't prove"
+        - "the larger mystery of why the stranger is here"
+      tone: "tired, blunt, melancholic; circles the same question until something cracks; mutters in Scanian"
+    hint_ladder:
+      - "He rubs his eyes and waits to see if you're worth the coffee he's not offering."
+      - "\"Be straight with me. I've had thirty years of people who weren't.\""
+      - "\"There was a disappearance in Lund they made me drop. And the '98 fire file — somebody signed it out and it never came back. Ask me plain and I'll tell you what I kept.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_vallmo
+      story_node_next: malmo-police
+      log: "Vallmo told you about the case he never closed and the fire file that vanished."
+      write_memory: {owner: kurt_vallmo, content: "A stranger was straight with me, so I told them about the Lund disappearance I was made to drop and the 1998 fire file that was signed out and never returned.", leakable: true}
+
+  # --- from marta ---
+  - id: kbk-marta-calm
+    location: killebackskolan
+    character: marta
+    intent: Calm the frightened girl enough that she will talk.
+    criteria:
+      - {id: reassured, desc: "Player is gentle, kind, or reassuring — tries to calm her, or promises not to hurt her."}
+      - {id: asked_something, desc: "Player asks her a question — who she is, what she saw, what happened, or how long she has been here."}
+    success_rule: "reassured AND asked_something"
+    knowledge_boundary:
+      knows:
+        - "she has been hiding in this classroom since the lights went out"
+        - "she has seen the old caretaker creeping toward the boiler room in the dark"
+      refuses:
+        - "anything about why the stranger is here"
+        - "the larger mystery"
+      tone: "frightened teenage girl, whispers, flinches, trusts only slowly"
+    hint_ladder:
+      - "She presses herself into the corner and will not speak."
+      - "She watches you, deciding whether to trust you."
+      - "She whispers: \"I've been here since the lights died. I saw the caretaker... going down to the boiler room. In the dark.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 35
+      set_flag: calmed_marta
+      story_node_next: kbk-classroom
+      log: "You calmed Märta; she whispered what she had seen."
+      write_memory: {owner: marta, content: "A kind stranger calmed me and I told them what I saw in the dark.", leakable: true}
+
+  # --- from sandby ---
+  - id: sandby-dodblek
+    location: sandby-church
+    character: herr_dodblek
+    intent: Face the pale figure at the chessboard and learn what he remembers of the night the school burned.
+    criteria:
+      - {id: faced_him, desc: "Player engages rather than flees — sits, plays, or asks him directly who he is or what he wants."}
+      - {id: honest, desc: "Player is honest about their fear, or about why they have come, instead of bluffing."}
+    success_rule: "faced_him AND honest"
+    knowledge_boundary:
+      knows:
+        - "he was in the churchyard the night Killebäckskolan burned, and a child came to him out of the smoke"
+        - "he never hurries, and almost everyone in this region owes him a game eventually"
+      refuses:
+        - "when, exactly, the player will lose their own game"
+        - "the larger mystery of why the stranger is here"
+      tone: "calm, courteous, inevitable; explains the rules kindly and never raises his voice"
+    hint_ladder:
+      - "He moves a pawn and waits, the empty chair turned slightly toward you."
+      - "\"Sit. Everyone sits, in the end. I only ask that you be truthful.\""
+      - "\"A child came to me here, the night the school burned. I remember the cold of their hand. Ask, and be honest, and I will tell you.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 50
+      set_flag: met_dodblek
+      story_node_next: sandby-church
+      log: "Herr Dödblek told you what he saw the night the school burned."
+      write_memory: {owner: herr_dodblek, content: "A stranger sat with me in the churchyard and I told them about the child who came out of the smoke the night the school burned.", leakable: true}
+  - id: sandby-norman
+    location: sandby-quarry
+    character: norman_bats
+    intent: Get the nervous motelkeeper to talk about the lake and the guests who never checked out.
+    criteria:
+      - {id: put_at_ease, desc: "Player actively puts him at ease — is warm, gentle, or reassuring, and does not corner or accuse him. A bare greeting, gibberish, or filler does NOT count."}
+      - {id: asked_about_lake, desc: "Player asks about the lake, a missing guest, the boathouse, or his mother."}
+    success_rule: "put_at_ease AND asked_about_lake"
+    knowledge_boundary:
+      knows:
+        - "some guests check in and the lake keeps them; he tidies their rooms after"
+        - "Mother works the desk at night and does not like questions"
+      refuses:
+        - "what is kept in the boathouse"
+        - "the larger mystery of why the stranger is here"
+      tone: "shy, stammering, over-friendly; goes cold and flat the instant Mother or the boathouse is named"
+    hint_ladder:
+      - "He polishes a key that's already clean, laughing softly at nothing."
+      - "\"People do love the lake. They stay. They always end up staying.\""
+      - "He drops his voice: \"Mother says I shouldn't tell. But the water — the water keeps the ones who stay too long.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_norman
+      story_node_next: sandby-quarry
+      log: "Norman let slip what the lake keeps — and that Mother is always watching."
+      write_memory: {owner: norman_bats, content: "A kind guest got me talking about the lake and the ones who stay too long. Mother would not have liked it.", leakable: true}
+  - id: sandby-pippa
+    location: sandby-crooked-house
+    character: pippa_langskugga
+    intent: Keep up with the strange strong woman until she tells you what she saw at the school.
+    criteria:
+      - {id: played_along, desc: "Player matches her playfulness or kindness instead of dismissing her as mad or childish."}
+      - {id: asked_what_she_saw, desc: "Player asks what she has seen, about the school, the fire, or the man she mentions."}
+    success_rule: "played_along AND asked_what_she_saw"
+    knowledge_boundary:
+      knows:
+        - "the night the school burned she saw lights and a tall man carry something small out and away into the dark"
+        - "she has lived at the village edge longer than anyone can remember, and no one remembers her parents"
+      refuses:
+        - "where her parents went"
+        - "the larger mystery of why the stranger is here"
+      tone: "sing-song nonsense and invented words, then a sudden flat sentence far too sharp for a child; laughs at the wrong moments"
+    hint_ladder:
+      - "She balances the bent horseshoe on one finger and grins at you to play."
+      - "\"I see lots of things out here where the lamps stop. Saw a fire once. Pretty.\""
+      - "Flatly, all the play gone: \"A tall man carried something small out of the burning school. Small as a child. Then the lamps came back on and nobody asked.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: met_pippa
+      story_node_next: sandby-crooked-house
+      log: "Pippa, the play gone out of her at last: the night the school burned, she saw a tall man carry something small — small as a child — out of the smoke and away into the dark, and then the lamps came back on and nobody asked."
+      write_memory: {owner: pippa_langskugga, content: "A stranger played along with me and I told them about the tall man who carried something small out of the burning school.", leakable: true}

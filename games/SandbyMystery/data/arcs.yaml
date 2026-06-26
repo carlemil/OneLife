@@ -1,0 +1,6 @@
+# OneLife — all arcs
+
+arcs:
+  - id: main
+    title: The Killebäck Awakening
+    is_spine: true

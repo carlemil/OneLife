@@ -1,0 +1,282 @@
+# OneLife nodes — type: location
+
+nodes:
+
+  # --- from killebackskolan ---
+  - id: kbk-entrance-hall
+    pos: {x: 4854, y: 830}
+    map: {x: 0.1983, y: 0.6665, rx: 0.05, ry: 0.045, scale: 3.0}
+    arc: main
+    type: location
+    location: killebackskolan
+    title: The Entrance Hall
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "The entrance hall stretches before you, lined with dented lockers. A mop bucket sits abandoned beside a heavy door marked PANNRUM. By the lockers, an old janitor works a rag over a brass plaque, pretending not to watch you."
+    # The room's description reacts to the state of the gate the janitor holds:
+    # once he has let slip how to get out, the PANNRUM door reads differently.
+    body_variants:
+      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+        body: "The entrance hall stretches before you, lined with dented lockers. The heavy door marked PANNRUM holds your eye now — the janitor as good as told you it's the only way out after dark. He has bent back to his brass plaque, as if the two of you had never spoken."
+    edges:
+      - id: e-hall-janitor
+        to: kbk-janitor-gate
+        label: Approach the old janitor
+        effects: {progress_points: 5, log: "You approached the janitor."}
+      - id: e-hall-plaque
+        to: kbk-entrance-hall
+        label: Examine the brass plaque the janitor is polishing
+        conditions: {all: [{not: {flag_set: examined_plaque}}]}
+        effects: {progress_points: 10, set_flag: examined_plaque, log: "You read the memorial plaque: \"IN MEMORIAM — 1998\"."}
+      - id: e-hall-pannrum
+        to: kbk-boiler-room
+        label: Open the PANNRUM (boiler room) door
+        conditions: {all: [{flag_set: knows_boiler_exit}]}
+        effects: {progress_points: 15, log: "You slipped through the boiler-room door."}
+      - id: e-hall-force
+        to: kbk-caught
+        label: Force the PANNRUM door open
+        conditions: {all: [{not: {flag_set: knows_boiler_exit}}]}
+        effects: {log: "You forced the door."}
+        danger: 2
+
+  # --- from lund ---
+  # --- atmosphere: the old apothecary ---
+  - id: lund-apothecary
+    pos: {x: 2810, y: 978}
+    map: {x: 0.8545, y: 0.5759, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: location
+    location: lund-apothecary
+    title: The Old Apothecary
+    media: {image_theme: shuttered-pharmacy, music_theme: cathedral-cold}
+    body: "An old pharmacy off the square, shut for years behind a grille. Through the dusty glass, rows of porcelain jars stand labelled in a careful hand, their contents long since clouded. The back room exhales a faint smell of bitter almonds whenever the wind shifts. Nothing moves, and yet you feel kept track of."
+    edges:
+      - id: e-apothecary-square
+        road: [[0.606, 0.4731], [0.7087, 0.5492]]
+        to: lund-square
+        label: Back to the cathedral square
+        effects: {log: "You left the shuttered apothecary."}
+        sort_order: 9
+  # --- atmosphere: the cathedral crypt ---
+  - id: lund-crypt
+    pos: {x: 3545, y: 1109}
+    map: {x: 0.3488, y: 0.4446, rx: 0.05, ry: 0.045, scale: 1.75}
+    arc: main
+    type: location
+    location: lund-crypt
+    title: The Cathedral Crypt
+    media: {image_theme: stone-crypt, music_theme: dread-drone, real_place: "the Romanesque crypt beneath Lund Cathedral, Sweden, with squat stone pillars"}
+    body: "Worn steps descend into the crypt beneath the cathedral, older than the church above. Squat pillars hold up the dark; one is gripped by the carved figure of the giant Finn, frozen mid-wrench as if still trying to bring the whole weight down. Water ticks somewhere onto stone. Your breath shows. The stairs back up to the square are a long way behind you."
+    edges:
+      - id: e-crypt-square
+        road: [[0.6751, 0.5135], [0.6811, 0.5172]]
+        to: lund-square
+        label: Climb back up to the square
+        effects: {log: "You climbed back out of the crypt."}
+        sort_order: 9
+
+  # --- from malmo ---
+  - id: malmo-harbor
+    pos: {x: 54, y: 1322}
+    map: {x: 0.6512, y: 0.1729, rx: 0.05, ry: 0.045, scale: 1.75}
+    arc: main
+    type: location
+    location: malmo-harbor
+    title: The Harbour
+    world_access: true
+    media: {image_theme: harbor-night, music_theme: distant-trains, real_place: "the old industrial harbour of Malmö, Sweden, dockside cranes against the Öresund"}
+    body: "Malmö's old harbour. Cranes stand black against the Öresund and the water slaps at the quay. A road runs back inland toward Lund."
+    # Once every puzzle across Skåne is solved, the fog the player named on the
+    # harbour wall draws back for good and the long pier out to the water opens —
+    # the way to the final crossing (the e-harbor-crossing edge unlocks with it).
+    body_variants:
+      - when: {all: [{flag_set: knows_real_exit}, {flag_set: solved_marta_anagram}, {flag_set: solved_church_bell}, {flag_set: solved_dodblek_games}, {flag_set: solved_shadow}, {flag_set: solved_last_train}, {flag_set: solved_candle}, {flag_set: solved_elder}, {flag_set: opened_harbor_locker}, {flag_set: solved_fog}, {flag_set: solved_gravestone}, {flag_set: solved_ystad_lock}]}
+        body: "Malmö's old harbour. The fog you named off the Öresund has pulled back for good now and does not close again, and a long pier you are certain was not walkable before runs straight out toward the far shore and its small, steady lights. The cranes stand still. The water no longer slaps so much as waits. A road runs back inland toward Lund."
+    edges:
+      - id: e-harbor-lockers
+        to: malmo-locker
+        label: Search the harbour lockers
+        effects: {progress_points: 5, log: "You went to the harbour lockers."}
+  # --- atmosphere ---
+  - id: malmo-stortorget
+    pos: {x: 1510, y: 2295}
+    map: {x: 0.3818, y: 0.5555, rx: 0.05, ry: 0.045, scale: 1.5}
+    arc: main
+    type: location
+    location: malmo-stortorget
+    title: Stortorget
+    media: {image_theme: empty-square-night, music_theme: wind-cold, real_place: "Stortorget, the great main square of Malmö, Sweden, with the bronze equestrian statue of King Karl X Gustav", reference_image: "https://upload.wikimedia.org/wikipedia/commons/thumb/d/d8/Stortorget_in_Malm%C3%B6%2C_Sweden.jpg/3840px-Stortorget_in_Malm%C3%B6%2C_Sweden.jpg"}
+    body: "The great square opens out, far too large for the few lit windows around it. A bronze king rides his bronze horse at the centre, green with age, facing nothing. Wind comes straight off the water and worries at the flags. Smaller streets lead off toward a older, tighter square."
+    edges:
+      - id: e-stortorget-harbor
+        road: [[0.4492, 0.6016], [0.3788, 0.5068]]
+        to: malmo-harbor
+        label: Back toward the harbour road
+        effects: {log: "You left Stortorget."}
+        sort_order: 9
+      - id: e-stortorget-lilla
+        road: [[0.5167, 0.6689], [0.5331, 0.692]]
+        to: malmo-lilla-torg
+        label: Slip into the little timbered square
+        effects: {progress_points: 3, log: "You crossed to Lilla Torg."}
+  - id: malmo-lilla-torg
+    pos: {x: 1937, y: 2880}
+    map: {x: 0.5421, y: 0.4083, rx: 0.05, ry: 0.045, scale: 1.1}
+    arc: main
+    type: location
+    location: malmo-lilla-torg
+    title: Lilla Torg
+    media: {image_theme: timbered-square, music_theme: distant-laughter, real_place: "Lilla Torg, the small cobbled half-timbered square in Malmö, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Lilla_Torg%2C_Malm%C3%B6%2C_mars_2015-3.jpg"}
+    body: "Crooked timbered houses lean over a cobbled square of shuttered bars and stacked, chained chairs. Somewhere a knot of laughter rises — and stops the moment you look for it. Heat-lamps stand cold. The big square is back the way you came."
+    edges:
+      - id: e-lilla-stortorget
+        road: [[0.5331, 0.692], [0.5167, 0.6689]]
+        to: malmo-stortorget
+        label: Back out to the great square
+        effects: {log: "You returned to Stortorget."}
+        sort_order: 9
+  - id: malmo-castle
+    pos: {x: -962, y: 2662}
+    map: {x: 0.1719, y: 0.5895, rx: 0.05, ry: 0.045, scale: 3.0}
+    arc: main
+    type: location
+    location: malmo-castle
+    title: Malmöhus Castle
+    media: {image_theme: moated-fortress, music_theme: dread-drone, real_place: "Malmöhus Castle, Malmö, Sweden, a squat red-brick renaissance fortress with round towers and a moat", reference_image: "https://upload.wikimedia.org/wikipedia/commons/thumb/6/6a/Malm%C3%B6hus_slott_2022.jpg/3840px-Malm%C3%B6hus_slott_2022.jpg"}
+    body: "The fortress squats low behind its moat, more prison than palace, its brick the colour of dried blood under the floodlights. Black water rings it without a ripple. A footbridge crosses to a gate that is, just slightly, ajar. You think of everyone this place was built to keep in."
+    edges:
+      - id: e-castle-harbor
+        road: [[0.2785, 0.6546], [0.3325, 0.5955]]
+        to: malmo-harbor
+        label: Recross the bridge and go
+        effects: {log: "You left the castle behind its moat."}
+        sort_order: 9
+  - id: malmo-turning-torso
+    pos: {x: -1405, y: 1672}
+    map: {x: 0.0876, y: 0.7117, rx: 0.05, ry: 0.045, scale: 2.25}
+    arc: main
+    type: location
+    location: malmo-turning-torso
+    title: The Turning Torso
+    media: {image_theme: twisting-tower, music_theme: high-cold, real_place: "the Turning Torso skyscraper, Malmö, Sweden, a white tower that twists as it rises", reference_image: "https://upload.wikimedia.org/wikipedia/commons/8/8f/Turning_Torso2.jpg"}
+    body: "Out at the Western Harbour a white tower screws up into the low cloud, each storey wrung a little further round than the last, as if something had taken the building and slowly twisted it. Every window is dark but one, very high up, where a light moves once and is still. The wind off the sound is bitter."
+    edges:
+      - id: e-torso-harbor
+        road: [[0.2375, 0.4833], [0.2778, 0.4736]]
+        to: malmo-harbor
+        label: Turn back from the water's edge
+        effects: {log: "You left the twisting tower."}
+        sort_order: 9
+  - id: malmo-pildamms
+    pos: {x: -177, y: 3286}
+    map: {x: 0.2645, y: 0.825, rx: 0.05, ry: 0.045, scale: 2.05}
+    arc: main
+    type: location
+    location: malmo-pildamms
+    title: Pildammsparken
+    media: {image_theme: dark-park-lake, music_theme: reeds-wind, real_place: "Pildammsparken, a large lakeside park in Malmö, Sweden, reeds and dark water", reference_image: "https://upload.wikimedia.org/wikipedia/commons/8/89/Pildammarna%2C_Malm%C3%B6.jpg"}
+    body: "Gravel paths wind into a park grown too dark, reeds hissing at the edge of a black lake. You follow a path you're sure you've walked already and it sets you down somewhere new. The lamps are spaced just too far apart. Water lies flat and waiting between the trees."
+    edges:
+      - id: e-pildamms-harbor
+        road: [[0.3552, 0.636], [0.3605, 0.6136]]
+        to: malmo-harbor
+        label: Find your way back out of the park
+        effects: {log: "You left the park, eventually."}
+        sort_order: 9
+  - id: malmo-cemetery
+    map: {scale: 1.8}
+    pos: {x: 883, y: 2874}
+    arc: main
+    type: location
+    location: malmo-cemetery
+    title: The Old Cemetery
+    media: {image_theme: foggy-graveyard, music_theme: funeral-cold, real_place: "Gamla kyrkogården, the old cemetery in Malmö, Sweden, leaning gravestones under lime trees"}
+    body: "The old cemetery runs on under rows of limes, its stones leaning together like people sharing a secret. Fog pools in the hollows and gives the names back to you one at a time. Some plots are tended fresh; you do not see by whom. The gate to the living streets is somewhere behind you."
+    edges:
+      - id: e-cemetery-harbor
+        road: [[0.4106, 0.6797], [0.3564, 0.5306]]
+        to: malmo-harbor
+        label: Back through the gate to the streets
+        effects: {log: "You left the old cemetery."}
+        sort_order: 9
+  - id: malmo-citytunnel
+    pos: {x: 1126, y: 1514}
+    map: {x: 0.5174, y: 0.868, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: location
+    location: malmo-citytunnel
+    title: Triangeln Station
+    media: {image_theme: deep-platform, music_theme: tunnel-hum, real_place: "Triangeln station, the deep underground Citytunnel station in Malmö, Sweden, tiled platform"}
+    body: "An escalator carries you far down into the earth to a tiled platform lit white and even, utterly silent. The departures sign holds a single train, due in one minute, that the minute never reaches. Warm air pushes out of the tunnel mouth as if something large just exhaled. The way up is a long bright climb."
+    edges:
+      - id: e-citytunnel-harbor
+        road: [[0.4279, 0.506], [0.3559, 0.4859]]
+        to: malmo-harbor
+        label: Ride the long escalator back up
+        effects: {log: "You climbed back up out of the tunnel."}
+        sort_order: 9
+
+  # --- from skane-woods ---
+  - id: woods-path
+    pos: {x: 1712, y: 74}
+    arc: main
+    type: location
+    location: skane-woods
+    title: Forest Path
+    world_access: true
+    media: {image_theme: forest-dark, music_theme: low-dread, real_place: "a dense pine forest in the Skåne countryside, Sweden"}
+    body: "The track gives way to close-pressed pines. Something about the dark here feels older than the rest. You do not want to leave the path. The way back out is the world beyond the trees."
+
+  # --- from world ---
+  - id: sandby-street
+    pos: {x: 2729, y: 350}
+    map: {x: 0.4017, y: 0.5623, rx: 0.05, ry: 0.045, scale: 1.3}
+    arc: main
+    type: location
+    location: sandby-street
+    title: Sandby Street
+    world_access: true
+    media: {image_theme: village-street-dusk, music_theme: hushed-village, real_place: "the village of Södra Sandby, Skåne, Sweden"}
+    body: "Sandby's main street lies dark and empty beyond the school, streetlamps buzzing against the rain. The village is silent, but roads lead away into the wider night — toward Lund, and toward Malmö and the water."
+    edges:
+      - id: e-street-inside
+        road: [[0.6245, 0.3469], [0.7804, 0.4158]]
+        to: kbk-entrance-hall
+        label: Climb back in through the broken window
+        effects: {log: "You went back into the school."}
+  - id: lund-square
+    pos: {x: 4204, y: 1704}
+    map: {scale: 1.5}
+    arc: main
+    type: location
+    location: lund-square
+    title: Cathedral Square
+    world_access: true
+    media: {image_theme: city-square-dusk, music_theme: cathedral-cold, real_place: "Lund Cathedral, Lund, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/a/aa/Lunds_domkyrka_augusti_2012.jpg"}
+    body: "Lund's cathedral looms over the empty square, its twin towers lost in low cloud. Cobblestones glisten. A side street leads down toward the railway station."
+    edges:
+      - id: e-square-station
+        road: [[0.6729, 0.5561], [0.5657, 0.4598]]
+        to: lund-station
+        label: Walk down to the station
+        effects: {progress_points: 5, log: "You walked to Lund station."}
+  - id: lund-station
+    pos: {x: 2113, y: 1026}
+    map: {x: 0.6512, y: 0.7299, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: location
+    location: lund-station
+    title: Lund Station
+    media: {image_theme: station-night, music_theme: distant-trains, real_place: "Lund Central Station, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/c/cf/Lunds_centralstation2007.jpg"}
+    body: "The station is shuttered for the night. A single departures board flickers a timetable for trains that have long since gone. The square is back up the hill."
+    body_variants:
+      - when: {all: [{puzzle_solved: last-train-time}]}
+        body: "The station is still shuttered, but the departures board no longer flickers — it holds the single time you settled it on, and one platform light burns steady down the empty track. The square is back up the hill."
+    edges:
+      - id: e-station-square
+        road: [[0.5657, 0.4598], [0.6729, 0.5561]]
+        to: lund-square
+        label: Back up to the cathedral square
+        effects: {log: "You returned to the square."}
+
+# Standalone edge: leave the school for the village street (a world-access node).

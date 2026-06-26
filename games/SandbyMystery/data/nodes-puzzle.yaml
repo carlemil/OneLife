@@ -1,0 +1,303 @@
+# OneLife nodes — type: puzzle
+
+nodes:
+
+  # --- from killebackskolan ---
+  - id: kbk-boiler-room
+    pos: {x: 3224, y: 514}
+    arc: main
+    type: puzzle
+    location: killebackskolan
+    title: The Boiler Room
+    puzzle: boiler-cabinet-code
+    media: {image_theme: boiler-room-dark, music_theme: low-dread}
+    body: "The boiler room is hot and close, pipes groaning in the dark. Against the far wall stands a rusted steel cabinet, secured with a 4-digit padlock."
+    body_variants:
+      - when: {all: [{puzzle_solved: boiler-cabinet-code}]}
+        body: "The boiler room is hot and close, pipes groaning in the dark. The rusted steel cabinet stands open against the far wall now, its padlock hanging sprung from the hasp, the dark inside it waiting to be looked into."
+    edges:
+      - id: e-boiler-solved
+        to: kbk-cabinet-note
+        label: Look inside the open cabinet
+        conditions: {all: [{puzzle_solved: boiler-cabinet-code}]}
+        effects: {progress_points: 25, log: "You opened the cabinet."}
+      - id: e-boiler-leave
+        to: kbk-entrance-hall
+        label: Go back to the hall
+        effects: {log: "You returned to the hall."}
+        sort_order: 9
+
+  # --- from lund ---
+  # --- puzzle: the stuck departures board at Lund station (last-train-time) ---
+  - id: lund-station-board
+    pos: {x: 3221, y: 1100}
+    arc: main
+    type: puzzle
+    location: lund-station
+    title: The Departures Board
+    puzzle: last-train-time
+    media: {image_theme: station-night, music_theme: distant-trains}
+    body: "The departures board flickers, resets, and refuses to show a timetable — only a single line, over and over: the last train to Malmö leaves at the one hour tonight whose four digits are all the same. (Give the time.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: last-train-time}]}
+        body: "The departures board has stopped its flickering. It holds the one time you read aloud, steady now, and far down the empty platform a single light has come on over a track where no train seems to be coming."
+    edges:
+      - id: e-board-solved
+        to: lund-station
+        label: The board settles — a platform light comes on
+        conditions: {all: [{puzzle_solved: last-train-time}]}
+        effects: {progress_points: 15, log: "You read the time aloud; the board settled and a single platform light came on."}
+      - id: e-board-back
+        to: lund-station
+        label: Step back from the board
+        effects: {log: "You left the board to its flickering."}
+        sort_order: 9
+  # --- puzzle: Orlök's candle riddle (candle-riddle), once you've met him ---
+  - id: lund-orlok-candle
+    pos: {x: 1982, y: 1575}
+    arc: main
+    type: puzzle
+    location: lund-manor
+    title: The Guttering Taper
+    puzzle: candle-riddle
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "Orlök lifts a guttering taper into the space between you, the flame leaning toward his words. \"Name the thing in my hand,\" he says, almost gently, \"before it names its own end.\" (Answer the count's riddle.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: candle-riddle}]}
+        body: "\"A candle,\" the count agrees, and pinches the flame out between two pale fingers, satisfied. The riddle is answered; he folds his twig-thin hands and waits, in no apparent hurry, for whatever you will ask next."
+    edges:
+      - id: e-candle-solved
+        to: lund-manor
+        label: Leave the count, the riddle answered
+        conditions: {all: [{puzzle_solved: candle-riddle}]}
+        effects: {progress_points: 15, log: "You named it; the count pinched the flame out himself, satisfied."}
+      - id: e-candle-back
+        to: lund-manor
+        label: Look away from the flame
+        effects: {log: "You left the riddle unanswered."}
+        sort_order: 8
+  # --- puzzle: von Vinné's specimen (elder-specimen), once you've met him ---
+  - id: lund-vinne-specimen
+    pos: {x: 2246, y: 1958}
+    arc: main
+    type: puzzle
+    location: lund-botanical
+    title: Name the Specimen
+    puzzle: elder-specimen
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "Von Vinné thrusts a pinned sprig under your nose, eyes shining behind the magnifier. \"Sambucus nigra! Name it as the farmwives do, and I shall enter you in my catalogue.\" (Give the common name.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: elder-specimen}]}
+        body: "\"Elder! Fläder! Of course!\" Von Vinné crows, inking a flourish into his catalogue — a new species, he insists, named after you. The naming is done; he beams at you over the magnifier, ready to be indulged further or simply left to his pins."
+    edges:
+      - id: e-specimen-solved
+        to: lund-botanical
+        label: Let von Vinné enter you in his catalogue
+        conditions: {all: [{puzzle_solved: elder-specimen}]}
+        effects: {progress_points: 15, log: "He crowed with delight and inked a new species into his book — named, he said, after you."}
+      - id: e-specimen-back
+        to: lund-botanical
+        label: Leave the specimen unnamed
+        effects: {log: "You left the glasshouse without naming it."}
+        sort_order: 8
+
+  # --- from malmo ---
+  - id: malmo-locker
+    pos: {x: 177, y: 1973}
+    arc: main
+    type: puzzle
+    location: malmo-locker
+    title: Harbour Lockers
+    puzzle: harbor-locker
+    media: {image_theme: harbor-night, music_theme: low-dread}
+    body: "Most lockers hang open and empty. One is held by a word-lock — five letter dials."
+    body_variants:
+      - when: {all: [{puzzle_solved: harbor-locker}]}
+        body: "Most lockers hang open and empty. The one that held the word-lock stands open now too — and the child's photograph that was inside it is in your hands, the face almost, almost one you know."
+    edges:
+      - id: e-locker-opened
+        to: malmo-harbor
+        label: Take what's inside and go
+        conditions: {all: [{puzzle_solved: harbor-locker}]}
+        effects: {progress_points: 20, log: "Inside the locker: a child's photograph you almost recognize."}
+      - id: e-locker-back
+        to: malmo-harbor
+        label: Step back to the quay
+        effects: {log: "You stepped back to the quay."}
+        sort_order: 9
+  # --- puzzle: the riddle scratched into the harbour wall (fog-riddle) ---
+  - id: malmo-harbor-fog
+    pos: {x: 742, y: 1730}
+    arc: main
+    type: puzzle
+    location: malmo-harbor
+    title: The Scratched Riddle
+    puzzle: fog-riddle
+    media: {image_theme: harbor-night, music_theme: distant-trains}
+    body: "Someone has scratched a riddle deep into the harbour wall, the letters furred with salt. As you read it the grey comes rolling in off the Öresund and the cranes begin to disappear. (Answer the riddle.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: fog-riddle}]}
+        body: "The riddle is still scratched deep into the harbour wall, furred with salt — but you have named the thing it asked for, and for a moment the grey thinned and gave back the far shore before quietly closing over it again."
+    edges:
+      - id: e-harbor-fog-solved
+        to: malmo-harbor
+        label: The word hangs in the air — walk on
+        conditions: {all: [{puzzle_solved: fog-riddle}]}
+        effects: {progress_points: 15, log: "You named the fog, and for a moment it thinned to show the far shore."}
+      - id: e-harbor-fog-back
+        to: malmo-harbor
+        label: Step back from the wall
+        effects: {log: "You left the scratched riddle to the salt."}
+        sort_order: 9
+  # --- puzzle: the blank gravestone (gravestone-sum) ---
+  - id: malmo-cemetery-stones
+    pos: {x: -134, y: 2209}
+    arc: main
+    type: puzzle
+    location: malmo-cemetery
+    title: The Blank Stone
+    puzzle: gravestone-sum
+    media: {image_theme: foggy-graveyard, music_theme: funeral-cold}
+    body: "Three stones stand in a row, newer than their leaning neighbours — and one is blank where a death-year should be, the chalk of an unfinished hand still on it. The fog gives up the dates one at a time. (Read them and give the missing year.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: gravestone-sum}]}
+        body: "Three stones stand in a row, newer than their leaning neighbours. The blank one is finished now, the missing year chalked in by your own hand, and the fog that pooled over the plot has drawn quietly back from the three of them."
+    edges:
+      - id: e-cemetery-stones-solved
+        to: malmo-cemetery
+        label: Chalk the year and step back
+        conditions: {all: [{puzzle_solved: gravestone-sum}]}
+        effects: {progress_points: 15, log: "You finished the blank stone, and the fog over the plot drew back."}
+      - id: e-cemetery-stones-back
+        to: malmo-cemetery
+        label: Leave the stones unread
+        effects: {log: "You left the three stones to the fog."}
+        sort_order: 9
+  # --- puzzle: Vallmo's evidence-box word-lock (ystad-wordlock), once you've met him ---
+  - id: malmo-vallmo-lock
+    pos: {x: 1510, y: 1409}
+    arc: main
+    type: puzzle
+    location: malmo-police
+    title: The Evidence Box
+    puzzle: ystad-wordlock
+    media: {image_theme: night-office, music_theme: low-dread}
+    body: "Vallmo slides a battered evidence box across the desk, shut with a five-dial word-lock. \"Spells the town where it started,\" he says, not quite meeting your eye. \"I never could bring myself to open it.\" (Set the dials.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: ystad-wordlock}]}
+        body: "The evidence box sits open between you, the five-dial lock sprung. Vallmo stares at what was inside and says nothing for a long while; whatever he had hoped wasn't true, plainly was."
+    edges:
+      - id: e-lock-solved
+        to: malmo-police
+        label: Set the dials
+        conditions: {all: [{puzzle_solved: ystad-wordlock}]}
+        effects: {progress_points: 15, log: "The lock gave. Vallmo stared at what was inside and said nothing for a long while."}
+      - id: e-lock-back
+        to: malmo-police
+        label: Push the box back across the desk
+        effects: {log: "You left the box shut."}
+        sort_order: 8
+
+  # --- from marta ---
+  # --- puzzle: the chalk letters on the classroom floor (marta-anagram) ---
+  - id: kbk-chalk-letters
+    pos: {x: 3908, y: 726}
+    arc: main
+    type: puzzle
+    location: killebackskolan
+    title: The Chalk Letters
+    puzzle: marta-anagram
+    media: {image_theme: dark-classroom, music_theme: fragile-quiet}
+    body: "Just inside an empty classroom, five chalk letters lie scattered across the floor as if dropped mid-word: A · R · T · M · Ä. They are waiting to be a name. (Rearrange them.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: marta-anagram}]}
+        body: "Just inside the empty classroom, the five chalk letters have been pushed into their order on the floor — MÄRTA — and the cold that hung in the corridor has eased, as if a name spoken aloud had been enough."
+    edges:
+      - id: e-chalk-solved
+        to: kbk-entrance-hall
+        label: Say the name aloud
+        conditions: {all: [{puzzle_solved: marta-anagram}]}
+        effects: {progress_points: 20, log: "You spoke the name, and the cold in the corridor eased a little."}
+      - id: e-chalk-back
+        to: kbk-entrance-hall
+        label: Leave the letters where they lie
+        effects: {log: "You left the chalk letters on the floor."}
+        sort_order: 9
+
+# Standalone edges attach to a node defined anywhere (here: the entrance hall).
+
+  # --- from sandby ---
+  # --- puzzle: the riddle cut over the lych-gate (church-bell-riddle) ---
+  - id: sandby-church-bell
+    pos: {x: 2391, y: 254}
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: The Lych-Gate Riddle
+    puzzle: church-bell-riddle
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Words are cut into the lintel over the lych-gate, worn shallow by a century of weather. The tower bell hangs silent above the churchyard, waiting. (Answer what is carved.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: church-bell-riddle}]}
+        body: "The words cut over the lych-gate read plainly now that you have answered them. High in the tower the bell hangs still — but you have heard it give its one soft, untouched note, and the whole churchyard feels, somehow, listened-to."
+    edges:
+      - id: e-bell-solved
+        to: sandby-church
+        label: Speak the answer up at the tower
+        conditions: {all: [{puzzle_solved: church-bell-riddle}]}
+        effects: {progress_points: 15, log: "You spoke the answer; far above, the bell gave one soft, untouched note."}
+      - id: e-bell-back
+        to: sandby-church
+        label: Step back from the gate
+        effects: {log: "You left the carved riddle to the weather."}
+        sort_order: 8
+  # --- puzzle: Dödblek's wager (dodblek-games), offered once you've met him ---
+  - id: sandby-dodblek-count
+    pos: {x: 2349, y: 497}
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: Dödblek's Wager
+    puzzle: dodblek-games
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Dödblek gestures at the board between you without looking up. \"A small wager before we play,\" he says. \"Count my games honestly, and I will spot you a piece.\" (Give him the number.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: dodblek-games}]}
+        body: "\"Forty-six. Just so,\" Dödblek says, inclining his head a fraction. He lifts a white knight from the board and sets it aside for you — the wager won, the game proper still waiting whenever you are."
+    edges:
+      - id: e-count-solved
+        to: sandby-church
+        label: Take the knight Dödblek set aside
+        conditions: {all: [{puzzle_solved: dodblek-games}]}
+        effects: {progress_points: 15, log: "You counted true; Dödblek lifted a white knight from the board and set it aside for you."}
+      - id: e-count-back
+        to: sandby-church
+        label: Decline the wager
+        effects: {log: "You let the wager lie."}
+        sort_order: 7
+  # --- puzzle: Pippa's riddle-game (shadow-riddle), offered once you've met her ---
+  - id: sandby-pippa-shadow
+    pos: {x: 2953, y: 7}
+    arc: main
+    type: puzzle
+    location: sandby-crooked-house
+    title: Pippa's Riddle-Game
+    puzzle: shadow-riddle
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "Pippa hops down off the rail and plants herself in your path, delighted. \"Riddle-game, riddle-game!\" she sings. \"Half of my name is the answer — get it, and I'll tell you a secret.\" (Answer her riddle.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: shadow-riddle}]}
+        body: "\"SHADOW!\" Pippa shrieks, clapping, delighted. \"You got it, you got it!\" The riddle-game is won. She swings back up onto the porch rail, kicking her boots, ready to make good on the secret she promised."
+    edges:
+      - id: e-shadow-solved
+        to: sandby-crooked-house
+        label: Lean in for the secret Pippa promised
+        conditions: {all: [{puzzle_solved: shadow-riddle}]}
+        effects: {progress_points: 15, log: "Pippa leaned in close, the play gone right out of her: \"That little one the tall man carried out of the fire — I saw its face in the firelight. It had your face. Younger. But yours.\" Then she was up on the rail again, swinging her boots and humming, as though she'd said nothing at all."}
+      - id: e-shadow-back
+        to: sandby-crooked-house
+        label: Step out of her game
+        effects: {log: "You stepped out of Pippa's game."}
+        sort_order: 8
+
+# Standalone edges off the village hub (sandby-street, world.yaml).

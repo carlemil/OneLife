@@ -67,6 +67,9 @@ export const api = {
   saveMapPos: (kind, id, map) => req('/api/admin/map/save', { method: 'POST', body: { kind, id, map } }),
   mapOverview: () => req('/api/admin/map/overview'),
   saveRoads: (roads) => req('/api/admin/map/roads', { method: 'POST', body: { roads } }),
+  setNodeScale: (id, scale) => req('/api/admin/map/scale', { method: 'POST', body: { id, scale } }),
+  addEdge: (from, to, label = '', bidirectional = true) =>
+    req('/api/admin/map/edge', { method: 'POST', body: { from_node: from, to_node: to, label, bidirectional } }),
 
   // atmosphere
   atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
@@ -74,6 +77,7 @@ export const api = {
 
   // game
   state: () => req('/api/state'),
+  saveClipboard: (text) => req('/api/clipboard', { method: 'POST', body: { text } }),
   log: () => req('/api/log'),
   leaderboard: ({ offset = 0, limit = 20, q = '', around = 0 } = {}) =>
     req(`/api/leaderboard?offset=${offset}&limit=${limit}&q=${encodeURIComponent(q)}&around=${around}`),

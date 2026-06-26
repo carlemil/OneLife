@@ -1,0 +1,155 @@
+# OneLife — all locations
+
+locations:
+
+  # --- from killebackskolan ---
+  - id: killebackskolan
+    name: Killebäckskolan
+    cell: sandby
+    description: "A school in Södra Sandby. It should be empty at this hour."
+    icon_description: "A low 1970s Swedish brick schoolhouse with a flat roof, a long row of windows and a small flagpole by the entrance. Viewed from the front it is wide and consists of several parts of slightly different height and size."
+
+  # --- from lund ---
+  - id: lund-library
+    name: The Cathedral Library
+    cell: lund
+    description: "A book-lined annex beside the cathedral, lit by a single lamp."
+    icon_description: "A stone library annex, tall arched windows glowing from a single lamp, shelves of books within. It is only one story tall"
+  - id: lund-cellar
+    name: The Supper Club Cellar
+    cell: lund
+    description: "A vaulted cellar under a Lund townhouse, one table always set."
+    icon_description: "A townhouse with a low arched stone cellar doorway and worn steps descending into candlelight, a single supper table laid below."
+  - id: lund-lodgings
+    name: Holm's Lodgings
+    cell: lund
+    description: "Cramped upstairs rooms thick with pipe-smoke and pinned clippings."
+    icon_description: "A tall narrow townhouse with a lit attic dormer window hazed with pipe-smoke."
+  - id: lund-manor
+    name: The Manor Outside Lund
+    cell: lund
+    description: "A derelict manor past the edge of town, where the rats run toward it."
+    icon_description: "A derelict gabled manor house with broken windows, a sagging roof and a rusted iron gate, huge, dark and overgrown."
+  - id: lund-botanical
+    name: The Botanical Garden
+    cell: lund
+    description: "Lund's botanical garden after dark, glasshouses fogged from within."
+    icon_description: "A long Victorian iron-and-glass greenhouse with a curved roof and fogged panes, set among clipped garden hedges, footpaths and a few large trees."
+  - id: lund-apothecary
+    name: The Old Apothecary
+    cell: lund
+    description: "A shuttered pharmacy off the square, its jars gone cloudy with age."
+    icon_description: "A narrow old apothecary shopfront with shuttered windows, dim rows of cloudy bottles behind the glass and a hanging mortar-and-pestle sign."
+  - id: lund-crypt
+    name: The Cathedral Crypt
+    cell: lund
+    description: "The Romanesque crypt beneath the cathedral, and the giant's twisted pillar."
+    icon_description: "A Romanesque cathedral crypt of squat round stone arches, with one spiral-carved twisted pillar standing at its centre."
+
+  # --- from malmo ---
+  - id: malmo-harbor
+    name: The Harbour
+    cell: malmo
+    description: "Malmö's old harbour, cranes black against the Öresund."
+    icon_description: "An old industrial harbour with tall black dockside cranes and iron bollards along a stone quay, a large ship on the dark water beyond."
+  - id: malmo-crossing
+    name: The End of the Pier
+    cell: malmo
+    description: "A long pier running out into the Öresund, walkable only once the fog draws back."
+    icon_description: "A long wooden pier on tall pilings running far out across the sea, its far end fading into the fog."
+  - id: malmo-locker
+    name: Harbour Lockers
+    cell: malmo
+    description: "A row of dented harbour storage lockers, salt-rusted."
+    icon_description: "A row of dented, salt-rusted metal harbour storage lockers."
+  - id: malmo-rosengard
+    name: Rosengård
+    cell: malmo
+    description: "Concrete estates and a floodlit cage pitch on the city's edge."
+    icon_description: "A cluster of plain concrete apartment blocks behind a floodlit, fenced cage football pitch."
+  - id: malmo-server-basement
+    name: The Basement Server Room
+    cell: malmo
+    description: "A fan-roaring cellar of humming racks beneath a dead shopfront."
+    icon_description: "A shuttered dead shopfront with a basement glimpsed below, full of blinking server racks and tangled cables."
+  - id: malmo-police
+    name: Police Headquarters
+    cell: malmo
+    description: "A strip-lit night office that smells of cold coffee and old paper."
+    icon_description: "A boxy mid-century police headquarters building with rows of lit office windows and a lamp over the entrance."
+  - id: malmo-stortorget
+    name: Stortorget
+    cell: malmo
+    description: "Malmö's vast main square, a bronze king on horseback at its centre."
+    icon_description: "A vast cobbled square with an ornate bronze equestrian statue of a king on horseback on a tall plinth at its centre, grand facades around it."
+  - id: malmo-lilla-torg
+    name: Lilla Torg
+    cell: malmo
+    description: "A small timbered square of shuttered bars off the main one."
+    icon_description: "A small cobbled square ringed by half-timbered houses with steep tiled roofs and shuttered windows."
+  - id: malmo-castle
+    name: Malmöhus Castle
+    cell: malmo
+    description: "A squat moated fortress and former prison, black water in the moat."
+    icon_description: "Malmöhus Castle: a squat red-brick renaissance fortress with round corner towers, ringed by a moat of dark water."
+  - id: malmo-turning-torso
+    name: The Turning Torso
+    cell: malmo
+    description: "A tower that twists as it rises over the Western Harbour."
+    icon_description: "A tall white skyscraper that twists as it rises, a spiralling tower of stacked cubes."
+  - id: malmo-pildamms
+    name: Pildammsparken
+    cell: malmo
+    description: "A dark lakeside park of reeds and paths that double back on you."
+    icon_description: "A dark lakeside park: still black water fringed with tall reeds and winding paths under a few bare trees."
+  - id: malmo-cemetery
+    name: The Old Cemetery
+    cell: malmo
+    description: "Gamla kyrkogården: leaning stones and fog pooling between the limes."
+    icon_description: "An old cemetery of leaning weathered gravestones and a stone cross beneath bare lime trees, fog pooling between them."
+  - id: malmo-citytunnel
+    name: Triangeln Station
+    cell: malmo
+    description: "A deep underground platform, tiled and silent, far below the streets."
+    icon_description: "A round tiled tunnel mouth descending underground to a deep railway platform, a single track vanishing into the dark."
+
+  # --- from sandby ---
+  - id: sandby-church
+    name: Sandby Church
+    cell: sandby
+    description: "The old whitewashed church of the village, its graveyard sloping into mist."
+    icon_description: "A medieval whitewashed Scanian stone church with a stepped gable tower and a sloping graveyard of crosses."
+  - id: sandby-quarry
+    name: The Gravel-Pit Lake
+    cell: sandby
+    description: "A flooded quarry east of the village, and a half-dead motel beside it."
+    icon_description: "A flooded gravel-pit quarry lake with steep gravel banks and a half-derelict roadside motel beside the water."
+  - id: sandby-crooked-house
+    name: The Crooked House
+    cell: sandby
+    description: "A leaning house at the very edge of Sandby, where the streetlamps give out."
+    icon_description: "A small crooked old house at the village edge, walls tilted and chimney bent, the last streetlamp leaning beside it."
+
+  # --- from skane-woods ---
+  - id: skane-woods
+    name: Forest Path
+    cell: skane-woods
+    description: "A track winding into the Skåne woods."
+    icon_description: "A narrow track winding into dense, dark pine forest, tall close-set conifers of the Skåne countryside."
+
+  # --- from world ---
+  - id: sandby-street
+    name: Sandby Street
+    cell: sandby
+    description: "The quiet main street of Södra Sandby."
+    icon_description: "A quiet village main street of low whitewashed Scanian houses with a single streetlamp."
+  - id: lund-square
+    name: Cathedral Square
+    cell: lund
+    description: "The old square below Lund Cathedral."
+    icon_description: "The twin-towered Romanesque Lund Cathedral rising over an open cobbled square."
+  - id: lund-station
+    name: Lund Station
+    cell: lund
+    description: "The town's small railway station."
+    icon_description: "A small old Swedish railway station building with a platform canopy and a clock set in its gable."

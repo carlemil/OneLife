@@ -1,0 +1,18 @@
+# OneLife — all clues
+
+clues:
+  - id: year-1998-graffiti
+    puzzle: boiler-cabinet-code
+    placement: {kind: location_text, location_id: killebackskolan}
+    reveal_text: "Scratched into a locker door: \"DET HÄNDE HÄR '98\" (it happened here '98)."
+    discover_conditions: {all: [{node_visited: kbk-entrance-hall}]}
+  - id: janitor-said-98
+    puzzle: boiler-cabinet-code
+    placement: {kind: dialogue, character_id: the-janitor}
+    reveal_text: "The janitor said the boiler door has been broken since '98."
+    discover_conditions: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+  - id: plaque-1998
+    puzzle: boiler-cabinet-code
+    placement: {kind: interaction, location_id: killebackskolan}
+    reveal_text: "The brass memorial plaque reads: IN MEMORIAM — 1998."
+    discover_conditions: {all: [{flag_set: examined_plaque}]}

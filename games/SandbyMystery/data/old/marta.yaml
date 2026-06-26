@@ -1,0 +1,101 @@
+# OneLife content — Märta, the frightened girl (activates cross-character leakage).
+# Demonstrates multi-file authoring: a new node here, plus a standalone edge that
+# adds a route from a node defined in another file (the entrance hall).
+
+characters:
+  - id: marta
+    name: Märta
+    persona: "A frightened teenage girl hiding in a classroom since the lights went out. She whispers, flinches at sudden movement, and trusts only slowly. She has watched the building in the dark and overheard things. She knows nothing about the world outside Sandby or why the stranger is here, and clams up if pushed on it."
+
+nodes:
+  - id: kbk-classroom
+    pos: {x: 3478, y: 534}
+    map: {x: 0.2777, y: 0.705, rx: 0.05, ry: 0.045}
+    arc: main
+    type: gate
+    location: killebackskolan
+    title: The Classroom
+    gate: kbk-marta-calm
+    media: {image_theme: dark-classroom, music_theme: fragile-quiet}
+    body: "You follow a thin sound of crying into a darkened classroom. A girl is wedged between two desks, knees drawn to her chest. She freezes when she sees you, eyes wide. (Try to calm her enough to talk.)"
+    body_variants:
+      # Once you know her name, the narration uses it; until then she's "the girl".
+      - when: {all: [{gate_passed: kbk-marta-calm}, {name_known: marta}]}
+        body: "The classroom is quiet now. Märta sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
+      - when: {all: [{gate_passed: kbk-marta-calm}]}
+        body: "The classroom is quiet now. The girl sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
+    edges:
+      - id: e-classroom-leave
+        to: kbk-entrance-hall
+        label: Step back into the hall
+        effects: {log: "You left the classroom."}
+        sort_order: 9
+
+  # --- puzzle: the chalk letters on the classroom floor (marta-anagram) ---
+  - id: kbk-chalk-letters
+    pos: {x: 3908, y: 726}
+    arc: main
+    type: puzzle
+    location: killebackskolan
+    title: The Chalk Letters
+    puzzle: marta-anagram
+    media: {image_theme: dark-classroom, music_theme: fragile-quiet}
+    body: "Just inside an empty classroom, five chalk letters lie scattered across the floor as if dropped mid-word: A · R · T · M · Ä. They are waiting to be a name. (Rearrange them.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: marta-anagram}]}
+        body: "Just inside the empty classroom, the five chalk letters have been pushed into their order on the floor — MÄRTA — and the cold that hung in the corridor has eased, as if a name spoken aloud had been enough."
+    edges:
+      - id: e-chalk-solved
+        to: kbk-entrance-hall
+        label: Say the name aloud
+        conditions: {all: [{puzzle_solved: marta-anagram}]}
+        effects: {progress_points: 20, log: "You spoke the name, and the cold in the corridor eased a little."}
+      - id: e-chalk-back
+        to: kbk-entrance-hall
+        label: Leave the letters where they lie
+        effects: {log: "You left the chalk letters on the floor."}
+        sort_order: 9
+
+# Standalone edges attach to a node defined anywhere (here: the entrance hall).
+edges:
+  - id: e-hall-classroom
+    from: kbk-entrance-hall
+    to: kbk-classroom
+    label: Follow the sound of crying into a classroom
+    effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
+    sort_order: 4
+  - id: e-hall-chalk
+    from: kbk-entrance-hall
+    to: kbk-chalk-letters
+    label: Look at the chalk letters scattered on a classroom floor
+    effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
+    sort_order: 6
+
+gates:
+  - id: kbk-marta-calm
+    location: killebackskolan
+    character: marta
+    intent: Calm the frightened girl enough that she will talk.
+    criteria:
+      - {id: reassured, desc: "Player is gentle, kind, or reassuring — tries to calm her, or promises not to hurt her."}
+      - {id: asked_something, desc: "Player asks her a question — who she is, what she saw, what happened, or how long she has been here."}
+    success_rule: "reassured AND asked_something"
+    knowledge_boundary:
+      knows:
+        - "she has been hiding in this classroom since the lights went out"
+        - "she has seen the old caretaker creeping toward the boiler room in the dark"
+      refuses:
+        - "anything about why the stranger is here"
+        - "the larger mystery"
+      tone: "frightened teenage girl, whispers, flinches, trusts only slowly"
+    hint_ladder:
+      - "She presses herself into the corner and will not speak."
+      - "She watches you, deciding whether to trust you."
+      - "She whispers: \"I've been here since the lights died. I saw the caretaker... going down to the boiler room. In the dark.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 35
+      set_flag: calmed_marta
+      story_node_next: kbk-classroom
+      log: "You calmed Märta; she whispered what she had seen."
+      write_memory: {owner: marta, content: "A kind stranger calmed me and I told them what I saw in the dark.", leakable: true}

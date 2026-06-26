@@ -13,6 +13,7 @@ CREATE TABLE players (
     totp_secret   TEXT,                         -- 2FA shared secret
     totp_enabled  BOOLEAN NOT NULL DEFAULT FALSE,
     onboarded     BOOLEAN NOT NULL DEFAULT FALSE, -- passed manual + quiz
+    clipboard     TEXT NOT NULL DEFAULT '',       -- player's free-form clipboard (never auto-edited)
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 

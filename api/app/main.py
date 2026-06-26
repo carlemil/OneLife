@@ -72,6 +72,9 @@ async def _startup():
             "ALTER TABLE world_cells ADD COLUMN IF NOT EXISTS map_image TEXT")
         await conn.execute(
             "ALTER TABLE world_cells ADD COLUMN IF NOT EXISTS world_exit JSONB NOT NULL DEFAULT '{}'")
+        # The player's free-form clipboard (saved with their profile; never auto-edited).
+        await conn.execute(
+            "ALTER TABLE players ADD COLUMN IF NOT EXISTS clipboard TEXT NOT NULL DEFAULT ''")
     # Load authored content from YAML (idempotent upsert) so `docker compose up`
     # yields a playable game. Validate first; skip seeding on errors rather than
     # crash, leaving whatever content is already in the DB.
@@ -134,6 +137,15 @@ def _require_onboarded(sess: dict):
 
 def _is_admin(sess: dict) -> bool:
     return (sess.get("email") or "").lower() in ADMIN_EMAILS
+
+
+def _game_name() -> str:
+    """The currently-running game's name, from the data path (games/<Game>/data)."""
+    p = (os.environ.get("GAME_DATA_DIR") or os.environ.get("CONTENT_DIR") or "/content")
+    parts = [x for x in p.replace("\\", "/").split("/") if x not in ("", ".", "..")]
+    if len(parts) >= 2 and parts[-1].lower() == "data":
+        return parts[-2]
+    return parts[-1] if parts else "game"
 
 
 def _require_admin(sess: dict):
@@ -239,6 +251,19 @@ class MapSaveBody(BaseModel):
     kind: str
     id: str
     map: dict   # {x, y, rx, ry} normalized 0..1
+
+class MapScaleBody(BaseModel):
+    id: str       # the location's anchor node id
+    scale: float
+
+class MapEdgeBody(BaseModel):
+    from_node: str        # source anchor node id
+    to_node: str          # target anchor node id
+    label: str = ""       # custom label for both directions; blank = auto "Go to …"
+    bidirectional: bool = True   # also create the reverse edge
+
+class ClipboardBody(BaseModel):
+    text: str = ""        # the player's free-form clipboard contents
 
 class DataImportBody(BaseModel):
     data: dict
@@ -425,6 +450,20 @@ async def state(authorization: str | None = Header(default=None)):
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         return await engine.render_state(conn, sess["player_id"], sess)
+
+
+@app.post("/api/clipboard")
+async def save_clipboard(body: ClipboardBody, authorization: str | None = Header(default=None)):
+    """Persist the player's free-form clipboard on their profile. Player-controlled
+    only — the game never writes here automatically."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    text = body.text[:100000]   # generous cap to keep a stray paste from bloating the row
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute("UPDATE players SET clipboard=$2 WHERE id=$1",
+                           sess["player_id"], text)
+    return {"ok": True}
 
 
 @app.post("/api/edge")
@@ -738,7 +777,7 @@ async def _admin_session(authorization):
 
 @app.get("/api/admin/me")
 async def admin_me(authorization: str | None = Header(default=None)):
-    return {"is_admin": _is_admin(await _session(authorization))}
+    return {"is_admin": _is_admin(await _session(authorization)), "game": _game_name()}
 
 
 # ---------- Admin: clickable-map editor (writes ellipse positions back to YAML) ----------
@@ -826,6 +865,88 @@ async def admin_map_save(body: MapSaveBody, authorization: str | None = Header(d
     async with pool.acquire() as conn:
         await content.seed_content(conn, data)
     return {"ok": True}
+
+
+@app.post("/api/admin/map/scale")
+async def admin_map_scale(body: MapScaleBody, authorization: str | None = Header(default=None)):
+    """Set one icon's scale factor (story_nodes.map.scale), written back to the YAML
+    (preserving any x/y/rx/ry) and mirrored into the live DB so the map updates without
+    a full re-seed."""
+    await _admin_session(authorization)
+    scale = round(max(0.1, min(5.0, float(body.scale))), 3)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE id=$1", body.id)
+        if row is None:
+            raise HTTPException(404, f"no such node {body.id}")
+        cur = row["map"]
+        cur = json.loads(cur) if isinstance(cur, str) else (dict(cur) if cur else {})
+        cur["scale"] = scale
+        try:
+            map_write.set_node_map(body.id, cur)
+        except FileNotFoundError:
+            raise HTTPException(404, f"no YAML defines node {body.id}")
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(500, f"could not write YAML: {e}")
+        await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
+                           body.id, json.dumps(cur))
+    return {"ok": True, "scale": scale}
+
+
+@app.post("/api/admin/map/edge")
+async def admin_map_edge(body: MapEdgeBody, authorization: str | None = Header(default=None)):
+    """Add an edge between two places drawn in the map editor (both directions unless
+    bidirectional is false), write it into the standalone `edges:` YAML, then re-seed so
+    the road shows live. An already-existing direction is left untouched (no duplicate)."""
+    await _admin_session(authorization)
+    if body.from_node == body.to_node:
+        raise HTTPException(400, "cannot connect a place to itself")
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        rows = await conn.fetch(
+            "SELECT id, title FROM story_nodes WHERE id = ANY($1::text[])",
+            [body.from_node, body.to_node])
+        nmap = {r["id"]: (r["title"] or r["id"]) for r in rows}
+        if body.from_node not in nmap or body.to_node not in nmap:
+            raise HTTPException(404, "unknown node")
+        existing_ids = {r["id"] for r in await conn.fetch("SELECT id FROM story_edges")}
+        existing_pairs = {(r["from_node"], r["to_node"])
+                          for r in await conn.fetch("SELECT from_node, to_node FROM story_edges")}
+
+    label = (body.label or "").strip()
+    directions = [(body.from_node, body.to_node)]
+    if body.bidirectional:
+        directions.append((body.to_node, body.from_node))
+
+    created = []
+    try:
+        for a, b in directions:
+            if (a, b) in existing_pairs:
+                continue                       # don't duplicate a direction that exists
+            base, eid, k = f"e-{a}-{b}", f"e-{a}-{b}", 2
+            while eid in existing_ids:
+                eid = f"{base}-{k}"; k += 1
+            existing_ids.add(eid)
+            lbl = label or f"Go to {nmap[b]}"
+            map_write.add_standalone_edge(
+                {"id": eid, "from": a, "to": b, "label": lbl,
+                 "effects": {"log": f"You went to {nmap[b]}."}, "sort_order": 9})
+            created.append(eid)
+    except FileNotFoundError as e:
+        raise HTTPException(500, str(e))
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"could not write YAML: {e}")
+
+    if not created:
+        return {"ok": True, "created": [], "note": "edge(s) already existed"}
+    data, _ = content.load_dir()
+    errors, _ = content.validate(data)
+    if errors:
+        raise HTTPException(400, "; ".join(errors[:5]))
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await content.seed_content(conn, data)
+    return {"ok": True, "created": created}
 
 
 @app.get("/api/admin/map/overview")

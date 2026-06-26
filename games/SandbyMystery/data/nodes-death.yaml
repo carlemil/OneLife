@@ -1,0 +1,13 @@
+# OneLife nodes — type: death
+
+nodes:
+
+  # --- from killebackskolan ---
+  - id: kbk-caught
+    pos: {x: 3576, y: 854}
+    arc: main
+    type: death
+    location: killebackskolan
+    title: In the Dark
+    media: {image_theme: boiler-room-dark, music_theme: low-dread}
+    body: "You throw your shoulder against the PANNRUM door. It gives with a shriek of metal — into pure black. Something in that dark had been waiting a very long time. It does not hesitate. ▒ You have died. ▒"

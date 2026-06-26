@@ -22,8 +22,9 @@ services:
     build: ./api
     environment:
       DATABASE_URL: postgresql://onelife:onelife@db:5432/onelife
-      # Game data lives in a SEPARATE repo (the engine here is data-agnostic).
-      # CONTENT_DIR stays /content; the volume below maps the data repo into it.
+      # Game data lives in-repo under games/<Game>/data, mounted at /content. The
+      # path is passed in so the admin UI can name the running game.
+      GAME_DATA_DIR: ${GAME_DATA_DIR:-./games/SandbyMystery/data}
       # Optional: set to use the real Claude API for the dialogue gate.
       # Leave empty to run the deterministic offline stub (no key required).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -60,9 +61,9 @@ services:
       POLLINATIONS_EDIT_MODEL: ${POLLINATIONS_EDIT_MODEL:-kontext}
       IMAGE_BANNER_SIZE: ${IMAGE_BANNER_SIZE:-1024x384}
     volumes:
-      # Sibling data repo (override with ${GAME_DATA_DIR}); see OneLife-KBK-mystery.
+      # Game data now lives in-repo under games/<Game>/data (override with ${GAME_DATA_DIR}).
       # Read-WRITE: the in-UI map editor writes ellipse positions back into the YAML.
-      - ${GAME_DATA_DIR:-../OneLife-KBK-mystery}:/content:rw
+      - ${GAME_DATA_DIR:-./games/SandbyMystery/data}:/content:rw
     # Loopback-only: in production Caddy reaches the api via the compose network
     # (api:8000), so it never needs to be published to the host's LAN/internet.
     ports:

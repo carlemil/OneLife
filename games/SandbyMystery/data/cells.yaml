@@ -1,0 +1,42 @@
+# OneLife — all cells
+
+cells:
+
+  # --- from malmo ---
+  - id: malmo
+    map: {x: 0.1963, y: 0.71, rx: 0.09, ry: 0.07}
+    world_exit: {x: 0.9008, y: 0.8861, rx: 0.06, ry: 0.05}
+    grid_x: 1
+    grid_y: 3
+    name: Malmö
+    kind: city
+    region: "Malmö, Skåne"
+    arrival_node: malmo-harbor
+
+  # --- from skane-woods ---
+  - id: skane-woods
+    grid_x: 2
+    grid_y: 1
+    name: Skåne Woods
+    kind: wilderness
+    region: "the Skåne countryside"
+    arrival_node: woods-path
+
+  # --- from world ---
+  - id: sandby
+    map: {x: 0.7537, y: 0.4068, rx: 0.09, ry: 0.07}
+    world_exit: {x: 0.8909, y: 0.1095, rx: 0.06, ry: 0.05}
+    grid_x: 2
+    grid_y: 2
+    name: Södra Sandby
+    kind: village
+    region: "Södra Sandby, Skåne"
+    arrival_node: sandby-street
+  - id: lund
+    map: {x: 0.426, y: 0.3347, rx: 0.09, ry: 0.07}
+    grid_x: 1
+    grid_y: 2
+    name: Lund
+    kind: city
+    region: "Lund, Skåne"
+    arrival_node: lund-square

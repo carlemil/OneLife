@@ -422,7 +422,8 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
 
 _ANCHOR_QUERY = """
     SELECT DISTINCT ON (l.id)
-           l.id AS loc_id, n.id AS node_id, n.title, n.map AS nmap, np.x AS px, np.y AS py
+           l.id AS loc_id, l.cell_id AS cell, n.id AS node_id, n.title,
+           n.map AS nmap, np.x AS px, np.y AS py
     FROM story_nodes n
     JOIN locations l ON l.id = n.location_id
     JOIN world_cells w ON w.id = l.cell_id
@@ -448,6 +449,13 @@ async def map_overview(conn) -> dict:
         norm[nid] = (auto["x"], auto["y"])
     node_to_loc = {r["node_id"]: r["loc_id"] for r in rows}
 
+    # Normalization bounds, so a drag in 0..1 map space can be inverted back to the
+    # node's graph-editor pixel position (matches _normalize_positions: margin 0.2).
+    pxs = [p[0] for p in placed.values()]
+    pys = [p[1] for p in placed.values()]
+    bounds = {"minx": min(pxs), "maxx": max(pxs), "miny": min(pys), "maxy": max(pys),
+              "margin": 0.2} if placed else None
+
     nodes = []
     for r in rows:
         nm = r["nmap"]
@@ -457,7 +465,8 @@ async def map_overview(conn) -> dict:
         except (TypeError, ValueError):
             scale = 1.0
         x, y = norm[r["loc_id"]]
-        nodes.append({"id": r["loc_id"], "title": r["title"],
+        nodes.append({"id": r["loc_id"], "node_id": r["node_id"], "cell": r["cell"],
+                      "title": r["title"],
                       "icon": f"images/maps/icons/{r['loc_id']}.png",
                       "x": x, "y": y, "scale": scale})
 
@@ -479,7 +488,14 @@ async def map_overview(conn) -> dict:
             seen[k] = rd; roads.append(rd)
         elif pts and not seen[k]["points"]:
             seen[k]["points"] = pts
-    return {"image": "images/maps/parchment.png", "nodes": nodes, "roads": roads}
+
+    # The cell a fresh player starts in (entry node's cell) — the editor's fog
+    # preview shows only this cell's places.
+    start_cell = await conn.fetchval(
+        """SELECT l.cell_id FROM story_nodes n JOIN locations l ON l.id = n.location_id
+           WHERE n.is_entry LIMIT 1""")
+    return {"image": "images/maps/parchment.png", "nodes": nodes, "roads": roads,
+            "bounds": bounds, "start_cell": start_cell}
 
 
 async def map_road_anchors(conn) -> dict:
@@ -624,6 +640,7 @@ async def render_state(conn, player_id, session) -> dict:
            JOIN puzzle_clues pc ON pc.id = p.clue_id
            WHERE p.player_id=$1 ORDER BY p.found_at_seq""", player_id)
 
+    clipboard = await conn.fetchval("SELECT clipboard FROM players WHERE id=$1", player_id)
     state = {
         "node": {
             "id": node["id"], "type": node["type"], "title": node["title"],
@@ -634,6 +651,7 @@ async def render_state(conn, player_id, session) -> dict:
         "edges": visible,
         "map": block,
         "notes": [r["reveal_text"] for r in found],
+        "clipboard": clipboard or "",
         "story_time": session["story_time"],
     }
 

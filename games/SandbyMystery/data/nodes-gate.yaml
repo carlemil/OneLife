@@ -1,0 +1,299 @@
+# OneLife nodes — type: gate
+
+nodes:
+
+  # --- from killebackskolan ---
+  - id: kbk-janitor-gate
+    pos: {x: 3236, y: 597}
+    arc: main
+    type: gate
+    location: killebackskolan
+    title: The Janitor
+    gate: kbk-janitor-find-the-exit
+    media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
+    body: "The old man keeps his eyes on the brass. \"School's closed,\" he mutters. \"You shouldn't be here.\" (Talk to him — try to find out how to get out.)"
+    # A character's description can also react to a gate that affects them — here,
+    # what Märta told you (her gate) colours how the janitor reads to you.
+    body_variants:
+      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
+        body: "The old man has gone back to his brass, rubbing at a name only he can read. He's told you what you needed — the boiler-room door, the only way out after dark — and won't be drawn into another word. \"Go on, then,\" he mutters, not looking up."
+      - when: {all: [{gate_passed: kbk-marta-calm}]}
+        body: "The old man keeps his eyes on the brass. \"School's closed,\" he mutters. \"You shouldn't be here.\" You think of what the girl whispered — him, creeping down to the boiler room in the dark — and find it harder to hold his gaze. (Talk to him — try to find out how to get out.)"
+    edges:
+      - id: e-gate-leave
+        to: kbk-entrance-hall
+        label: Step back into the hall
+        effects: {log: "You stepped back from the janitor."}
+        sort_order: 9
+
+  # --- from lund ---
+  - id: lund-library
+    pos: {x: 4831, y: 1557}
+    map: {x: 0.4645, y: 0.3042, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-library
+    title: The Cathedral Library
+    gate: lund-inga
+    media: {image_theme: old-library, music_theme: cathedral-cold}
+    body: "Inside the cathedral annex, a night librarian shelves books beneath a single lamp. She glances up at you over her glasses, unsurprised."
+    body_variants:
+      - when: {all: [{gate_passed: lund-inga}]}
+        body: "Inside the cathedral annex, the night librarian shelves books beneath her single lamp. She has already told you what she carries — the fire at the school in 1998, the child that was lost, the caretaker who never spoke of it again. She watches you over her glasses, gentler now, as if she'd handed you something heavy and isn't sure she should have."
+    edges:
+      - id: e-library-square
+        road: [[0.768, 0.5509], [0.7571, 0.5517]]
+        to: lund-square
+        label: Back out to the square
+        effects: {log: "You left the library."}
+        sort_order: 9
+  # --- Hannibal Läcker: the supper club cellar ---
+  - id: lund-cellar
+    pos: {x: 4788, y: 2199}
+    map: {x: 0.6231, y: 0.5102, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-cellar
+    title: The Supper Club Cellar
+    gate: lund-hannibal
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "Stone stairs fall away beneath an unmarked door into a vaulted cellar warm with candlelight. One table is laid for two — heavy silver, a decanter, the air sweet with cardamom and something underneath it you decide not to name. A trim man in a pressed grey suit rises, delighted, and draws back the second chair. \"You'll forgive the short notice. Sit. Tell me about yourself.\" (He trades in confidences — give carefully.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-hannibal}]}
+        body: "The cellar is warm with candlelight, the table still laid for two. The host sits back, content — you have traded him a true piece of yourself, and he has given you a name off his guest list, a guest from the year the school burned. \"Do stay,\" he murmurs, refilling your glass. You think, this time, that you will not."
+    edges:
+      - id: e-cellar-square
+        road: [[0.7799, 0.5916], [0.7352, 0.5819]]
+        to: lund-square
+        label: Make your excuses and climb back to the square
+        effects: {log: "You left the cellar — while you still could."}
+        sort_order: 9
+  # --- Skärlök Holm: the lodgings ---
+  - id: lund-lodgings
+    pos: {x: 2367, y: 1838}
+    map: {x: 0.2463, y: 0.7117, rx: 0.05, ry: 0.045, scale: 1.8}
+    arc: main
+    type: gate
+    location: lund-lodgings
+    title: Holm's Lodgings
+    gate: lund-holm
+    media: {image_theme: cluttered-study, music_theme: violin-restless}
+    body: "Up a narrow stair, a room boils with pipe-smoke and pinned paper — maps, clippings, a wall given over to one unsolved disappearance. A gaunt man in a long coat chews a stalk of wild garlic and does not turn around. \"Lost. Confused. Wet shoes from the square, soot still under your nails from somewhere older. You're not here for tea. Sit down and be interesting.\" (Bring him a real puzzle — and don't lie.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-holm}, {name_known: skarlok_holm}]}
+        body: "The room still boils with pipe-smoke and pinned paper. Holm has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
+      - when: {all: [{gate_passed: lund-holm}]}
+        body: "The room still boils with pipe-smoke and pinned paper. The gaunt detective has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
+    edges:
+      - id: e-lodgings-square
+        road: [[0.6113, 0.5511], [0.6393, 0.5573]]
+        to: lund-square
+        label: Show yourself back out to the square
+        effects: {log: "You left Holm to his clippings."}
+        sort_order: 9
+  # --- Greve Orlök: the manor ---
+  - id: lund-manor
+    pos: {x: 2943, y: 2511}
+    map: {x: 0.8314, y: 0.3608, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: lund-manor
+    title: The Manor Outside Lund
+    gate: lund-orlok
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "Past the last streetlight a carriage-drive climbs to a manor the maps still call empty. Rats stream up the steps ahead of you, unafraid. The great door is already open. Within, by guttering candles, a tall bald figure waits with his back to a cold hearth, fingers like dark twigs folded before him. \"You came to the door yourself,\" he says, pleased and patient. \"Good. I never cross a threshold uninvited.\" (Be courteous — but invite him nowhere.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-orlok}]}
+        body: "The candles still gutter in the open hall and the rats still keep their distance. The count stands as before with his back to the cold hearth — but he has told you what he watched from these windows across the years, the school burning among them, and every threshold between you has stayed closed. \"You kept your doorways,\" he says, approving. \"So few do.\""
+    edges:
+      - id: e-manor-square
+        road: [[0.6509, 0.6235], [0.6878, 0.5919]]
+        to: lund-square
+        label: Step back across the threshold and go
+        effects: {log: "You left the manor, and were glad the door let you."}
+        sort_order: 9
+  # --- Karl von Vinné: the botanical garden ---
+  - id: lund-botanical
+    pos: {x: 4658, y: 2932}
+    map: {x: 0.3074, y: 0.8725, rx: 0.05, ry: 0.045, scale: 2.6}
+    arc: main
+    type: gate
+    location: lund-botanical
+    title: The Botanical Garden
+    gate: lund-vinne
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum, real_place: "the Botanical Garden (Botaniska trädgården) in Lund, Sweden, an old glasshouse"}
+    body: "The garden gates are chained, but a glasshouse glows green and fogged from within. Inside, among dripping leaves, a florid man in a fraying frock coat pins specimens to board after board, a wine bottle open at his elbow. \"Ah — a new genus blunders in,\" he beams, raising a magnifying glass to your face. \"Stand still. I shall have to name you.\" (Indulge the cataloguer — and ask what he found by the school.)"
+    body_variants:
+      - when: {all: [{gate_passed: lund-vinne}, {name_known: karl_von_vinne}]}
+        body: "The glasshouse still glows green and dripping. Von Vinné has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
+      - when: {all: [{gate_passed: lund-vinne}]}
+        body: "The glasshouse still glows green and dripping. The drunken cataloguer has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
+    edges:
+      - id: e-botanical-square
+        road: [[0.7621, 0.6836], [0.7271, 0.623]]
+        to: lund-square
+        label: Leave him to his specimens
+        effects: {log: "You left the glasshouse and its collector."}
+        sort_order: 9
+
+  # --- from malmo ---
+  # --- Zoltan Ibrahimson: Rosengård ---
+  - id: malmo-rosengard
+    pos: {x: 789, y: 774}
+    map: {x: 0.7818, y: 0.68, rx: 0.05, ry: 0.045, scale: 2.4}
+    arc: main
+    type: gate
+    location: malmo-rosengard
+    title: Rosengård
+    gate: malmo-zoltan
+    media: {image_theme: estate-floodlight, music_theme: night-bass, real_place: "the Rosengård housing estate, Malmö, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Roseng%C3%A5rd_2009.png"}
+    body: "Concrete towers box in a floodlit cage pitch where a ball still cracks off the boards after midnight. An enormous ponytailed man holds the court alone, scarred eyebrow, expensive coat thrown over the fence. He nutmegs an invisible defender and grins at you. \"You came to Zoltan's part of town. Brave. Or lost.\" (Show some spine — he has no use for grovelling.)"
+    body_variants:
+      - when: {all: [{gate_passed: malmo-zoltan}]}
+        body: "Concrete towers box in the floodlit cage pitch. Zoltan still holds the court alone, but he greets you now like a debt already settled — he has given you the name off the harbour locker, the one that leads back to Sandby. \"Zoltan does not forget a face with spine,\" he says, and sends the ball cracking up off the boards."
+    edges:
+      - id: e-rosengard-harbor
+        road: [[0.3901, 0.4149], [0.3682, 0.4401]]
+        to: malmo-harbor
+        label: Head back down toward the harbour
+        effects: {log: "You left Rosengård."}
+        sort_order: 9
+  # --- Lisbet Salamander: the server basement ---
+  - id: malmo-server-basement
+    pos: {x: -557, y: 1824}
+    map: {x: 0.2959, y: 0.6687, rx: 0.05, ry: 0.045, scale: 1.35}
+    arc: main
+    type: gate
+    location: malmo-server-basement
+    title: The Basement Server Room
+    gate: malmo-lisbet
+    media: {image_theme: server-glow, music_theme: fan-hum}
+    body: "Behind a dead shopfront, stairs drop into a roar of cooling fans and racks blinking green in the dark. A small wiry woman sits cross-legged before six screens, headphones on, a salamander inked up her neck. She doesn't turn. \"I already know your login, your debt, and the time you got here. Say something I don't know, fast.\" (Be direct — she despises wasted time.)"
+    body_variants:
+      - when: {all: [{gate_passed: malmo-lisbet}, {name_known: lisbet_salamander}]}
+        body: "The fans still roar and the racks blink green in the dark. Lisbet hasn't turned from her six screens, but she's already given you what you came for — the name someone scrubbed out of the 1998 fire file. \"You're still here,\" she says flatly. \"I told you what I found. Don't make it weird.\""
+      - when: {all: [{gate_passed: malmo-lisbet}]}
+        body: "The fans still roar and the racks blink green in the dark. The hacker hasn't turned from her six screens, but she's already given you what you came for — the name someone scrubbed out of the 1998 fire file. \"You're still here,\" she says flatly. \"I told you what I found. Don't make it weird.\""
+    edges:
+      - id: e-basement-harbor
+        road: [[0.3227, 0.5141], [0.3249, 0.5053]]
+        to: malmo-harbor
+        label: Back up the stairs to the street
+        effects: {log: "You left the basement and its screens."}
+        sort_order: 9
+  # --- Kurt Vallmo: police HQ ---
+  - id: malmo-police
+    pos: {x: 619, y: 1883}
+    map: {x: 0.7669, y: 0.3563, rx: 0.05, ry: 0.045, scale: 1.25}
+    arc: main
+    type: gate
+    location: malmo-police
+    title: Police Headquarters
+    gate: malmo-vallmo
+    media: {image_theme: night-office, music_theme: low-dread, real_place: "a night-shift detective's office in a Swedish police station, paperwork and a murder board"}
+    body: "One window still burns on the upper floor of the police house. Inside, a heavy, rumpled detective sits alone at a desk drowned in folders, a murder board behind him stuck with a single old case. He doesn't get up; his stomach growls into the quiet. \"We're closed. But you've got the look of somebody who knows something I've been chewing on for years. Sit.\" (Be straight with him — he's too tired for games.)"
+    body_variants:
+      - when: {all: [{gate_passed: malmo-vallmo}, {name_known: kurt_vallmo}]}
+        body: "One window still burns on the upper floor. Vallmo sits where you left him among his folders and the one old case on the board — but he's said his piece now: the disappearance they made him drop, the fire file signed out and never returned. He watches you with tired, unguarded eyes, a battered evidence box now set out at his elbow."
+      - when: {all: [{gate_passed: malmo-vallmo}]}
+        body: "One window still burns on the upper floor. The rumpled detective sits where you left him among his folders and the one old case on the board — but he's said his piece now: the disappearance they made him drop, the fire file signed out and never returned. He watches you with tired, unguarded eyes, a battered evidence box now set out at his elbow."
+    edges:
+      - id: e-police-harbor
+        road: [[0.3931, 0.5535], [0.3883, 0.5474]]
+        to: malmo-harbor
+        label: Leave the detective to his folders
+        effects: {log: "You left the police house."}
+        sort_order: 9
+
+  # --- from marta ---
+  - id: kbk-classroom
+    pos: {x: 3478, y: 534}
+    map: {x: 0.2777, y: 0.705, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: killebackskolan
+    title: The Classroom
+    gate: kbk-marta-calm
+    media: {image_theme: dark-classroom, music_theme: fragile-quiet}
+    body: "You follow a thin sound of crying into a darkened classroom. A girl is wedged between two desks, knees drawn to her chest. She freezes when she sees you, eyes wide. (Try to calm her enough to talk.)"
+    body_variants:
+      # Once you know her name, the narration uses it; until then she's "the girl".
+      - when: {all: [{gate_passed: kbk-marta-calm}, {name_known: marta}]}
+        body: "The classroom is quiet now. Märta sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
+      - when: {all: [{gate_passed: kbk-marta-calm}]}
+        body: "The classroom is quiet now. The girl sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
+    edges:
+      - id: e-classroom-leave
+        to: kbk-entrance-hall
+        label: Step back into the hall
+        effects: {log: "You left the classroom."}
+        sort_order: 9
+
+  # --- from sandby ---
+  # --- Herr Dödblek: the churchyard ---
+  - id: sandby-church
+    pos: {x: 2604, y: -251}
+    map: {x: 0.4132, y: 0.3789, rx: 0.05, ry: 0.045, scale: 1.85}
+    arc: main
+    type: gate
+    location: sandby-church
+    title: Sandby Church
+    gate: sandby-dodblek
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold, real_place: "Södra Sandby church, a medieval whitewashed Scanian stone church and graveyard, Sweden"}
+    body: "The church door stands open on cold air and faded lime-painted saints. Out among the leaning stones a pale figure in a black hooded cloak sits at a small table, a chess set laid out before him, the far chair empty. He does not look up, but the board is already set as if he expected you. (Sit, or speak — see what he wants.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-dodblek}]}
+        body: "The church door stands open on cold air. The pale figure still sits among the leaning stones, the chess set laid between you — but he has already told you what he remembers of the night the school burned, the child who came to him out of the smoke. He inclines his head a fraction, and waits, in no hurry at all."
+    edges:
+      - id: e-church-street
+        road: [[0.5884, 0.249], [0.5865, 0.2719]]
+        to: sandby-street
+        label: Leave the churchyard
+        effects: {log: "You left the church behind you."}
+        sort_order: 9
+  # --- Norman Båts: the gravel-pit motel ---
+  - id: sandby-quarry
+    pos: {x: 4363, y: 239}
+    map: {x: 0.4595, y: 0.9138, rx: 0.05, ry: 0.045, scale: 2.3}
+    arc: main
+    type: gate
+    location: sandby-quarry
+    title: The Gravel-Pit Lake
+    gate: sandby-norman
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "Black water fills the old gravel pit, flat and patient. A motel crouches at its edge, half its windows dark, a VACANCY sign buzzing pink. A boyish man in a damp cardigan fumbles a ring of keys behind the desk and smiles too quickly when he sees you. \"Just the one night?\" (Talk to him — but mind the lake, and his mother.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-norman}, {name_known: norman_bats}]}
+        body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. Norman fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
+      - when: {all: [{gate_passed: sandby-norman}]}
+        body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. The motelkeeper fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
+    edges:
+      - id: e-quarry-street
+        road: [[0.6791, 0.29], [0.6465, 0.3088]]
+        to: sandby-street
+        label: Get back on the road to the village
+        effects: {log: "You left the lake behind you."}
+        sort_order: 9
+  # --- Pippa Långskugga: the crooked house ---
+  - id: sandby-crooked-house
+    pos: {x: 3589, y: -343}
+    map: {x: 0.8612, y: 0.3993, rx: 0.05, ry: 0.045, scale: 1.25}
+    arc: main
+    type: gate
+    location: sandby-crooked-house
+    title: The Crooked House
+    gate: sandby-pippa
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "The house leans as if listening. A grown woman with grey-rooted red braids sits on the porch rail, swinging her boots, a horseshoe bent straight in her hands like soft bread. \"You're new,\" she says, far too cheerful for the hour, \"nobody comes all the way out to where the lamps stop.\" (She knows the village's old secrets — if you can keep up with her.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-pippa}, {name_known: pippa_langskugga}]}
+        body: "The house leans as if listening. Pippa still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
+      - when: {all: [{gate_passed: sandby-pippa}]}
+        body: "The house leans as if listening. The red-braided woman still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
+    edges:
+      - id: e-crooked-street
+        road: [[0.6804, 0.1803], [0.6008, 0.3148]]
+        to: sandby-street
+        label: Back toward the lit streets
+        effects: {log: "You walked back to where the lamps still worked."}
+        sort_order: 9

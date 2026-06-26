@@ -1,0 +1,16 @@
+# OneLife nodes — type: ending
+
+nodes:
+
+  # --- from malmo ---
+  # --- THE ENDING: the crossing at the end of the harbour pier. Reachable only
+  # once every puzzle in the game is solved (see e-harbor-crossing's conditions),
+  # so the whole journey through Sandby, Lund and Malmö leads here.
+  - id: malmo-crossing
+    pos: {x: -1455, y: 820}
+    arc: main
+    type: ending
+    location: malmo-crossing
+    title: The Crossing
+    media: {image_theme: harbor-night, music_theme: revelation, real_place: "the very end of a long pier in Malmö harbour at night, the fog pulled back over the Öresund to reveal the lights of the far shore"}
+    body: "You walk out to the very end of the pier, where the water could never let you go before. The fog you named on the harbour wall draws back across the Öresund and does not close again — and there at last is the far shore, its lights small and steady and waiting. Everything you gathered tonight lies quiet in you now: the bricked door and the broken window, the burned year 1998, the name scrubbed from the file, the tall man and the small thing he carried out of the smoke. You take the child's photograph from the harbour locker and hold it up to the grey light off the water, and you stop pretending you do not know the face in it. It is yours. It was always yours — the child who never got out, come back the long way round to gather the whole of it. A low boat knocks against the pilings, no one at the tiller, and you understand it has been waiting here for you since the night the school burned. You step down into it. The far shore does not come nearer so much as the near one, gently, lets you go. ▒ End. ▒"

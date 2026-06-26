@@ -1,0 +1,139 @@
+# OneLife world — the cell grid and travel between places (WORLD_AND_MAPS.md).
+# Setting is southern Sweden, 1992. The year is fixed; traveling changes the
+# place (and therefore the atmosphere soundtrack), never the year.
+
+cells:
+  - id: sandby
+    map: {x: 0.7384, y: 0.3849, rx: 0.09, ry: 0.07}
+    world_exit: {x: 0.8909, y: 0.1095, rx: 0.06, ry: 0.05}
+    grid_x: 2
+    grid_y: 2
+    name: Södra Sandby
+    kind: village
+    region: "Södra Sandby, Skåne"
+    arrival_node: sandby-street
+  - id: lund
+    map: {x: 0.426, y: 0.3347, rx: 0.09, ry: 0.07}
+    grid_x: 1
+    grid_y: 2
+    name: Lund
+    kind: city
+    region: "Lund, Skåne"
+    arrival_node: lund-square
+
+locations:
+  - id: sandby-street
+    name: Sandby Street
+    cell: sandby
+    description: "The quiet main street of Södra Sandby."
+    icon_description: "A quiet village main street of low whitewashed Scanian houses with a single streetlamp."
+  - id: lund-square
+    name: Cathedral Square
+    cell: lund
+    description: "The old square below Lund Cathedral."
+    icon_description: "The twin-towered Romanesque Lund Cathedral rising over an open cobbled square."
+  - id: lund-station
+    name: Lund Station
+    cell: lund
+    description: "The town's small railway station."
+    icon_description: "A small old Swedish railway station building with a platform canopy and a clock set in its gable."
+
+nodes:
+  - id: sandby-street
+    pos: {x: 3174, y: 338}
+    map: {x: 0.4017, y: 0.5623, rx: 0.05, ry: 0.045}
+    arc: main
+    type: location
+    location: sandby-street
+    title: Sandby Street
+    world_access: true
+    media: {image_theme: village-street-dusk, music_theme: hushed-village, real_place: "the village of Södra Sandby, Skåne, Sweden"}
+    body: "Sandby's main street lies dark and empty beyond the school, streetlamps buzzing against the rain. The village is silent, but roads lead away into the wider night — toward Lund, and toward Malmö and the water."
+    edges:
+      - id: e-street-inside
+        to: kbk-entrance-hall
+        label: Climb back in through the broken window
+        effects: {log: "You went back into the school."}
+
+  - id: lund-square
+    pos: {x: 2124, y: 1253}
+    arc: main
+    type: location
+    location: lund-square
+    title: Cathedral Square
+    world_access: true
+    media: {image_theme: city-square-dusk, music_theme: cathedral-cold, real_place: "Lund Cathedral, Lund, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/a/aa/Lunds_domkyrka_augusti_2012.jpg"}
+    body: "Lund's cathedral looms over the empty square, its twin towers lost in low cloud. Cobblestones glisten. A side street leads down toward the railway station."
+    edges:
+      - id: e-square-station
+        to: lund-station
+        label: Walk down to the station
+        effects: {progress_points: 5, log: "You walked to Lund station."}
+
+  - id: lund-station
+    pos: {x: 2378, y: 1067}
+    map: {x: 0.6512, y: 0.7299, rx: 0.05, ry: 0.045}
+    arc: main
+    type: location
+    location: lund-station
+    title: Lund Station
+    media: {image_theme: station-night, music_theme: distant-trains, real_place: "Lund Central Station, Sweden", reference_image: "https://upload.wikimedia.org/wikipedia/commons/c/cf/Lunds_centralstation2007.jpg"}
+    body: "The station is shuttered for the night. A single departures board flickers a timetable for trains that have long since gone. The square is back up the hill."
+    body_variants:
+      - when: {all: [{puzzle_solved: last-train-time}]}
+        body: "The station is still shuttered, but the departures board no longer flickers — it holds the single time you settled it on, and one platform light burns steady down the empty track. The square is back up the hill."
+    edges:
+      - id: e-station-square
+        to: lund-square
+        label: Back up to the cathedral square
+        effects: {log: "You returned to the square."}
+
+# Standalone edge: leave the school for the village street (a world-access node).
+edges:
+  - id: e-hall-street
+    from: kbk-entrance-hall
+    to: sandby-street
+    label: Climb out through the broken window beside the entrance
+    conditions: {all: [{flag_set: knows_real_exit}]}
+    effects: {progress_points: 5, log: "You climbed out through the broken entrance window into Södra Sandby."}
+    sort_order: 5
+
+  # --- Inter-cell links (two-way): rail lines between the station nodes, and the
+  #     lane from Sandby out into the Skåne woods. These are direct shortcuts that
+  #     bypass the world map — you walk them straight from the platform/street.
+  - id: e-triangeln-lund
+    from: malmo-citytunnel
+    to: lund-station
+    label: Take the train north to Lund
+    effects: {log: "You rode the train north from Triangeln to Lund."}
+    sort_order: 6
+  - id: e-lund-triangeln
+    from: lund-station
+    to: malmo-citytunnel
+    label: Take the train down to Malmö (Triangeln)
+    effects: {log: "You rode the train down to Triangeln in Malmö."}
+    sort_order: 6
+  - id: e-lund-sandby
+    from: lund-station
+    to: sandby-street
+    label: Take the branch line out to Södra Sandby
+    effects: {log: "You took the branch line out to Södra Sandby."}
+    sort_order: 7
+  - id: e-sandby-lund
+    from: sandby-street
+    to: lund-station
+    label: Ride the line in to Lund station
+    effects: {log: "You rode the line in to Lund station."}
+    sort_order: 6
+  - id: e-sandby-woods
+    from: sandby-street
+    to: woods-path
+    label: Follow the lane east into the Skåne woods
+    effects: {log: "You followed the lane into the Skåne woods."}
+    sort_order: 7
+  - id: e-woods-sandby
+    from: woods-path
+    to: sandby-street
+    label: Take the path back out toward Sandby
+    effects: {log: "You took the path back out toward Sandby."}
+    sort_order: 6

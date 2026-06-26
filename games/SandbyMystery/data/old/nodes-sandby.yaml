@@ -1,0 +1,147 @@
+# OneLife content — Södra Sandby deepened beyond the school: three sub-locations
+# reached from Sandby Street (the village world-access hub in world.yaml), each
+# home to one of the roster NPCs. Side-content off the main spine; every node has
+# a return edge to the hub so the spine lint stays trap-free.
+
+nodes:
+  # --- Herr Dödblek: the churchyard ---
+  - id: sandby-church
+    pos: {x: 2689, y: 395}
+    map: {x: 0.4132, y: 0.3789, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: sandby-church
+    title: Sandby Church
+    gate: sandby-dodblek
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold, real_place: "Södra Sandby church, a medieval whitewashed Scanian stone church and graveyard, Sweden"}
+    body: "The church door stands open on cold air and faded lime-painted saints. Out among the leaning stones a pale figure in a black hooded cloak sits at a small table, a chess set laid out before him, the far chair empty. He does not look up, but the board is already set as if he expected you. (Sit, or speak — see what he wants.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-dodblek}]}
+        body: "The church door stands open on cold air. The pale figure still sits among the leaning stones, the chess set laid between you — but he has already told you what he remembers of the night the school burned, the child who came to him out of the smoke. He inclines his head a fraction, and waits, in no hurry at all."
+    edges:
+      - id: e-church-street
+        road: [[0.676, 0.2785], [0.6842, 0.2752]]
+        to: sandby-street
+        label: Leave the churchyard
+        effects: {log: "You left the church behind you."}
+        sort_order: 9
+  # --- Norman Båts: the gravel-pit motel ---
+  - id: sandby-quarry
+    pos: {x: 3673, y: 371}
+    map: {x: 0.4595, y: 0.9138, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: sandby-quarry
+    title: The Gravel-Pit Lake
+    gate: sandby-norman
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "Black water fills the old gravel pit, flat and patient. A motel crouches at its edge, half its windows dark, a VACANCY sign buzzing pink. A boyish man in a damp cardigan fumbles a ring of keys behind the desk and smiles too quickly when he sees you. \"Just the one night?\" (Talk to him — but mind the lake, and his mother.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-norman}, {name_known: norman_bats}]}
+        body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. Norman fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
+      - when: {all: [{gate_passed: sandby-norman}]}
+        body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. The motelkeeper fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
+    edges:
+      - id: e-quarry-street
+        road: [[0.8187, 0.2874], [0.7191, 0.246]]
+        to: sandby-street
+        label: Get back on the road to the village
+        effects: {log: "You left the lake behind you."}
+        sort_order: 9
+  # --- Pippa Långskugga: the crooked house ---
+  - id: sandby-crooked-house
+    pos: {x: 2756, y: 33}
+    map: {x: 0.8612, y: 0.3993, rx: 0.05, ry: 0.045, scale: 1.0}
+    arc: main
+    type: gate
+    location: sandby-crooked-house
+    title: The Crooked House
+    gate: sandby-pippa
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "The house leans as if listening. A grown woman with grey-rooted red braids sits on the porch rail, swinging her boots, a horseshoe bent straight in her hands like soft bread. \"You're new,\" she says, far too cheerful for the hour, \"nobody comes all the way out to where the lamps stop.\" (She knows the village's old secrets — if you can keep up with her.)"
+    body_variants:
+      - when: {all: [{gate_passed: sandby-pippa}, {name_known: pippa_langskugga}]}
+        body: "The house leans as if listening. Pippa still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
+      - when: {all: [{gate_passed: sandby-pippa}]}
+        body: "The house leans as if listening. The red-braided woman still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
+    edges:
+      - id: e-crooked-street
+        road: [[0.6798, 0.2171], [0.6865, 0.2258]]
+        to: sandby-street
+        label: Back toward the lit streets
+        effects: {log: "You walked back to where the lamps still worked."}
+        sort_order: 9
+  # --- puzzle: the riddle cut over the lych-gate (church-bell-riddle) ---
+  - id: sandby-church-bell
+    pos: {x: 2391, y: 254}
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: The Lych-Gate Riddle
+    puzzle: church-bell-riddle
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Words are cut into the lintel over the lych-gate, worn shallow by a century of weather. The tower bell hangs silent above the churchyard, waiting. (Answer what is carved.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: church-bell-riddle}]}
+        body: "The words cut over the lych-gate read plainly now that you have answered them. High in the tower the bell hangs still — but you have heard it give its one soft, untouched note, and the whole churchyard feels, somehow, listened-to."
+    edges:
+      - id: e-bell-solved
+        to: sandby-church
+        label: Speak the answer up at the tower
+        conditions: {all: [{puzzle_solved: church-bell-riddle}]}
+        effects: {progress_points: 15, log: "You spoke the answer; far above, the bell gave one soft, untouched note."}
+      - id: e-bell-back
+        to: sandby-church
+        label: Step back from the gate
+        effects: {log: "You left the carved riddle to the weather."}
+        sort_order: 8
+  # --- puzzle: Dödblek's wager (dodblek-games), offered once you've met him ---
+  - id: sandby-dodblek-count
+    pos: {x: 2349, y: 497}
+    arc: main
+    type: puzzle
+    location: sandby-church
+    title: Dödblek's Wager
+    puzzle: dodblek-games
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "Dödblek gestures at the board between you without looking up. \"A small wager before we play,\" he says. \"Count my games honestly, and I will spot you a piece.\" (Give him the number.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: dodblek-games}]}
+        body: "\"Forty-six. Just so,\" Dödblek says, inclining his head a fraction. He lifts a white knight from the board and sets it aside for you — the wager won, the game proper still waiting whenever you are."
+    edges:
+      - id: e-count-solved
+        to: sandby-church
+        label: Take the knight Dödblek set aside
+        conditions: {all: [{puzzle_solved: dodblek-games}]}
+        effects: {progress_points: 15, log: "You counted true; Dödblek lifted a white knight from the board and set it aside for you."}
+      - id: e-count-back
+        to: sandby-church
+        label: Decline the wager
+        effects: {log: "You let the wager lie."}
+        sort_order: 7
+  # --- puzzle: Pippa's riddle-game (shadow-riddle), offered once you've met her ---
+  - id: sandby-pippa-shadow
+    pos: {x: 2953, y: 7}
+    arc: main
+    type: puzzle
+    location: sandby-crooked-house
+    title: Pippa's Riddle-Game
+    puzzle: shadow-riddle
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "Pippa hops down off the rail and plants herself in your path, delighted. \"Riddle-game, riddle-game!\" she sings. \"Half of my name is the answer — get it, and I'll tell you a secret.\" (Answer her riddle.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: shadow-riddle}]}
+        body: "\"SHADOW!\" Pippa shrieks, clapping, delighted. \"You got it, you got it!\" The riddle-game is won. She swings back up onto the porch rail, kicking her boots, ready to make good on the secret she promised."
+    edges:
+      - id: e-shadow-solved
+        to: sandby-crooked-house
+        label: Lean in for the secret Pippa promised
+        conditions: {all: [{puzzle_solved: shadow-riddle}]}
+        effects: {progress_points: 15, log: "Pippa leaned in close, the play gone right out of her: \"That little one the tall man carried out of the fire — I saw its face in the firelight. It had your face. Younger. But yours.\" Then she was up on the rail again, swinging her boots and humming, as though she'd said nothing at all."}
+      - id: e-shadow-back
+        to: sandby-crooked-house
+        label: Step out of her game
+        effects: {log: "You stepped out of Pippa's game."}
+        sort_order: 8
+
+# Standalone edges off the village hub (sandby-street, world.yaml).

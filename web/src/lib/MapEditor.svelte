@@ -1,10 +1,12 @@
 <script>
-  // Admin road editor for the overview map. Shows every location icon at its (read-
-  // only) graph-editor position on the parchment, draws the graph edges as roads, and
-  // the "Redraw roads" button re-routes them as splines that bend around icons and
-  // push apart from one another. The routes are saved onto their edges in the YAML.
+  // Admin map editor for the overview map. Shows every location icon at its graph-
+  // editor position on the parchment and draws the graph edges as roads. Icons are
+  // DRAGGABLE — dropping one saves the node's position back into the YAML (the same
+  // pos the story-graph editor uses). The "Redraw roads" button re-routes the roads
+  // as splines that bend around icons and push apart, saved onto their edges.
   // Coordinates are normalized 0..1 against the parchment, matching the player map.
   import { api, contentAsset } from './api.js';
+  import { roadPath } from './maputil.js';   // shared with the player map (MapOverlay)
 
   let { onClose } = $props();
 
@@ -14,10 +16,23 @@
   let busy = $state(false);
   let cw = $state(0), ch = $state(0); // rendered image size in px
   let imgOk = $state(true);
+  let stageEl = $state(null);         // the parchment stage element (for drag coords)
+  let drag = $state(null);            // { loc, sx, sy, moved } while pressing an icon
+  let selected = $state(null);        // loc id of the icon whose scale is being edited
+  let revealAll = $state(true);       // fog-of-war toggle: on = show every place (default)
+  let drawFrom = $state(null);        // draw-edge mode: source place id (after a long-press)
+  let cursor = $state(null);          // {x,y} px while rubber-banding to the pointer
+  let pressTimer = null;              // long-press timer handle (non-reactive)
+  const LONG_MS = 450;                // hold this long on an icon to start drawing an edge
 
   const nodes = $derived(block?.nodes ?? []);
   const roads = $derived(block?.roads ?? []);
   const byId = $derived(Object.fromEntries(nodes.map((n) => [n.id, n])));
+  // With fog on (revealAll off) only the starting cell's places are visible, as a
+  // fresh player would first see them.
+  const visible = $derived(new Set(
+    (revealAll ? nodes : nodes.filter((n) => n.cell === block?.start_cell)).map((n) => n.id)));
+  let hovered = $state(null);   // loc id of the icon under the mouse (shows its big label)
 
   async function load() {
     try { block = await api.mapOverview(); }
@@ -25,21 +40,7 @@
   }
   load();
 
-  // --- Catmull-Rom spline through the endpoints + interior waypoints (px) ---
-  function pathFor(r) {
-    const a = byId[r.from], b = byId[r.to];
-    if (!a || !b) return '';
-    const pts = [[a.x, a.y], ...(r.points ?? []), [b.x, b.y]].map(([x, y]) => [x * cw, y * ch]);
-    if (pts.length === 2) return `M ${pts[0]} L ${pts[1]}`;
-    let d = `M ${pts[0][0].toFixed(1)},${pts[0][1].toFixed(1)}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const p0 = pts[i - 1] ?? pts[i], p1 = pts[i], p2 = pts[i + 1], p3 = pts[i + 2] ?? p2;
-      const c1x = p1[0] + (p2[0] - p0[0]) / 6, c1y = p1[1] + (p2[1] - p0[1]) / 6;
-      const c2x = p2[0] - (p3[0] - p1[0]) / 6, c2y = p2[1] - (p3[1] - p1[1]) / 6;
-      d += ` C ${c1x.toFixed(1)},${c1y.toFixed(1)} ${c2x.toFixed(1)},${c2y.toFixed(1)} ${p2[0].toFixed(1)},${p2[1].toFixed(1)}`;
-    }
-    return d;
-  }
+  const cx = (n) => n.x * cw, cy = (n) => n.y * ch;
 
   // --- Route every road: interior control points relaxed by a deterministic force
   // sim. Each point is repelled by icons it isn't an endpoint of (so the spline
@@ -100,7 +101,101 @@
     } catch (e) { msg = `Save failed: ${e.message}`; } finally { busy = false; }
   }
   async function redrawAndSave() { redraw(); await save(); }
+
+  // --- Drag an icon to reposition it; on drop, persist back to the YAML ----------
+  // The icon shows a normalized 0..1 position; we invert it through the same bounds
+  // the backend normalized with, then save the node's graph pixel pos (the single
+  // source of truth that both this map and the story-graph editor read).
+  function startDrag(e, n) {
+    e.preventDefault();
+    if (drawFrom) {                          // we're placing the edge's 2nd endpoint
+      const src = drawFrom; cancelDraw();
+      if (n.id !== src) addEdge(src, n.id);  // clicking the source again just cancels
+      return;
+    }
+    drag = { loc: n.id, sx: e.clientX, sy: e.clientY, moved: false };
+    stageEl?.setPointerCapture?.(e.pointerId);
+    clearTimeout(pressTimer);
+    pressTimer = setTimeout(() => {          // held still long enough → draw-edge mode
+      if (drag && !drag.moved) {
+        const s = byId[drag.loc];
+        drawFrom = drag.loc; selected = null;
+        cursor = s ? { x: s.x * cw, y: s.y * ch } : null;
+        drag = null;
+        try { stageEl?.releasePointerCapture?.(e.pointerId); } catch (_) {}
+      }
+    }, LONG_MS);
+  }
+  function onMove(e) {
+    if (drawFrom) {                          // rubber-band the edge to the pointer
+      if (!stageEl) return;
+      const r = stageEl.getBoundingClientRect();
+      cursor = { x: e.clientX - r.left, y: e.clientY - r.top };
+      return;
+    }
+    if (!drag || !cw || !ch || !stageEl) return;
+    if (!drag.moved) {   // ignore tiny jitter so a click stays a click (select), not a drag
+      if (Math.hypot(e.clientX - drag.sx, e.clientY - drag.sy) < 4) return;
+      drag.moved = true; clearTimeout(pressTimer);   // a real drag — not a long-press
+    }
+    const r = stageEl.getBoundingClientRect();
+    const clamp = (v) => Math.min(0.98, Math.max(0.02, v));
+    const n = byId[drag.loc];
+    if (!n) return;
+    n.x = +clamp((e.clientX - r.left) / cw).toFixed(4);
+    n.y = +clamp((e.clientY - r.top) / ch).toFixed(4);
+    block = { ...block, nodes: [...nodes] };   // nudge reactivity (icons + roads follow)
+  }
+  async function endDrag(e) {
+    clearTimeout(pressTimer);
+    if (drawFrom) return;            // long-press armed draw mode; await the target click
+    if (!drag) return;
+    const n = byId[drag.loc], moved = drag.moved;
+    drag = null;
+    stageEl?.releasePointerCapture?.(e.pointerId);
+    if (!moved) { selected = n?.id ?? null; return; }   // a click selects it (edit scale)
+    const b = block?.bounds;
+    if (!n || !b) { msg = 'No layout bounds — cannot save position.'; return; }
+    const span = 1 - 2 * b.margin;
+    const px = b.maxx === b.minx ? b.minx : b.minx + ((n.x - b.margin) / span) * (b.maxx - b.minx);
+    const py = b.maxy === b.miny ? b.miny : b.miny + ((n.y - b.margin) / span) * (b.maxy - b.miny);
+    try {
+      await api.moveNode(n.node_id, Math.round(px), Math.round(py));
+      msg = `Saved “${n.title}” position to the YAML.`;
+    } catch (err) { msg = `Save failed: ${err.message}`; }
+  }
+
+  // --- Draw-edge mode: connect the long-pressed place to the next one clicked -------
+  function cancelDraw() { drawFrom = null; cursor = null; }
+  async function addEdge(fromLoc, toLoc) {
+    const f = byId[fromLoc], t = byId[toLoc];
+    if (!f || !t) return;
+    const label = window.prompt(
+      `Label for the edge between “${f.title}” and “${t.title}”\n(blank = auto “Go to …”; applied to both directions)`, '');
+    if (label === null) return;     // cancelled
+    busy = true; msg = '';
+    try {
+      const r = await api.addEdge(f.node_id, t.node_id, label.trim(), true);
+      await load();                 // reload so the new road(s) show
+      msg = r.created?.length
+        ? `Added ${r.created.length} edge(s): ${f.title} ↔ ${t.title}.`
+        : `Edge already existed between ${f.title} and ${t.title}.`;
+    } catch (err) { msg = `Add edge failed: ${err.message}`; }
+    finally { busy = false; }
+  }
+
+  // --- Edit a selected icon's scale; live-resize on input, save to YAML on release ---
+  function setScaleLive(n, v) { n.scale = v; block = { ...block, nodes: [...nodes] }; }
+  async function saveScale(n, v) {
+    setScaleLive(n, v);
+    try {
+      await api.setNodeScale(n.node_id, v);
+      msg = `Saved “${n.title}” scale ${v.toFixed(2)}× to the YAML.`;
+    } catch (err) { msg = `Scale save failed: ${err.message}`; }
+  }
 </script>
+
+<svelte:window onkeydown={(e) => e.key === 'Escape' && cancelDraw()} />
 
 <div class="me-overlay">
   <div class="me-card">
@@ -109,7 +204,9 @@
       <button onclick={redrawAndSave} disabled={busy || !nodes.length}
         title="Re-route every road as a spline that bends around icons and away from other roads, then save">
         {busy ? 'Working…' : '🛣 Redraw roads'}</button>
-      <span class="sub">{nodes.length ? `${nodes.length} places · ${roads.length} roads · positions are set in the story graph` : ''}</span>
+      <label class="me-fog" title="Off shows only the starting cell's places, as a new player first sees the map">
+        <input type="checkbox" bind:checked={revealAll} /> Reveal all (no fog)</label>
+      <span class="sub">{nodes.length ? `${nodes.length} places · ${roads.length} roads · drag to move · click to set scale · long-press to draw an edge` : ''}</span>
       <button class="me-x" onclick={onClose}>✕</button>
     </div>
     {#if msg}<p class="me-msg">{msg}</p>{/if}
@@ -117,25 +214,65 @@
 
     {#if block}
       <div class="me-scroll">
-        <div class="me-stage" bind:clientWidth={cw} bind:clientHeight={ch}
+        <div class="me-stage" bind:this={stageEl} bind:clientWidth={cw} bind:clientHeight={ch}
+             onpointermove={onMove} onpointerup={endDrag}
              style={imgOk ? '' : 'aspect-ratio:4/3'}>
           <img class="me-bg" src={contentAsset(block.image)} alt="" draggable="false"
                onload={() => (imgOk = true)} onerror={() => (imgOk = false)} />
           {#if !imgOk}<div class="me-missing">map background missing: <code>{block.image}</code></div>{/if}
+          {#if drawFrom && byId[drawFrom]}
+            <div class="me-hint">Drawing an edge from “{byId[drawFrom].title}” — click another place to connect, or Esc to cancel</div>
+          {/if}
           {#if cw > 0 && ch > 0}
-            <svg class="me-svg" width={cw} height={ch}>
-              {#each roads as r}
-                {#if byId[r.from] && byId[r.to]}
-                  <path class="me-road" d={pathFor(r)} />
+            <svg class="me-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
+              <defs>
+                {#each roads as r, i}
+                  {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
+                    <linearGradient id={`meroad${i}`} gradientUnits="userSpaceOnUse"
+                      x1={cx(byId[r.from])} y1={cy(byId[r.from])} x2={cx(byId[r.to])} y2={cy(byId[r.to])}>
+                      <stop offset="0" stop-color="#7a5230" stop-opacity="0" />
+                      <stop offset="0.22" stop-color="#7a5230" stop-opacity="0.7" />
+                      <stop offset="0.78" stop-color="#7a5230" stop-opacity="0.7" />
+                      <stop offset="1" stop-color="#7a5230" stop-opacity="0" />
+                    </linearGradient>
+                  {/if}
+                {/each}
+              </defs>
+              {#each roads as r, i}
+                {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
+                  <path class="me-road" fill="none" stroke={`url(#meroad${i})`} d={roadPath(byId, r, cw, ch)} />
                 {/if}
               {/each}
+              {#if drawFrom && byId[drawFrom] && cursor}
+                <line class="me-draw" x1={byId[drawFrom].x * cw} y1={byId[drawFrom].y * ch}
+                      x2={cursor.x} y2={cursor.y} />
+              {/if}
             </svg>
             {#each nodes as n}
-              <div class="me-icon" style={`left:${n.x * cw}px; top:${n.y * ch}px; --s:${n.scale ?? 1}`}>
+              {#if visible.has(n.id)}
+              <div class="me-icon" class:dragging={drag?.loc === n.id} class:drawsrc={drawFrom === n.id}
+                   style={`left:${n.x * cw}px; top:${n.y * ch}px; --s:${n.scale ?? 1}`}
+                   onpointerdown={(e) => startDrag(e, n)}
+                   onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
                 <img src={contentAsset(n.icon)} alt={n.title} draggable="false" />
-                <span>{n.title}</span>
               </div>
+              {/if}
             {/each}
+
+            {#if hovered && byId[hovered] && visible.has(hovered)}
+              <div class="me-hover-lbl">{byId[hovered].title}</div>
+            {/if}
+
+            {#if selected && byId[selected] && visible.has(selected)}
+              <div class="me-scale" style={`left:${byId[selected].x * cw}px; top:${byId[selected].y * ch}px`}>
+                <span class="me-scale-t">{byId[selected].title}</span>
+                <input type="range" min="0.5" max="3" step="0.05" value={byId[selected].scale ?? 1}
+                  oninput={(e) => setScaleLive(byId[selected], +e.target.value)}
+                  onchange={(e) => saveScale(byId[selected], +e.target.value)} />
+                <span class="me-scale-v">{(byId[selected].scale ?? 1).toFixed(2)}×</span>
+                <button class="me-scale-x" onclick={() => (selected = null)}>done</button>
+              </div>
+            {/if}
           {/if}
         </div>
       </div>
@@ -145,27 +282,56 @@
 
 <style>
   .me-overlay { position:fixed; inset:0; z-index:2100; background:rgba(8,9,14,.9);
-    display:flex; align-items:center; justify-content:center; padding:1rem; }
-  .me-card { background:#15171f; border:1px solid #2a2e3e; border-radius:10px; padding:.8rem;
-    max-width:97vw; max-height:97vh; display:flex; flex-direction:column; }
+    display:flex; align-items:center; justify-content:center; padding:0; }
+  /* 5% margin around the editor; no internal padding. */
+  .me-card { background:#15171f; border:1px solid #2a2e3e; border-radius:10px; padding:0;
+    width:90vw; height:90vh; max-width:90vw; max-height:90vh; box-sizing:border-box;
+    display:flex; flex-direction:column; }
   .me-head { display:flex; align-items:center; gap:.7rem; margin-bottom:.5rem; flex-wrap:wrap; }
   .me-head button { background:#2a2e3e; color:#e8e6df; border:1px solid #3a456a; border-radius:6px;
     padding:.3rem .8rem; cursor:pointer; }
   .me-head button:hover:not(:disabled) { background:#34416a; color:#cdbb9a; }
+  .me-fog { display:flex; align-items:center; gap:.35rem; color:#cdbb9a; font-size:.85rem;
+    cursor:pointer; user-select:none; }
+  .me-fog input { cursor:pointer; }
   .me-x { margin-left:auto; }
   .me-msg { margin:.2rem 0; color:#9fd29f; font-size:.85rem; }
   .me-err { margin:.2rem 0; color:#e0a; font-size:.85rem; }
-  .me-scroll { overflow:auto; border:1px solid #2a2e3e; border-radius:8px; background:#0d0e14; }
-  .me-stage { position:relative; line-height:0; width:1100px; max-width:88vw; }
+  .me-scroll { overflow:auto; border:1px solid #2a2e3e; border-radius:8px; background:#0d0e14;
+    flex:1 1 auto; min-height:0; display:flex; }
+  /* Fill the card: as large a 4:3 map as fits the available height/width. */
+  .me-stage { position:relative; line-height:0; width:100%;
+    max-width:calc((90vh - 4rem) * 4 / 3); margin:auto; }
   .me-bg { display:block; width:100%; height:auto; }
   .me-missing { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     color:#9a9ab0; font-size:.9rem; }
   .me-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
-  .me-road { fill:none; stroke:#7a5230; stroke-width:3; stroke-linecap:round; opacity:.85; }
-  .me-icon { position:absolute; transform:translate(-50%, -50%); display:flex; flex-direction:column;
-    align-items:center; gap:1px; pointer-events:none; }
-  .me-icon img { width:calc(clamp(40px, 6vw, 76px) * var(--s, 1)); height:auto; display:block;
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); }
-  .me-icon span { font:600 11px Georgia, serif; color:#3a2a16; white-space:nowrap;
-    text-shadow:0 1px 0 rgba(255,250,240,.6); }
+  .me-road { stroke-width:4; stroke-linecap:round; }   /* gradient stroke set inline (matches player) */
+  .me-icon { position:absolute; transform:translate(-50%, -50%); cursor:grab;
+    touch-action:none; user-select:none; }
+  .me-icon.dragging { cursor:grabbing; z-index:5; }
+  .me-icon.drawsrc img { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 7px rgba(192,86,58,.95)); }
+  /* Rubber-band line while drawing a new edge. */
+  .me-draw { stroke:#c0563a; stroke-width:2; stroke-dasharray:6 4; opacity:.95; pointer-events:none; }
+  .me-hint { position:absolute; left:50%; top:8px; transform:translateX(-50%); z-index:20;
+    background:rgba(192,86,58,.92); color:#fff; font:600 12px Georgia, serif; padding:.3rem .7rem;
+    border-radius:6px; pointer-events:none; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.4); }
+  /* Match the player map's icon sizing so the editor shows the true on-map scale. */
+  .me-icon img { width:calc(clamp(56px, 9.8vw, 101px) * var(--s, 1)); height:auto; display:block;
+    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); pointer-events:none; }
+  /* The hovered icon's name, shown large and centred ~10% down from the top. */
+  .me-hover-lbl { position:absolute; left:50%; top:10%; transform:translate(-50%, -50%);
+    z-index:15; pointer-events:none; white-space:nowrap; font:700 clamp(20px, 3.2vw, 38px) Georgia, serif;
+    color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
+  .me-scale { position:absolute; transform:translate(-50%, -135%); z-index:10; display:flex;
+    align-items:center; gap:.4rem; background:rgba(18,20,28,.96); border:1px solid #3a456a;
+    border-radius:6px; padding:.25rem .5rem; white-space:nowrap; pointer-events:auto;
+    box-shadow:0 4px 12px rgba(0,0,0,.5); }
+  .me-scale-t { color:#cdbb9a; font:600 11px Georgia, serif; max-width:120px; overflow:hidden;
+    text-overflow:ellipsis; }
+  .me-scale input { width:120px; cursor:pointer; }
+  .me-scale-v { color:#e8e6df; font-size:.8rem; min-width:3.2ch; text-align:right; }
+  .me-scale-x { background:#2a2e3e; color:#e8e6df; border:1px solid #3a456a; border-radius:4px;
+    cursor:pointer; font-size:.75rem; padding:.1rem .45rem; }
+  .me-scale-x:hover { background:#34416a; }
 </style>
