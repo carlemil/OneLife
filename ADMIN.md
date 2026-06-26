@@ -11,7 +11,7 @@ endpoints return **403** otherwise. No DB reset needed (uses the existing `email
 ## Scopes
 | Scope | Export | Import | Notes |
 |---|---|---|---|
-| **Authored content** | `content-export.yaml` | YAML/JSON | Round-trips the `content.py` pipeline: **validated** (incl. spine lint) then **upserted**. Non-destructive. |
+| **Authored content** | `content-export.yaml` | — | **Export only.** The YAML content files are the single source of truth; to change content, edit the files and re-seed (seeding reconciles the DB to them). The in-app graph is a **read-only** view; dragging a node writes its `pos:` back into the YAML. |
 | **Full database** | `onelife-db-export.json` | JSON | Every table incl. accounts. Import **truncates + restores all tables** in one transaction. **Contains secrets** (password hashes, encrypted TOTP, tokens) — treat the file as sensitive. |
 | **Player save** | `onelife-save-<name>.json` | JSON | One player's runtime state. Import **overwrites that player's** state, onto the **same `player_id`** (no cross-account transfer). |
 
@@ -29,5 +29,5 @@ Destructive imports (full DB, player save) require typing **`REPLACE`** in the U
 
 ## Caveats
 - Full-DB import assumes the dump matches the **current schema** (no migration);
-  a dump from an older schema may fail. Content import is schema-robust.
+  a dump from an older schema may fail.
 - A full-DB import logs you out (sessions are replaced) — log back in.

@@ -4,6 +4,12 @@
 // Note: `??` not `||` — an explicit empty string must survive as "relative".
 const BASE = import.meta.env.VITE_API_BASE ?? 'http://localhost:8000';
 
+// Absolute base for non-fetch asset URLs (e.g. <img src> for the map backgrounds,
+// served by the API at /content-static/...). Empty string in prod = same-origin.
+export const API_BASE = BASE;
+// Build a URL for a content-repo static asset (path like "images/maps/lund.png").
+export const contentAsset = (path) => `${BASE}/content-static/${path}`;
+
 function token() {
   return localStorage.getItem('onelife_token');
 }
@@ -55,12 +61,12 @@ export const api = {
   submitOnboarding: (answers) => req('/api/onboarding/submit', { method: 'POST', body: { answers } }),
 
   // world & maps
-  world: () => req('/api/world'),
-  worldMap: () => req('/api/worldmap'),
-  worldMapTravel: (location_id) => req('/api/worldmap/travel', { method: 'POST', body: { location_id } }),
-  getWorldmapPositions: () => req('/api/admin/worldmap/positions'),
-  saveWorldmapPositions: (positions) => req('/api/admin/worldmap/positions', { method: 'POST', body: { positions } }),
   travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),
+  // map editor (admin): load every map's items, save one ellipse back to YAML
+  mapAll: () => req('/api/admin/map/all'),
+  saveMapPos: (kind, id, map) => req('/api/admin/map/save', { method: 'POST', body: { kind, id, map } }),
+  mapOverview: () => req('/api/admin/map/overview'),
+  saveRoads: (roads) => req('/api/admin/map/roads', { method: 'POST', body: { roads } }),
 
   // atmosphere
   atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
@@ -72,6 +78,7 @@ export const api = {
   leaderboard: ({ offset = 0, limit = 20, q = '', around = 0 } = {}) =>
     req(`/api/leaderboard?offset=${offset}&limit=${limit}&q=${encodeURIComponent(q)}&around=${around}`),
   takeEdge: (edge_id) => req('/api/edge', { method: 'POST', body: { edge_id } }),
+  walkTo: (node_id) => req('/api/walk', { method: 'POST', body: { node_id } }),
   gate: (text) => req('/api/gate/message', { method: 'POST', body: { text } }),
   puzzle: (answer) => req('/api/puzzle/submit', { method: 'POST', body: { answer } }),
   puzzleHint: () => req('/api/puzzle/hint', { method: 'POST' }),
@@ -80,23 +87,16 @@ export const api = {
   // admin (export/import) — all require an allowlisted account
   adminMe: () => req('/api/admin/me'),
   exportContent: () => req('/api/admin/content/export'),
-  importContent: (text) => req('/api/admin/content/import', { method: 'POST', body: { text } }),
   exportDb: () => req('/api/admin/db/export'),
   importDb: (data, confirm) => req('/api/admin/db/import', { method: 'POST', body: { data, confirm } }),
   listPlayers: () => req('/api/admin/players'),
   exportPlayer: (id) => req(`/api/admin/player/${id}/export`),
   importPlayer: (data, confirm) => req('/api/admin/player/import', { method: 'POST', body: { data, confirm } }),
 
-  // admin content editor (graph + canonical event log)
+  // admin read-only content graph + node positioning (positions are authored in YAML)
   contentAll: () => req('/api/admin/content/all'),
-  saveEntity: (kind, entity) => req('/api/admin/content/entity', { method: 'POST', body: { kind, entity } }),
-  deleteEntity: (kind, id) => req('/api/admin/content/delete', { method: 'POST', body: { kind, id } }),
   moveNode: (id, x, y) => req('/api/admin/content/move', { method: 'POST', body: { id, x, y } }),
   layoutNodes: (positions) => req('/api/admin/content/layout', { method: 'POST', body: { positions } }),
-  contentLog: () => req('/api/admin/content/log'),
-  contentUndo: () => req('/api/admin/content/undo', { method: 'POST' }),
-  contentRedo: () => req('/api/admin/content/redo', { method: 'POST' }),
-  contentUndoTo: (seq) => req('/api/admin/content/undo_to', { method: 'POST', body: { seq } }),
 };
 
 // Trigger a browser download of a text body.

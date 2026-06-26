@@ -31,9 +31,11 @@ async def run(lint_only: bool) -> int:
 
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        await content.seed_content(conn, data)
+        skipped = await content.seed_content(conn, data)
     await db.close_pool()
-    print("Seeded OK.")
+    for s in skipped or []:
+        print(f"KEPT  {s}")
+    print("Seeded OK." + (f" ({len(skipped)} row(s) kept — in use by players)" if skipped else ""))
     return 0
 
 

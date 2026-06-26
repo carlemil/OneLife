@@ -46,7 +46,10 @@ CREATE TABLE world_cells (
     name         TEXT NOT NULL,
     kind         TEXT NOT NULL DEFAULT 'town',  -- city | town | village | wilderness
     region       TEXT NOT NULL DEFAULT '',      -- used by atmosphere ("<place> · <region> · 1992")
-    arrival_node TEXT                            -- node you arrive at when traveling here
+    arrival_node TEXT,                           -- node you arrive at when traveling here
+    map          JSONB NOT NULL DEFAULT '{}',    -- this cell's ellipse on the WORLD map {x,y,rx,ry} (normalized 0..1)
+    map_image    TEXT,                           -- this cell's own map background (path under the content repo)
+    world_exit   JSONB NOT NULL DEFAULT '{}'     -- the "leave town" hotspot on this cell's map {x,y,rx,ry}
 );
 
 CREATE TABLE locations (
@@ -83,7 +86,8 @@ CREATE TABLE story_nodes (
     world_access BOOLEAN NOT NULL DEFAULT FALSE, -- can open the world map from here
     gate_id     TEXT,
     puzzle_id   TEXT,
-    media       JSONB NOT NULL DEFAULT '{}'
+    media       JSONB NOT NULL DEFAULT '{}',
+    map         JSONB NOT NULL DEFAULT '{}'      -- this node's ellipse on its cell map {x,y,rx,ry} (normalized 0..1)
 );
 
 CREATE TABLE story_edges (
@@ -94,7 +98,8 @@ CREATE TABLE story_edges (
     conditions JSONB NOT NULL DEFAULT '{"all":[]}',
     effects    JSONB NOT NULL DEFAULT '{}',
     danger     SMALLINT NOT NULL DEFAULT 0,
-    sort_order INTEGER NOT NULL DEFAULT 0
+    sort_order INTEGER NOT NULL DEFAULT 0,
+    road       JSONB NOT NULL DEFAULT '[]'   -- map spline waypoints [[x,y],…] (normalized)
 );
 
 -- ---------- Dialogue gates ----------

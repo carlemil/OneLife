@@ -29,7 +29,7 @@ docker compose run --rm api python -m app.seed                     # seed
 docker compose up --build -d                                       # up
 ```
 
-The API also **auto-seeds on startup** (idempotent upsert), so a fresh
+The API also **auto-seeds on startup** (reconciles the DB to the YAML), so a fresh
 `docker compose up` always yields a playable game. `make seed` is for reloading
 after edits without a full restart.
 
@@ -137,8 +137,13 @@ completable; it does not prove every condition is satisfiable. That deeper check
 
 ## Notes & limits
 
-- Seeding is an **upsert**: it updates authored rows in place and adds new ones,
-  but does not delete content removed from YAML (except edges, which are rewritten
-  per source node). For a clean slate, `make reset`.
-- Runtime tables (players, sessions, memories, progress) are never touched by
-  seeding.
+- The YAML files are the **single source of truth**. Seeding **reconciles** the DB
+  to them: it upserts every authored row and then **prunes** authored rows no longer
+  present in the YAML, so a deletion in a file propagates on the next seed. A row that
+  a live player still references (a non-cascading FK) is **kept** with a printed
+  warning instead of aborting the seed.
+- Node graph-editor positions are authored too, as `pos: {x, y}` on each node, and
+  seeded into the `node_positions` cache the map reads. The in-app graph is **read-only**
+  except for drag-to-reposition, which writes the `pos:` line back into the YAML.
+- Runtime tables (players, sessions, memories, image cache, progress) are never
+  touched by seeding.

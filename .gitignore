@@ -16,5 +16,5 @@ package-lock.json
 web/public/worldmap/iconcache/
 web/public/worldmap/preview.png
 
-# mapsUpdate skill — style inputs + generated maps (not committed)
+# generateMap skill — style inputs + generated maps (not committed)
 /maps/

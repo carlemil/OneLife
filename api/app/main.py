@@ -9,9 +9,10 @@ import json
 import uuid
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_edit, content_log, content_repair, auth, onboarding, atmosphere, security, admin
+from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -27,6 +28,13 @@ app = FastAPI(title="OneLife API")
 app.add_middleware(
     CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"],
 )
+
+# Serve the content repo's static assets (the hand-drawn map background images live
+# at <content>/images/maps/*.png). Mounted read-through so the web app can <img>
+# them directly. check_dir=False so the app still boots if the dir is missing.
+app.mount("/content-static",
+          StaticFiles(directory=os.environ.get("CONTENT_DIR", "/content"), check_dir=False),
+          name="content-static")
 
 
 @app.middleware("http")
@@ -54,6 +62,16 @@ async def _startup():
         await conn.execute(
             "ALTER TABLE story_nodes ADD COLUMN IF NOT EXISTS "
             "body_variants JSONB NOT NULL DEFAULT '[]'")
+        # Clickable-map navigation: per-node ellipse, per-cell map image + world map
+        # ellipse + world-exit hotspot. Idempotent for already-provisioned volumes.
+        await conn.execute(
+            "ALTER TABLE story_nodes ADD COLUMN IF NOT EXISTS map JSONB NOT NULL DEFAULT '{}'")
+        await conn.execute(
+            "ALTER TABLE world_cells ADD COLUMN IF NOT EXISTS map JSONB NOT NULL DEFAULT '{}'")
+        await conn.execute(
+            "ALTER TABLE world_cells ADD COLUMN IF NOT EXISTS map_image TEXT")
+        await conn.execute(
+            "ALTER TABLE world_cells ADD COLUMN IF NOT EXISTS world_exit JSONB NOT NULL DEFAULT '{}'")
     # Load authored content from YAML (idempotent upsert) so `docker compose up`
     # yields a playable game. Validate first; skip seeding on errors rather than
     # crash, leaving whatever content is already in the DB.
@@ -72,15 +90,12 @@ async def _startup():
             print(f"[content] seeded {len(data['nodes'])} nodes from {data and 'YAML'}")
     except Exception as e:  # noqa: BLE001
         print(f"[content] seed skipped: {e}")
-    # Authoring event-log: ensure its tables exist (non-fresh volumes), then replay
-    # the log over the just-seeded baseline so the content cache reaches HEAD.
+    # Node positions: ensure the table exists (and drop the retired event-log tables).
     async with pool.acquire() as conn:
         try:
             await content_log.ensure_tables(conn)
-            await content_log.replay(conn)
-            print(f"[content-log] replayed to head={await content_log._head(conn)}")
         except Exception as e:  # noqa: BLE001
-            print(f"[content-log] replay failed (cache may be at baseline): {e}")
+            print(f"[content] ensure_tables failed: {e}")
     # Self-heal any duplicate leaked memories left by pre-dedupe runs.
     async with pool.acquire() as conn:
         await memory.dedupe_existing(conn)
@@ -202,6 +217,9 @@ class OnboardingBody(BaseModel):
 class EdgeBody(BaseModel):
     edge_id: str
 
+class WalkBody(BaseModel):
+    node_id: str
+
 class GateBody(BaseModel):
     text: str
 
@@ -214,26 +232,17 @@ class RollbackBody(BaseModel):
 class TravelBody(BaseModel):
     cell_id: str
 
-class WorldmapTravelBody(BaseModel):
-    location_id: str
-
-class WorldmapPositionsBody(BaseModel):
-    positions: dict   # {location_id: {"x": float, "y": float}}
-
-class ContentImportBody(BaseModel):
-    text: str
+class MapSaveBody(BaseModel):
+    # One ellipse placement from the map editor, written back into the YAML.
+    # kind: 'node' (a story node's map) | 'cell' (a cell's world-map ellipse)
+    #       | 'world_exit' (a cell's leave-town hotspot).
+    kind: str
+    id: str
+    map: dict   # {x, y, rx, ry} normalized 0..1
 
 class DataImportBody(BaseModel):
     data: dict
     confirm: str = ""
-
-class ContentEntityBody(BaseModel):
-    kind: str
-    entity: dict
-
-class ContentDeleteBody(BaseModel):
-    kind: str
-    id: str
 
 class ContentMoveBody(BaseModel):
     id: str
@@ -243,8 +252,10 @@ class ContentMoveBody(BaseModel):
 class ContentLayoutBody(BaseModel):
     positions: dict   # {node_id: {"x": .., "y": ..}}
 
-class ContentSeqBody(BaseModel):
-    seq: int
+class MapRoadsBody(BaseModel):
+    # Computed road splines from "Redraw roads", keyed by location pair, points
+    # normalized 0..1 and oriented from->to.
+    roads: list   # [{"from": locId, "to": locId, "points": [[x,y],…]}]
 
 
 @app.get("/api/health")
@@ -429,31 +440,36 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
             ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
             if not evaluate(json.loads(edge["conditions"]), ctx):
                 raise HTTPException(400, "edge conditions not met")
-            effects = json.loads(edge["effects"])
-            dest = await conn.fetchrow(
-                "SELECT title, is_death FROM story_nodes WHERE id=$1", edge["to_node"])
-            kind = "death" if (dest and dest["is_death"]) else "action"
-            # Name the place when the edge has no authored line, so every move
-            # reads as a beat in the flow rather than a blank step.
-            override = None if effects.get("log") else (
-                f"You go to {dest['title']}." if dest else None)
-            seq, story_time = await engine.apply_action(
-                conn, sess["player_id"], sess["log_id"], node_id=edge["to_node"],
-                effects=effects, story_time=sess["story_time"], kind=kind,
-                summary_override=override)
-            await conn.execute(
-                "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
-                edge["to_node"], story_time, sess["token"])
-            sess["current_node"] = edge["to_node"]
-            sess["story_time"] = story_time
-            # Arriving at a puzzle node records the riddle/prompt in the flow, so the
-            # events list shows what was actually asked (deduped — see the helper).
-            dest_node = await conn.fetchrow(
-                "SELECT id, puzzle_id FROM story_nodes WHERE id=$1", sess["current_node"])
-            await engine.narrate_puzzle_prompt(
-                conn, sess["log_id"], dest_node, story_time)
-            await engine.discover_clues(
-                conn, sess["player_id"], sess["log_id"], story_time, sess["current_node"])
+            await engine.traverse_edge(conn, sess, edge)
+        return await engine.render_state(conn, sess["player_id"], sess)
+
+
+@app.post("/api/walk")
+async def walk(body: WalkBody, authorization: str | None = Header(default=None)):
+    """Walk to any place in the current cell — not only directly-adjacent ones.
+    The engine finds the shortest edge-path (through place nodes only) and applies
+    each hop, so clicking a far building on the cell map travels there in one go."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        async with conn.transaction():
+            node = await conn.fetchrow(
+                "SELECT * FROM story_nodes WHERE id=$1", sess["current_node"])
+            paths = await engine.cell_walk_paths(
+                conn, sess["player_id"], node, sess["story_time"])
+            path = paths.get(body.node_id)
+            if not path:
+                raise HTTPException(400, "can't walk there from here")
+            for eid in path:
+                edge = await conn.fetchrow("SELECT * FROM story_edges WHERE id=$1", eid)
+                if edge is None or edge["from_node"] != sess["current_node"]:
+                    raise HTTPException(400, "walk path is no longer open")
+                ctx = await engine.load_context(
+                    conn, sess["player_id"], sess["story_time"])
+                if not evaluate(json.loads(edge["conditions"]), ctx):
+                    raise HTTPException(400, "the way is blocked")
+                await engine.traverse_edge(conn, sess, edge)
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
@@ -575,9 +591,23 @@ def _adjacent(a, b) -> bool:
     return abs(a["grid_x"] - b["grid_x"]) + abs(a["grid_y"] - b["grid_y"]) == 1
 
 
+def _cell_ellipse(c, minx, maxx, miny, maxy) -> dict:
+    """A cell's ellipse on the WORLD map: explicit `map` if set, else derived from
+    its grid position (normalized over all cells' extents). Normalized 0..1."""
+    m = c["map"] if isinstance(c["map"], dict) else (json.loads(c["map"]) if c["map"] else {})
+    if m and m.get("x") is not None:
+        return {"x": float(m["x"]), "y": float(m["y"]),
+                "rx": float(m.get("rx", 0.09)), "ry": float(m.get("ry", 0.07))}
+    nx = 0.5 if maxx == minx else (c["grid_x"] - minx) / (maxx - minx)
+    ny = 0.5 if maxy == miny else (c["grid_y"] - miny) / (maxy - miny)
+    return {"x": round(0.15 + nx * 0.70, 4), "y": round(0.15 + ny * 0.70, 4),
+            "rx": 0.09, "ry": 0.07}
+
+
 @app.get("/api/world")
 async def get_world(authorization: str | None = Header(default=None)):
-    """The DISCOVERED cells (fog-of-war) + which are currently reachable."""
+    """The DISCOVERED cells (fog-of-war) as world-map ellipses + which are
+    currently reachable, plus the roads (adjacent discovered pairs)."""
     sess = await _session(authorization)
     _require_onboarded(sess)
     pool = await db.get_pool()
@@ -585,135 +615,32 @@ async def get_world(authorization: str | None = Header(default=None)):
         node = await conn.fetchrow(
             "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
         cur = await _current_cell(conn, sess["current_node"])
+        allcells = await conn.fetch("SELECT grid_x, grid_y FROM world_cells")
         cells = await conn.fetch(
-            """SELECT w.id, w.grid_x, w.grid_y, w.name, w.kind, w.region
+            """SELECT w.id, w.grid_x, w.grid_y, w.name, w.kind, w.region, w.map
                FROM world_cells w
                JOIN player_cells pc ON pc.cell_id = w.id AND pc.player_id = $1
                ORDER BY w.grid_y, w.grid_x""", sess["player_id"])
     can_travel = bool(node and node["world_access"])
+    xs = [c["grid_x"] for c in allcells] or [0]
+    ys = [c["grid_y"] for c in allcells] or [0]
+    minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
     out = []
     for c in cells:
         is_current = cur and c["id"] == cur["id"]
         reachable = can_travel and not is_current and cur is not None and _adjacent(cur, c)
         out.append({"id": c["id"], "grid_x": c["grid_x"], "grid_y": c["grid_y"],
                     "name": c["name"], "kind": c["kind"], "region": c["region"],
-                    "reachable": reachable})
+                    "reachable": reachable, "current": bool(is_current),
+                    "map": _cell_ellipse(c, minx, maxx, miny, maxy)})
+    roads = []
+    for i in range(len(out)):
+        for j in range(i + 1, len(out)):
+            if _adjacent(out[i], out[j]):
+                roads.append({"from": out[i]["id"], "to": out[j]["id"]})
     return {"current_cell_id": cur["id"] if cur else None,
-            "can_travel": can_travel, "cells": out}
-
-
-@app.get("/api/worldmap")
-async def get_worldmap(authorization: str | None = Header(default=None)):
-    """Fog-of-war reveal state for the illustrated world map (web/public/worldmap).
-    A place is revealed once the player has visited a node there; the school's rooms
-    reveal per visited node. Derived from the (non-rolled-back) log, so it is
-    rollback-safe automatically. The PNG layers + meta are served as static assets."""
-    sess = await _session(authorization)
-    _require_onboarded(sess)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        rows = await conn.fetch(
-            """SELECT DISTINCT n.location_id, n.id AS node_id
-                 FROM log_entries le JOIN story_nodes n ON n.id = le.node_id
-                WHERE le.log_id=$1 AND NOT le.rolled_back AND le.node_id IS NOT NULL""",
-            sess["log_id"])
-        cur = await conn.fetchrow(
-            "SELECT location_id FROM story_nodes WHERE id=$1", sess["current_node"])
-    return {
-        "revealed_locations": sorted({r["location_id"] for r in rows if r["location_id"]}),
-        "revealed_nodes": sorted({r["node_id"] for r in rows}),
-        "current_location": cur["location_id"] if cur else None,
-    }
-
-
-@app.post("/api/worldmap/travel")
-async def worldmap_travel(body: WorldmapTravelBody,
-                          authorization: str | None = Header(default=None)):
-    """Fast-travel from the illustrated map: move the player to a clicked place.
-    Lands on a safe representative node there (a 'location'-type / world-access node,
-    never a death node; falls back to the cell's arrival node). Non-admins may only
-    travel to places they've ALREADY discovered (so this can't skip gates/puzzles);
-    admins (who can reveal the whole map) may jump anywhere."""
-    sess = await _session(authorization)
-    _require_onboarded(sess)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        async with conn.transaction():
-            loc = await conn.fetchrow(
-                "SELECT id, name, cell_id FROM locations WHERE id=$1", body.location_id)
-            if loc is None:
-                raise HTTPException(404, "no such place")
-            if not _is_admin(sess):
-                visited = await conn.fetchval(
-                    """SELECT 1 FROM log_entries le JOIN story_nodes n ON n.id = le.node_id
-                       WHERE le.log_id=$1 AND NOT le.rolled_back AND n.location_id=$2 LIMIT 1""",
-                    sess["log_id"], body.location_id)
-                if not visited:
-                    raise HTTPException(400, "you haven't discovered that place yet")
-            target = await conn.fetchval(
-                """SELECT id FROM story_nodes WHERE location_id=$1
-                   ORDER BY (type='location') DESC, world_access DESC, is_death ASC, id
-                   LIMIT 1""", body.location_id)
-            if target is None:
-                target = await conn.fetchval(
-                    "SELECT arrival_node FROM world_cells WHERE id=$1", loc["cell_id"])
-            if not target:
-                raise HTTPException(400, "there's no way to reach that place")
-            if target == sess["current_node"]:
-                return await engine.render_state(conn, sess["player_id"], sess)
-            seq, story_time = await engine.apply_action(
-                conn, sess["player_id"], sess["log_id"], node_id=target,
-                effects={"log": f"You make your way to {loc['name']}."},
-                story_time=sess["story_time"], kind="action")
-            await conn.execute(
-                "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
-                target, story_time, sess["token"])
-            sess["current_node"] = target
-            sess["story_time"] = story_time
-            await engine.discover_clues(
-                conn, sess["player_id"], sess["log_id"], story_time, target)
-            await _reveal_cells_around(
-                conn, sess["player_id"], target, seq, sess["log_id"], story_time)
-        return await engine.render_state(conn, sess["player_id"], sess)
-
-
-# The map output dir is mounted into this container (see docker-compose.yml); the
-# admin map editor saves manual node positions here, and render_map.py reads them.
-WORLDMAP_DIR = "/worldmap"
-WORLDMAP_POSITIONS = os.path.join(WORLDMAP_DIR, "world-map.positions.json")
-
-
-@app.get("/api/admin/worldmap/positions")
-async def get_worldmap_positions(authorization: str | None = Header(default=None)):
-    await _admin_session(authorization)
-    try:
-        with open(WORLDMAP_POSITIONS, encoding="utf-8") as fh:
-            return {"positions": json.load(fh)}
-    except (FileNotFoundError, json.JSONDecodeError):
-        return {"positions": {}}
-
-
-@app.post("/api/admin/worldmap/positions")
-async def save_worldmap_positions(body: WorldmapPositionsBody,
-                                  authorization: str | None = Header(default=None)):
-    """Persist manual map node positions (location_id -> {x,y} in canvas pixels).
-    A re-render of the worldmap skill picks these up to place the places by hand."""
-    await _admin_session(authorization)
-    clean = {}
-    for lid, xy in (body.positions or {}).items():
-        try:
-            clean[str(lid)] = {"x": float(xy["x"]), "y": float(xy["y"])}
-        except (KeyError, TypeError, ValueError):
-            continue
-    try:
-        os.makedirs(WORLDMAP_DIR, exist_ok=True)
-        tmp = WORLDMAP_POSITIONS + ".tmp"
-        with open(tmp, "w", encoding="utf-8") as fh:
-            json.dump(clean, fh, ensure_ascii=False, indent=2)
-        os.replace(tmp, WORLDMAP_POSITIONS)
-    except OSError as e:
-        raise HTTPException(500, f"could not save positions: {e}")
-    return {"ok": True, "count": len(clean)}
+            "can_travel": can_travel, "cells": out, "roads": roads,
+            "world_image": "images/maps/world.png"}
 
 
 @app.post("/api/travel")
@@ -814,6 +741,138 @@ async def admin_me(authorization: str | None = Header(default=None)):
     return {"is_admin": _is_admin(await _session(authorization))}
 
 
+# ---------- Admin: clickable-map editor (writes ellipse positions back to YAML) ----------
+@app.get("/api/admin/map/all")
+async def admin_map_all(authorization: str | None = Header(default=None)):
+    """Every map (world + one per cell) with its background image and the items the
+    author can place: cell maps list their nodes (+ a world-exit hotspot); the world
+    map lists the cells. Coords are explicit `map` values where set, else a derived
+    default — so the editor always has something to drag."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        cells = await conn.fetch(
+            "SELECT id, name, grid_x, grid_y, map, map_image, world_exit FROM world_cells ORDER BY grid_y, grid_x")
+        nodes = await conn.fetch(
+            """SELECT n.id, n.title, n.type, n.map, l.cell_id
+               FROM story_nodes n JOIN locations l ON l.id = n.location_id
+               WHERE l.cell_id IS NOT NULL AND n.type <> 'death' ORDER BY n.id""")
+    xs = [c["grid_x"] for c in cells] or [0]
+    ys = [c["grid_y"] for c in cells] or [0]
+    minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
+    # World map: one ellipse per cell.
+    world_items = [{"kind": "cell", "id": c["id"], "title": c["name"],
+                    "map": _cell_ellipse(c, minx, maxx, miny, maxy)} for c in cells]
+    maps = [{"id": "world", "title": "World", "image": "images/maps/world.png",
+             "items": world_items}]
+    # Cell maps: their placeable nodes (auto-laid-out where unplaced) + world-exit.
+    for c in cells:
+        cnodes = [n for n in nodes if n["cell_id"] == c["id"]
+                  and (engine._jmap(n["map"]).get("x") is not None
+                       or n["type"] in engine._PLACE_TYPES)]
+        auto = engine._auto_layout(
+            [n["id"] for n in cnodes if engine._jmap(n["map"]).get("x") is None])
+        items = []
+        for n in cnodes:
+            m = engine._jmap(n["map"])
+            xy = ({"x": float(m["x"]), "y": float(m["y"]),
+                   "rx": float(m.get("rx", 0.05)), "ry": float(m.get("ry", 0.045))}
+                  if m.get("x") is not None else auto[n["id"]])
+            items.append({"kind": "node", "id": n["id"],
+                          "title": n["title"] or n["id"], "map": xy})
+        we = engine._jmap(c["world_exit"])
+        if we.get("x") is None:
+            we = {"x": 0.92, "y": 0.92, "rx": 0.06, "ry": 0.05}
+        items.append({"kind": "world_exit", "id": c["id"], "title": "↪ World map",
+                      "map": {"x": float(we["x"]), "y": float(we["y"]),
+                              "rx": float(we.get("rx", 0.06)), "ry": float(we.get("ry", 0.05))}})
+        maps.append({"id": c["id"], "title": c["name"],
+                     "image": c["map_image"] or f"images/maps/{c['id']}.png", "items": items})
+    return {"maps": maps}
+
+
+@app.post("/api/admin/map/save")
+async def admin_map_save(body: MapSaveBody, authorization: str | None = Header(default=None)):
+    """Write one ellipse placement back into the source YAML (comment-preserving),
+    then re-seed from the files so the live game reflects it immediately."""
+    await _admin_session(authorization)
+    m = body.map or {}
+    try:
+        clean = {"x": round(float(m["x"]), 4), "y": round(float(m["y"]), 4),
+                 "rx": round(float(m.get("rx", 0.05)), 4), "ry": round(float(m.get("ry", 0.045)), 4)}
+    except (KeyError, TypeError, ValueError):
+        raise HTTPException(400, "map needs numeric x, y, rx, ry")
+    try:
+        if body.kind == "node":
+            map_write.set_node_map(body.id, clean)
+        elif body.kind == "cell":
+            map_write.set_cell_field(body.id, "map", clean)
+        elif body.kind == "world_exit":
+            map_write.set_cell_field(body.id, "world_exit", clean)
+        else:
+            raise HTTPException(400, f"unknown kind {body.kind}")
+    except FileNotFoundError:
+        raise HTTPException(404, f"no YAML defines {body.kind} {body.id}")
+    except HTTPException:
+        raise
+    except Exception as e:  # noqa: BLE001
+        raise HTTPException(500, f"could not write YAML: {e}")
+    # Re-seed from the just-written files so the change is live without a restart.
+    data, _ = content.load_dir()
+    errors, _ = content.validate(data)
+    if errors:
+        raise HTTPException(400, "; ".join(errors[:5]))
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await content.seed_content(conn, data)
+    return {"ok": True}
+
+
+@app.get("/api/admin/map/overview")
+async def admin_map_overview(authorization: str | None = Header(default=None)):
+    """The whole overview map (all icons + roads, no fog) for the road editor."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        return await engine.map_overview(conn)
+
+
+@app.post("/api/admin/map/roads")
+async def admin_map_roads(body: MapRoadsBody,
+                          authorization: str | None = Header(default=None)):
+    """Persist computed road splines onto the edges they belong to: each location-pair
+    route is written to every story edge between the two places' anchor nodes (oriented
+    to that edge's direction) — in the YAML (source of truth) and the DB."""
+    await _admin_session(authorization)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        anchor = await engine.map_road_anchors(conn)
+        written, missing = 0, 0
+        for road in body.roads:
+            fl, tl = road.get("from"), road.get("to")
+            points = road.get("points") or []
+            na, nb = anchor.get(fl), anchor.get(tl)
+            if not na or not nb:
+                continue
+            erows = await conn.fetch(
+                """SELECT id, from_node FROM story_edges
+                   WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)""",
+                na, nb)
+            if not erows:
+                missing += 1
+                continue
+            for e in erows:
+                pts = points if e["from_node"] == na else list(reversed(points))
+                await conn.execute("UPDATE story_edges SET road=$2::jsonb WHERE id=$1",
+                                   e["id"], json.dumps(pts))
+                try:
+                    map_write.set_edge_road(e["id"], pts)
+                    written += 1
+                except FileNotFoundError:
+                    pass   # inter-cell lane with no authored edge — DB-only is fine
+    return {"ok": True, "edges_written": written, "pairs_without_edge": missing}
+
+
 @app.get("/api/admin/content/export")
 async def admin_content_export(authorization: str | None = Header(default=None)):
     await _admin_session(authorization)
@@ -825,162 +884,50 @@ async def admin_content_export(authorization: str | None = Header(default=None))
     return {"filename": "content-export.yaml", "body": body}
 
 
-@app.post("/api/admin/content/import")
-async def admin_content_import(body: ContentImportBody,
-                               authorization: str | None = Header(default=None)):
-    await _admin_session(authorization)
-    import yaml
-    parsed = yaml.safe_load(body.text) or {}
-    data = {k: (parsed.get(k) or []) for k in content._LIST_KEYS}
-    errors, warnings = content.validate(data)
-    if errors:
-        raise HTTPException(400, "; ".join(errors[:10]))
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        await content.seed_content(conn, data)
-    return {"ok": True, "warnings": warnings,
-            "counts": {k: len(data[k]) for k in content._LIST_KEYS}}
-
-
-def _validate_or_repair(merged: dict):
-    """Validate the resulting world; if the spine lint fails, auto-generate the
-    missing nodes/edges and validate again. Returns (added, warnings) where `added`
-    is the list of auto-generated {kind, entity} to fold into the event. Raises 400
-    only if the world still can't be made valid (e.g. no entry node)."""
-    errors, warnings = content.validate(merged)
-    if not errors:
-        return [], warnings
-    repaired, added = content_repair.auto_repair(merged)
-    errors2, warnings2 = content.validate(repaired)
-    if errors2:
-        raise HTTPException(400, "; ".join(errors2[:10]))
-    return added, warnings2
-
-
-# ---------- Admin: in-UI content editor (graph + canonical event log) ----------
-# Every mutation is recorded as one event and applied to the materialized cache;
-# undo/redo walk the log. No blocking confirmation dialogs — integrity is kept by
-# programmatic validation only (game-breaking edits are rejected inline).
+# ---------- Admin: read-only content graph + node positioning ----------
+# Authoring lives in the YAML files (the single source of truth); the in-app graph
+# is a read-only view whose only mutation is dragging a node, which writes its
+# position back into the YAML (see /content/move and /content/layout below).
 @app.get("/api/admin/content/all")
 async def admin_content_all(authorization: str | None = Header(default=None)):
-    """The full authored set (+ node positions) — the editor loads it once."""
+    """The full authored set (+ node positions) — the read-only graph loads it once."""
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         return await content_log.current(conn)
 
 
-@app.post("/api/admin/content/entity")
-async def admin_content_entity(body: ContentEntityBody,
-                               authorization: str | None = Header(default=None)):
-    """Create/update one entity: validate the resulting world, then log + apply."""
-    sess = await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        full = await content.export_content(conn)
-        try:
-            merged = content_edit.upsert_entity(full, body.kind, body.entity)
-        except ValueError as e:
-            raise HTTPException(400, str(e))
-        added, warnings = _validate_or_repair(merged)
-        before = await content_log.find_entity(conn, body.kind, body.entity["id"])
-        op = "update" if before is not None else "create"
-        head = await content_log.record(conn, op, body.kind, body.entity["id"],
-                                         before, body.entity, sess.get("email"), extra=added)
-    return {"ok": True, "warnings": warnings, "head": head, "auto_added": len(added)}
-
-
-@app.post("/api/admin/content/delete")
-async def admin_content_delete(body: ContentDeleteBody,
-                               authorization: str | None = Header(default=None)):
-    """Delete one entity (no confirmation). A node deletes its incident edges as one
-    compound event (restored together on undo). The remaining world is validated;
-    a game-breaking delete is rejected inline and nothing is logged."""
-    sess = await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        full = await content.export_content(conn)
-        if body.kind == "nodes":
-            before = await content_log.node_delete_before(conn, body.id)
-            if before["node"] is None:
-                raise HTTPException(404, "no such node")
-            remaining = content_edit.remove_entity(full, "nodes", body.id)
-            drop = {e["id"] for e in before["edges"]}
-            remaining["edges"] = [e for e in remaining["edges"] if e["id"] not in drop]
-        else:
-            before = await content_log.find_entity(conn, body.kind, body.id)
-            if before is None:
-                raise HTTPException(404, "no such entity")
-            remaining = content_edit.remove_entity(full, body.kind, body.id)
-        added, warnings = _validate_or_repair(remaining)
-        head = await content_log.record(conn, "delete", body.kind, body.id,
-                                         before, None, sess.get("email"), extra=added)
-    return {"ok": True, "warnings": warnings, "head": head, "auto_added": len(added)}
+async def _persist_pos(conn, node_id: str, x, y) -> None:
+    """Write a node's graph position into the authored YAML (the source of truth)
+    and mirror it into the node_positions cache the map reads."""
+    map_write.set_node_pos(node_id, x, y)
+    await conn.execute(
+        """INSERT INTO node_positions (node_id,x,y) VALUES ($1,$2,$3)
+           ON CONFLICT (node_id) DO UPDATE SET x=EXCLUDED.x, y=EXCLUDED.y""",
+        node_id, float(x), float(y))
 
 
 @app.post("/api/admin/content/move")
 async def admin_content_move(body: ContentMoveBody,
                              authorization: str | None = Header(default=None)):
-    """Persist a node's graph position as a move event (undoable)."""
-    sess = await _admin_session(authorization)
+    """Persist a node's graph position straight into its YAML file + the cache."""
+    await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT x,y FROM node_positions WHERE node_id=$1", body.id)
-        before = {"x": row["x"], "y": row["y"]} if row else None
-        head = await content_log.record(conn, "move", "nodes", body.id,
-                                        before, {"x": body.x, "y": body.y}, sess.get("email"))
-    return {"ok": True, "head": head}
+        await _persist_pos(conn, body.id, body.x, body.y)
+    return {"ok": True}
 
 
 @app.post("/api/admin/content/layout")
 async def admin_content_layout(body: ContentLayoutBody,
                                authorization: str | None = Header(default=None)):
-    """Persist a whole-graph auto-layout as ONE undoable event."""
-    sess = await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        before = {}
-        for nid in body.positions:
-            row = await conn.fetchrow("SELECT x,y FROM node_positions WHERE node_id=$1", nid)
-            before[nid] = {"x": row["x"], "y": row["y"]} if row else None
-        after = {nid: {"x": float(p["x"]), "y": float(p["y"])}
-                 for nid, p in body.positions.items()}
-        head = await content_log.record(conn, "layout", "nodes", "(layout)",
-                                        before, after, sess.get("email"))
-    return {"ok": True, "head": head}
-
-
-@app.get("/api/admin/content/log")
-async def admin_content_log(authorization: str | None = Header(default=None)):
+    """Persist a whole-graph re-layout into the YAML files + the cache."""
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        return await content_log.log(conn)
-
-
-@app.post("/api/admin/content/undo")
-async def admin_content_undo(authorization: str | None = Header(default=None)):
-    await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        return await content_log.undo(conn)
-
-
-@app.post("/api/admin/content/redo")
-async def admin_content_redo(authorization: str | None = Header(default=None)):
-    await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        return await content_log.redo(conn)
-
-
-@app.post("/api/admin/content/undo_to")
-async def admin_content_undo_to(body: ContentSeqBody,
-                                authorization: str | None = Header(default=None)):
-    await _admin_session(authorization)
-    pool = await db.get_pool()
-    async with pool.acquire() as conn:
-        return await content_log.goto(conn, body.seq)
+        for nid, p in body.positions.items():
+            await _persist_pos(conn, nid, p["x"], p["y"])
+    return {"ok": True}
 
 
 @app.get("/api/admin/db/export")

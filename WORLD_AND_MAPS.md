@@ -85,11 +85,16 @@ unreachable or as a trap, while still proving an ending is always reachable.
 - **Fog-of-war** — `player_cells` tracks discovered cells (rollback-safe, seq-
   stamped). The world map shows only discovered cells; arriving somewhere reveals
   its neighbors. (In this small map all three are discovered at the start.)
+- **Intra-cell walk-anywhere** — on the cell map (`MapView`), clicking *any* place
+  in the cell walks there, not only directly-adjacent ones. `engine.cell_walk_paths`
+  BFS's the shortest edge-path within the cell (routing *through* `location`/`ending`
+  place nodes only — never through a `gate`/`puzzle` encounter), and `/api/walk`
+  applies each hop via the shared `engine.traverse_edge` (so all edge effects/logging
+  stay intact). `render_state` marks a map node `reachable` iff a path exists. The
+  same choice-button edges still exist for in-place actions.
 
 ## Deferred
 
-- A richer **city map** UI (clickable locations within a cell) — today intra-cell
-  movement uses the normal choice buttons.
 - Travel **cost** (time/conditions) beyond adjacency.
 - World scale: the design targets ~100 locations for a big city and ~10 for a
   village; the slice ships a handful to prove the structure.

@@ -11,6 +11,7 @@ import glob
 import json
 from collections import defaultdict, deque
 
+import asyncpg
 import yaml
 
 DEFAULT_DIR = os.environ.get("CONTENT_DIR", "/content")
@@ -188,8 +189,12 @@ def find_traps(data: dict) -> list[str]:
             and not n.get("is_death") and n.get("type") not in ("ending", "death")]
 
 
-async def seed_content(conn, data: dict):
-    """Upsert authored content. Runtime tables (players, memories) are untouched."""
+async def seed_content(conn, data: dict) -> list[str]:
+    """Reconcile authored content into Postgres: upsert everything in the YAML, then
+    prune authored rows no longer present (YAML is the single source of truth). Runtime
+    tables (players, sessions, memories, image cache) are never touched. Returns a list
+    of warnings for rows that couldn't be pruned because live player data still
+    references them (those are kept)."""
     async with conn.transaction():
         for a in data["arcs"]:
             await conn.execute(
@@ -198,13 +203,16 @@ async def seed_content(conn, data: dict):
                 a["id"], a["title"], bool(a.get("is_spine", False)))
         for c in data["cells"]:
             await conn.execute(
-                """INSERT INTO world_cells (id,grid_x,grid_y,name,kind,region,arrival_node)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7)
+                """INSERT INTO world_cells (id,grid_x,grid_y,name,kind,region,arrival_node,map,map_image,world_exit)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7,$8::jsonb,$9,$10::jsonb)
                    ON CONFLICT (id) DO UPDATE SET grid_x=EXCLUDED.grid_x,grid_y=EXCLUDED.grid_y,
                      name=EXCLUDED.name,kind=EXCLUDED.kind,region=EXCLUDED.region,
-                     arrival_node=EXCLUDED.arrival_node""",
+                     arrival_node=EXCLUDED.arrival_node,map=EXCLUDED.map,
+                     map_image=EXCLUDED.map_image,world_exit=EXCLUDED.world_exit""",
                 c["id"], int(c.get("grid_x", 0)), int(c.get("grid_y", 0)), c["name"],
-                c.get("kind", "town"), c.get("region", ""), c.get("arrival_node"))
+                c.get("kind", "town"), c.get("region", ""), c.get("arrival_node"),
+                json.dumps(c.get("map", {})), c.get("map_image"),
+                json.dumps(c.get("world_exit", {})))
         for l in data["locations"]:
             await conn.execute(
                 """INSERT INTO locations (id,name,description,cell_id) VALUES ($1,$2,$3,$4)
@@ -229,19 +237,26 @@ async def seed_content(conn, data: dict):
                 json.dumps(p.get("on_solve", {})))
         for n in data["nodes"]:
             await conn.execute(
-                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,body_variants,is_entry,is_death,world_access,gate_id,puzzle_id,media)
-                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13::jsonb)
+                """INSERT INTO story_nodes (id,arc_id,type,location_id,title,body,body_variants,is_entry,is_death,world_access,gate_id,puzzle_id,media,map)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7::jsonb,$8,$9,$10,$11,$12,$13::jsonb,$14::jsonb)
                    ON CONFLICT (id) DO UPDATE SET arc_id=EXCLUDED.arc_id,type=EXCLUDED.type,
                      location_id=EXCLUDED.location_id,title=EXCLUDED.title,body=EXCLUDED.body,
                      body_variants=EXCLUDED.body_variants,
                      is_entry=EXCLUDED.is_entry,is_death=EXCLUDED.is_death,world_access=EXCLUDED.world_access,
-                     gate_id=EXCLUDED.gate_id,puzzle_id=EXCLUDED.puzzle_id,media=EXCLUDED.media""",
+                     gate_id=EXCLUDED.gate_id,puzzle_id=EXCLUDED.puzzle_id,media=EXCLUDED.media,map=EXCLUDED.map""",
                 n["id"], n.get("arc", "main"), n["type"], n.get("location"), n.get("title", ""),
                 n.get("body", ""), json.dumps(n.get("body_variants", []) or []),
                 bool(n.get("entry", False)),
                 bool(n.get("is_death", n.get("type") == "death")),
                 bool(n.get("world_access", False)),
-                n.get("gate"), n.get("puzzle"), json.dumps(n.get("media", {})))
+                n.get("gate"), n.get("puzzle"), json.dumps(n.get("media", {})),
+                json.dumps(n.get("map", {})))
+            pos = n.get("pos") or {}
+            if pos.get("x") is not None and pos.get("y") is not None:
+                await conn.execute(
+                    """INSERT INTO node_positions (node_id,x,y) VALUES ($1,$2,$3)
+                       ON CONFLICT (node_id) DO UPDATE SET x=EXCLUDED.x, y=EXCLUDED.y""",
+                    n["id"], float(pos["x"]), float(pos["y"]))
         for g in data["gates"]:
             spec = {k: v for k, v in g.items() if k not in ("id", "location", "character")}
             await conn.execute(
@@ -257,14 +272,15 @@ async def seed_content(conn, data: dict):
             await conn.execute("DELETE FROM story_edges WHERE from_node=$1", fn)
         for e in edges:
             await conn.execute(
-                """INSERT INTO story_edges (id,from_node,to_node,label,conditions,effects,danger,sort_order)
-                   VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8)
+                """INSERT INTO story_edges (id,from_node,to_node,label,conditions,effects,danger,sort_order,road)
+                   VALUES ($1,$2,$3,$4,$5::jsonb,$6::jsonb,$7,$8,$9::jsonb)
                    ON CONFLICT (id) DO UPDATE SET from_node=EXCLUDED.from_node,to_node=EXCLUDED.to_node,
                      label=EXCLUDED.label,conditions=EXCLUDED.conditions,effects=EXCLUDED.effects,
-                     danger=EXCLUDED.danger,sort_order=EXCLUDED.sort_order""",
+                     danger=EXCLUDED.danger,sort_order=EXCLUDED.sort_order,road=EXCLUDED.road""",
                 e["id"], e["from"], e["to"], e.get("label", ""),
                 json.dumps(e.get("conditions", {"all": []})), json.dumps(e.get("effects", {})),
-                int(e.get("danger", 0)), int(e.get("sort_order", 0)))
+                int(e.get("danger", 0)), int(e.get("sort_order", 0)),
+                json.dumps(e.get("road", []) or []))
 
         for c in data["clues"]:
             await conn.execute(
@@ -274,6 +290,39 @@ async def seed_content(conn, data: dict):
                      reveal_text=EXCLUDED.reveal_text,discover_conditions=EXCLUDED.discover_conditions""",
                 c["id"], c.get("puzzle"), json.dumps(c.get("placement", {})),
                 c.get("reveal_text", ""), json.dumps(c.get("discover_conditions", {"all": []})))
+
+        # ---- Authoritative reconcile: drop authored rows no longer in the YAML, in
+        # reverse-dependency order. Each delete rides its own savepoint, so a row a
+        # live player still references (FK violation) is KEPT with a warning instead
+        # of aborting the whole seed. Player-state tables are never in this list.
+        keep = {
+            "story_edges": {e["id"] for e in edges},
+            "story_nodes": {n["id"] for n in data["nodes"]},
+            "dialogue_gates": {g["id"] for g in data["gates"]},
+            "puzzle_clues": {c["id"] for c in data["clues"]},
+            "puzzles": {p["id"] for p in data["puzzles"]},
+            "locations": {l["id"] for l in data["locations"]},
+            "world_cells": {c["id"] for c in data["cells"]},
+            "characters": {c["id"] for c in data["characters"]},
+            "story_arcs": {a["id"] for a in data["arcs"]},
+        }
+        skipped: list[str] = []
+        for table in ("story_edges", "story_nodes", "dialogue_gates", "puzzle_clues",
+                      "puzzles", "locations", "world_cells", "characters", "story_arcs"):
+            stale = await conn.fetch(
+                f"SELECT id FROM {table} WHERE NOT (id = ANY($1::text[]))",
+                list(keep[table]))
+            for r in stale:
+                try:
+                    async with conn.transaction():      # savepoint
+                        await conn.execute(f"DELETE FROM {table} WHERE id=$1", r["id"])
+                except asyncpg.exceptions.ForeignKeyViolationError:
+                    skipped.append(f"kept {table} {r['id']} — referenced by live player data")
+        # node_positions has no FK; prune orphans of vanished nodes directly.
+        await conn.execute(
+            "DELETE FROM node_positions WHERE NOT (node_id = ANY($1::text[]))",
+            list(keep["story_nodes"]))
+    return skipped
 
 
 def _j(v, default):
@@ -288,13 +337,27 @@ async def export_content(conn) -> dict:
     that load_dir()/validate()/seed_content() consume (see AUTHORING.md). Edges
     are emitted as a top-level `edges` list (not embedded in nodes)."""
     data = {k: [] for k in _LIST_KEYS}
+    positions = {r["node_id"]: r for r in
+                 await conn.fetch("SELECT node_id,x,y FROM node_positions")}
 
     for a in await conn.fetch("SELECT id,title,is_spine FROM story_arcs ORDER BY id"):
         data["arcs"].append({"id": a["id"], "title": a["title"], "is_spine": a["is_spine"]})
 
     for c in await conn.fetch(
-            "SELECT id,grid_x,grid_y,name,kind,region,arrival_node FROM world_cells ORDER BY id"):
-        data["cells"].append(dict(c))
+            "SELECT id,grid_x,grid_y,name,kind,region,arrival_node,map,map_image,world_exit "
+            "FROM world_cells ORDER BY id"):
+        row = {"id": c["id"], "grid_x": c["grid_x"], "grid_y": c["grid_y"],
+               "name": c["name"], "kind": c["kind"], "region": c["region"],
+               "arrival_node": c["arrival_node"]}
+        cmap = _j(c["map"], {})
+        if cmap:
+            row["map"] = cmap
+        if c["map_image"]:
+            row["map_image"] = c["map_image"]
+        wexit = _j(c["world_exit"], {})
+        if wexit:
+            row["world_exit"] = wexit
+        data["cells"].append(row)
 
     for c in await conn.fetch("SELECT id,name,persona,reveal_name FROM characters ORDER BY id"):
         row = {"id": c["id"], "name": c["name"], "persona": c["persona"]}
@@ -347,6 +410,12 @@ async def export_content(conn) -> dict:
         media = _j(n["media"], {})
         if media:
             row["media"] = media
+        nmap = _j(n["map"], {})
+        if nmap:
+            row["map"] = nmap
+        p = positions.get(n["id"])
+        if p is not None:
+            row["pos"] = {"x": round(p["x"]), "y": round(p["y"])}
         data["nodes"].append(row)
 
     for g in await conn.fetch("SELECT id,location_id,character_id,spec FROM dialogue_gates ORDER BY id"):
@@ -359,10 +428,14 @@ async def export_content(conn) -> dict:
         data["gates"].append(row)
 
     for e in await conn.fetch("SELECT * FROM story_edges ORDER BY from_node, sort_order, id"):
-        data["edges"].append({
+        row = {
             "id": e["id"], "from": e["from_node"], "to": e["to_node"], "label": e["label"],
             "conditions": _j(e["conditions"], {"all": []}), "effects": _j(e["effects"], {}),
             "danger": e["danger"], "sort_order": e["sort_order"],
-        })
+        }
+        road = _j(e["road"], [])
+        if road:
+            row["road"] = road
+        data["edges"].append(row)
 
     return data

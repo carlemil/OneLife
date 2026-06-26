@@ -6,9 +6,8 @@
   import '@xyflow/svelte/dist/style.css';
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
-  import WorldMap from './lib/WorldMap.svelte';
-  import WorldMapEditor from './lib/WorldMapEditor.svelte';
-  import MiniMap from './lib/MiniMap.svelte';
+  import MapOverlay from './lib/MapOverlay.svelte';
+  import MapEditor from './lib/MapEditor.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -75,25 +74,11 @@
   let logShown = $state(LOG_PAGE);
   let logRev = $derived((logEntries || []).filter((l) => l.kind !== 'dialogue').slice().reverse());
 
-  // world map
-  let world = $state(null);
+  // map: a single icon-on-parchment overview (game.map) opened as a full-screen
+  // overlay above the rest of the UI; clicking a place walks or travels there.
   let showMap = $state(false);
-  let showWorldMap = $state(false);
   let showMapEditor = $state(false);
-  // Fog-of-war reveal state for the live minimap; refreshed on every world change.
-  let mapRevealed = $state({ locations: new Set(), nodes: new Set(), current: null });
-  async function refreshMapRevealed() {
-    try {
-      const r = await api.worldMap();
-      mapRevealed = { locations: new Set(r.revealed_locations || []),
-                      nodes: new Set(r.revealed_nodes || []), current: r.current_location };
-    } catch { /* not onboarded yet / map missing */ }
-  }
-  $effect(() => {
-    const _node = game?.node?.id;          // re-run when the player's location changes
-    const _len = logEntries.length;        // ...or anything is logged (reveals, rollback)
-    if (phase === 'game' && _node) refreshMapRevealed();
-  });
+  const gameMap = $derived(game?.map ?? null);
 
   // in-game help
   let showHelp = $state(false);
@@ -118,24 +103,15 @@
   let dbConfirm = $state('');
   let savConfirm = $state('');
 
-  // admin content editor (structured CRUD)
+  // admin: read-only story-graph view (authoring lives in the YAML files; the only
+  // mutation here is dragging a node, which writes its position back into the YAML)
   let showEditor = $state(false);
-  let content = $state(null);       // full authored set, loaded once
-  let editKind = $state('nodes');
-  let selId = $state(null);         // null = creating a new entity
-  let form = $state({});            // working copy; json fields held as strings
-  let jsonErrors = $state({});      // field key -> parse error message
-  let editorMsg = $state('');
-  let canSave = $derived(Object.keys(jsonErrors).length === 0 && !!String(form?.id ?? '').trim());
-  // graph view + canonical event log
-  let editorView = $state('list');  // 'list' | 'graph'
+  let content = $state(null);       // full authored set, loaded once (read-only)
+  let graphMsg = $state('');
   let flowNodes = $state.raw([]);
   let flowEdges = $state.raw([]);
-  let autoSpreadDone = false;        // auto-arrange once if the server has no saved positions
+  let autoSpreadDone = false;        // auto-arrange once if no saved positions yet
   let hover = $state(null);         // {kind:'node'|'edge', rec, x, y}
-  let logRows = $state([]);
-  let logHead = $state(0);
-  let canRedo = $derived(logRows.some((e) => e.seq > logHead));
   const nodeTypes = { story: StoryNode };
   const edgeTypes = { story: StoryEdge };
 
@@ -374,11 +350,6 @@
     try { const r = await api.exportContent(); download(r.filename, r.body); }
     catch (e) { adminMsg = e.message; }
   }
-  async function importContentFile(ev) {
-    const f = ev.target.files?.[0]; if (!f) return;
-    try { const r = await api.importContent(await f.text()); adminMsg = `Content imported (${r.counts.nodes} nodes).`; }
-    catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
-  }
   async function exportDb() {
     try { const r = await api.exportDb(); download(r.filename, r.body); }
     catch (e) { adminMsg = e.message; }
@@ -397,169 +368,13 @@
     catch (e) { adminMsg = e.message; } finally { ev.target.value = ''; }
   }
 
-  // ---------- admin content editor ----------
-  const KINDS = ['nodes', 'edges', 'gates', 'puzzles', 'clues', 'characters', 'locations', 'cells', 'arcs'];
-  // t: text | longtext | number | bool | select | json. ref -> select from content[ref].
-  const FIELDS = {
-    arcs: [{ key: 'id', t: 'text' }, { key: 'title', t: 'text' }, { key: 'is_spine', t: 'bool' }],
-    cells: [{ key: 'id', t: 'text' }, { key: 'grid_x', t: 'number' }, { key: 'grid_y', t: 'number' },
-            { key: 'name', t: 'text' }, { key: 'kind', t: 'select', options: ['city', 'town', 'village', 'wilderness'] },
-            { key: 'region', t: 'text' }, { key: 'arrival_node', t: 'select', ref: 'nodes' }],
-    characters: [{ key: 'id', t: 'text' }, { key: 'name', t: 'text' }, { key: 'persona', t: 'longtext' }, { key: 'reveal_name', t: 'text' }],
-    locations: [{ key: 'id', t: 'text' }, { key: 'name', t: 'text' }, { key: 'description', t: 'longtext' }, { key: 'cell', t: 'select', ref: 'cells' }],
-    puzzles: [{ key: 'id', t: 'text' }, { key: 'type', t: 'select', options: ['combination', 'riddle', 'assembly', 'semantic'] },
-              { key: 'prompt', t: 'longtext' }, { key: 'solution', t: 'json' }, { key: 'required_clues', t: 'json' },
-              { key: 'hint_ladder', t: 'json' }, { key: 'on_solve', t: 'json' }],
-    clues: [{ key: 'id', t: 'text' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'placement', t: 'json' },
-            { key: 'reveal_text', t: 'longtext' }, { key: 'discover_conditions', t: 'json' }],
-    nodes: [{ key: 'id', t: 'text' }, { key: 'arc', t: 'select', ref: 'arcs' },
-            { key: 'type', t: 'select', options: ['narration', 'choice', 'gate', 'puzzle', 'location', 'death', 'ending'] },
-            { key: 'location', t: 'select', ref: 'locations' }, { key: 'title', t: 'text' }, { key: 'body', t: 'longtext', rows: 12 },
-            { key: 'entry', t: 'bool' }, { key: 'is_death', t: 'bool' }, { key: 'world_access', t: 'bool' },
-            { key: 'gate', t: 'select', ref: 'gates' }, { key: 'puzzle', t: 'select', ref: 'puzzles' }, { key: 'media', t: 'json', rows: 16 }],
-    gates: [{ key: 'id', t: 'text' }, { key: 'location', t: 'select', ref: 'locations' },
-            { key: 'character', t: 'select', ref: 'characters' }, { key: 'spec', t: 'json' }],
-    edges: [{ key: 'id', t: 'text' }, { key: 'from', t: 'select', ref: 'nodes' }, { key: 'to', t: 'select', ref: 'nodes' },
-            { key: 'label', t: 'text' }, { key: 'conditions', t: 'json' }, { key: 'effects', t: 'json' },
-            { key: 'danger', t: 'number' }, { key: 'sort_order', t: 'number' }],
-  };
-  // Blank starting entities. Gates are kept FLAT (spec fields at top level) — the
-  // backend collapses non-id/location/character keys into `spec`, and loadForm()
-  // gathers them back into the single `spec` JSON editor.
-  const DEFAULTS = {
-    arcs: { id: '', title: '', is_spine: false },
-    cells: { id: '', grid_x: 0, grid_y: 0, name: '', kind: 'town', region: '', arrival_node: '' },
-    characters: { id: '', name: '', persona: '', reveal_name: '' },
-    locations: { id: '', name: '', description: '', cell: '' },
-    puzzles: { id: '', type: 'riddle', prompt: '', solution: {}, required_clues: [], hint_ladder: [], on_solve: {} },
-    clues: { id: '', puzzle: '', placement: {}, reveal_text: '', discover_conditions: { all: [] } },
-    nodes: { id: '', arc: 'main', type: 'narration', location: '', title: '', body: '', entry: false, is_death: false, world_access: false, gate: '', puzzle: '', media: {} },
-    gates: { id: '', location: '', character: '', intent: '', criteria: [], success_rule: '', knowledge_boundary: { knows: [], refuses: [], tone: '' }, hint_ladder: [], mercy_after_attempts: 3, on_success: {} },
-    edges: { id: '', from: '', to: '', label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 },
-  };
-  const singular = (k) => k.replace(/s$/, '');
-  const optionsFor = (f) => f.options ?? (content?.[f.ref] ?? []).map((x) => x.id);
-
-  function loadForm(ent) {
-    const k = editKind, f = {};
-    if (k === 'gates') {
-      const spec = {};
-      for (const [key, val] of Object.entries(ent || {}))
-        if (!['id', 'location', 'character'].includes(key)) spec[key] = val;
-      f.id = ent?.id ?? ''; f.location = ent?.location ?? ''; f.character = ent?.character ?? '';
-      f.spec = JSON.stringify(spec, null, 2);
-    } else {
-      for (const fld of FIELDS[k]) {
-        let v = ent ? ent[fld.key] : undefined;
-        if (fld.t === 'json') f[fld.key] = JSON.stringify(v ?? DEFAULTS[k][fld.key] ?? {}, null, 2);
-        else if (fld.t === 'bool') f[fld.key] = !!v;
-        else if (fld.t === 'number') f[fld.key] = v ?? 0;
-        else f[fld.key] = v ?? '';
-      }
-    }
-    form = f; jsonErrors = {};
-  }
-  // Drop empty-string reference fields so they become SQL NULL (an empty string
-  // would violate the FK). Mirrors buildEntity for directly-constructed entities.
-  function stripEmptyRefs(kind, entity) {
-    const out = { ...entity };
-    for (const f of FIELDS[kind]) if (f.ref && (out[f.key] === '' || out[f.key] == null)) delete out[f.key];
-    return out;
-  }
-  function buildEntity() {
-    const k = editKind, e = {};
-    for (const fld of FIELDS[k]) {
-      if (fld.t === 'json') e[fld.key] = JSON.parse(form[fld.key]);
-      else if (fld.t === 'number') e[fld.key] = Number(form[fld.key]) || 0;
-      else if (fld.t === 'bool') e[fld.key] = !!form[fld.key];
-      else {
-        const v = (form[fld.key] ?? '').trim?.() ?? form[fld.key];
-        if (fld.ref && v === '') continue;   // drop empty optional reference
-        e[fld.key] = v;
-      }
-    }
-    if (k === 'gates') { const spec = e.spec || {}; delete e.spec; Object.assign(e, spec); }
-    return e;
-  }
-  function setJson(key, val) {
-    form[key] = val;
-    try { JSON.parse(val); delete jsonErrors[key]; } catch (err) { jsonErrors[key] = err.message; }
-    jsonErrors = { ...jsonErrors };
-  }
-  function newEntity() {
-    selId = null; editorMsg = '';
-    loadForm(structuredClone(DEFAULTS[editKind]));
-  }
-  function selectKind(k) { editKind = k; newEntity(); }
-  function pickEntity(id) {
-    selId = id; editorMsg = '';
-    loadForm(content[editKind].find((x) => x.id === id));
-  }
-  async function openEditor() {
-    editorMsg = ''; editorView = 'list'; showEditor = true;
-    try { content = await api.contentAll(); editKind = 'nodes'; newEntity(); await loadLog(); }
-    catch (e) { editorMsg = e.message; }
-  }
+  // ---------- admin: read-only story-graph view ----------
+  // Authoring happens in the YAML files. This view just renders the graph and lets
+  // an admin drag nodes to reposition them (persisted back into the YAML).
   async function openGraph() {
-    await openEditor();
+    graphMsg = ''; showEditor = true;
+    try { content = await api.contentAll(); } catch (e) { graphMsg = e.message; return; }
     await setGraphView();
-  }
-  async function saveEntity() {
-    if (!canSave) return;
-    let entity;
-    try { entity = buildEntity(); } catch (e) { editorMsg = 'JSON error: ' + e.message; return; }
-    busy = true; editorMsg = '';
-    try {
-      const r = await api.saveEntity(editKind, entity);
-      await afterMutation(r.head);
-      selId = entity.id;
-      editorMsg = 'Saved.' + (r.auto_added ? ` Auto-added ${r.auto_added} node/edge to keep the spine valid.` : '')
-        + (r.warnings?.length ? ` ${r.warnings.length} warning(s).` : '');
-    } catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  // No confirmation dialog: delete applies immediately; integrity is enforced
-  // server-side (validate + node→edge cascade) and undo is the recovery net.
-  async function deleteCurrent() {
-    if (selId === null) return;
-    busy = true; editorMsg = '';
-    try {
-      const r = await api.deleteEntity(editKind, selId);
-      await afterMutation(r.head);
-      newEntity();
-      editorMsg = 'Deleted (undo to restore).';
-    } catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-
-  // ---------- event log: undo / redo / history ----------
-  async function loadLog() {
-    try { const r = await api.contentLog(); logRows = r.events; logHead = r.head; }
-    catch (e) { editorMsg = e.message; }
-  }
-  async function afterMutation(head) {
-    content = await api.contentAll();
-    if (head != null) logHead = head;
-    await loadLog();
-    if (editorView === 'graph') buildFlow();
-  }
-  async function doUndo() {
-    busy = true; editorMsg = '';
-    try { const r = await api.contentUndo(); await afterMutation(r.head); afterHistoryJump(); }
-    catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  async function doRedo() {
-    busy = true; editorMsg = '';
-    try { const r = await api.contentRedo(); await afterMutation(r.head); afterHistoryJump(); }
-    catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  async function gotoSeq(seq) {
-    busy = true; editorMsg = '';
-    try { const r = await api.contentUndoTo(seq); await afterMutation(r.head); afterHistoryJump(); }
-    catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  // After moving HEAD, the selected entity may no longer exist — refresh the form.
-  function afterHistoryJump() {
-    if (selId !== null && !(content?.[editKind] ?? []).some((x) => x.id === selId)) newEntity();
-    else if (selId !== null) loadForm(content[editKind].find((x) => x.id === selId));
   }
 
   // ---------- graph view ----------
@@ -611,12 +426,11 @@
       id: e.id, source: e.from, target: e.to, type: 'story', label: e.label || '',
       markerEnd: { type: 'arrowclosed' },
       style: e.danger ? 'stroke:#c0563a;stroke-width:2' : '',
-      data: { rec: e, ...pairMeta[e.id], onLabelClick: () => onEdgeClick({ edge: { id: e.id } }) },
+      data: { rec: e, ...pairMeta[e.id] },
     }));
   }
   async function setGraphView() {
-    editorView = 'graph';
-    if (!content) { try { content = await api.contentAll(); } catch (e) { editorMsg = e.message; return; } }
+    if (!content) { try { content = await api.contentAll(); } catch (e) { graphMsg = e.message; return; } }
     buildFlow();
     // First open ever on this server (no positions saved yet) → arrange once.
     // Spreading persists positions, so it never auto-runs again.
@@ -625,12 +439,10 @@
       await spreadOut();
     }
   }
-  function onNodeClick({ node }) { editKind = 'nodes'; pickEntity(node.id); }
-  function onEdgeClick({ edge }) { editKind = 'edges'; pickEntity(edge.id); }
   async function onNodeDragStop({ targetNode }) {
     if (!targetNode) return;
-    try { const r = await api.moveNode(targetNode.id, targetNode.position.x, targetNode.position.y); logHead = r.head; await loadLog(); }
-    catch (e) { editorMsg = e.message; }
+    try { await api.moveNode(targetNode.id, targetNode.position.x, targetNode.position.y); }
+    catch (e) { graphMsg = e.message; }
   }
   // Force-directed layout of ONE connected cluster: repel every node, pull
   // connected nodes toward an ideal edge length K, repel overlapping EDGE LABELS
@@ -743,43 +555,13 @@
   }
   async function spreadOut() {
     if (!flowNodes.length) return;
-    busy = true; editorMsg = '';
+    busy = true; graphMsg = '';
     try {
       const pos = forceLayout(flowNodes, flowEdges);
       flowNodes = flowNodes.map((n) => ({ ...n, position: pos[n.id] }));   // instant feedback
-      const r = await api.layoutNodes(pos);                                // one undoable event
-      await afterMutation(r.head);
-      editorMsg = 'Spread the nodes out (undo to revert).';
-    } catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  async function onConnect(conn) {
-    if (!conn.source || !conn.target) return;
-    let id = `e-${conn.source}-${conn.target}`;
-    const existing = new Set((content?.edges ?? []).map((e) => e.id));
-    if (existing.has(id)) { let i = 2; while (existing.has(`${id}-${i}`)) i++; id = `${id}-${i}`; }
-    const entity = stripEmptyRefs('edges', { id, from: conn.source, to: conn.target, label: '', conditions: { all: [] }, effects: {}, danger: 0, sort_order: 0 });
-    busy = true; editorMsg = '';
-    try {
-      const r = await api.saveEntity('edges', entity);
-      await afterMutation(r.head);
-      editKind = 'edges'; pickEntity(id);
-      editorMsg = 'Edge created — set its label/conditions.'
-        + (r.auto_added ? ` (auto-added ${r.auto_added} to keep the spine valid)` : '');
-    } catch (e) { editorMsg = e.message; } finally { busy = false; }
-  }
-  async function addNode() {
-    const ids = new Set((content?.nodes ?? []).map((n) => n.id));
-    let n = 1; while (ids.has(`node-${n}`)) n++;
-    const id = `node-${n}`;
-    const entity = stripEmptyRefs('nodes', { ...structuredClone(DEFAULTS.nodes), id });
-    busy = true; editorMsg = '';
-    try {
-      const r = await api.saveEntity('nodes', entity);
-      await api.moveNode(id, 60, 60).catch(() => {});
-      await afterMutation(r.head);
-      editKind = 'nodes'; pickEntity(id);
-      editorMsg = 'Node created.' + (r.auto_added ? ` (auto-added ${r.auto_added} to keep the spine valid)` : '');
-    } catch (e) { editorMsg = e.message; } finally { busy = false; }
+      await api.layoutNodes(pos);                                          // writes pos to YAML
+      graphMsg = 'Spread the nodes out and saved their positions to the YAML files.';
+    } catch (e) { graphMsg = e.message; } finally { busy = false; }
   }
   function showHover(kind, rec, ev) { hover = { kind, rec, x: ev.clientX, y: ev.clientY }; }
 
@@ -793,27 +575,19 @@
     }
   }
 
-  async function openMap() {
-    try { world = await api.world(); showMap = true; }
-    catch (e) { error = e.message; }
-  }
-  async function onTravel(cellId) {
+  // Click a place on the overview map → walk (within the cell) or travel (to an
+  // adjacent cell), per the item's action. The backend finds the shortest path
+  // within the cell, so any reachable place is one click. (MapOverlay already
+  // played the walk animation before calling back.) Close the map on success.
+  async function mapNav(item) {
+    if (!item?.reachable || !item.action) return;
     busy = true;
+    gateReply = ''; gatePassed = false; puzzleResult = ''; puzzleHintLine = '';
     try {
-      game = await api.travel(cellId);
+      game = item.action === 'travel'
+        ? await api.travel(item.target) : await api.walkTo(item.target);
       logEntries = (await api.log()).entries;
       showMap = false;
-    } catch (e) { error = e.message; } finally { busy = false; }
-  }
-
-  // Fast-travel from the illustrated world map: clicking a place moves the player
-  // there and closes the map.
-  async function onWorldMapGo(locationId) {
-    busy = true;
-    try {
-      game = await api.worldMapTravel(locationId);
-      logEntries = (await api.log()).entries;
-      showWorldMap = false;
     } catch (e) { error = e.message; } finally { busy = false; }
   }
 
@@ -937,7 +711,7 @@
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title="Admin / edit content" onclick={openAdmin}>⚙</button>{/if}
       {#if isAdmin}<button class="link" title="Edit story graph" onclick={openGraph}>🕸</button>{/if}
-      {#if isAdmin}<button class="link" title="Edit map layout (drag nodes)" onclick={() => (showMapEditor = true)}>📍</button>{/if}
+      {#if isAdmin}<button class="link" title="Edit maps (place node ellipses)" onclick={() => (showMapEditor = true)}>📍</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
@@ -950,7 +724,6 @@
             {:else if atmo?.image_svg}
               <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
             {/if}
-            <MiniMap revealed={mapRevealed} onOpen={() => (showWorldMap = true)} />
           </div>
           <h2>{game.node.title}</h2>
           <p class="body">{game.node.body}</p>
@@ -980,17 +753,19 @@
             {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
           {/if}
 
+          {#if gameMap && gameMap.nodes.length}
+            <div class="mapopen">
+              <button onclick={() => (showMap = true)} disabled={busy}>🗺 Open map</button>
+            </div>
+          {/if}
           <div class="edges">
-            {#each game.edges as e}
+            {#each game.edges.filter((e) => !e.on_map) as e}
               <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
                 {e.label}{#if e.danger > 0} ⚠{/if}
               </button>
             {/each}
             {#if game.edges.length === 0 && game.node.is_death}
               <p class="dead">You are dead. In the <b>Log</b> panel (right), use ↩ on an earlier <b>gate</b> you talked your way through to cheat death and return there — at a cost.</p>
-            {/if}
-            {#if game.node.world_access}
-              <button class="primary" onclick={openMap} disabled={busy}>🗺 Open the world map</button>
             {/if}
           </div>
         </div>
@@ -1108,33 +883,12 @@
     </div>
   {/if}
 
-  {#if showWorldMap}
-    <WorldMap onClose={() => (showWorldMap = false)} {isAdmin} onGo={onWorldMapGo} />
+  {#if showMap && gameMap}
+    <MapOverlay block={gameMap} onPick={mapNav} onClose={() => (showMap = false)} {busy} />
   {/if}
 
   {#if showMapEditor}
-    <WorldMapEditor onClose={() => (showMapEditor = false)} />
-  {/if}
-
-  {#if showMap && world}
-    <div class="modal" onclick={() => (showMap = false)}>
-      <div class="modal-card" onclick={(e) => e.stopPropagation()}>
-        <h2>🗺 World map <span class="sub">— southern Sweden</span></h2>
-        <div class="worldgrid">
-          {#each world.cells as c}
-            <button class="cell {c.kind}" class:current={c.id === world.current_cell_id}
-              style={`grid-column:${c.grid_x};grid-row:${c.grid_y}`}
-              disabled={busy || !c.reachable}
-              onclick={() => onTravel(c.id)}>
-              <b>{c.name}</b><br><span class="sub">{c.kind}</span>
-              {#if c.id === world.current_cell_id}<br><span class="here">you are here</span>
-              {:else if !c.reachable}<br><span class="sub">too far</span>{/if}
-            </button>
-          {/each}
-        </div>
-        <button onclick={() => (showMap = false)}>Close</button>
-      </div>
-    </div>
+    <MapEditor onClose={() => (showMapEditor = false)} />
   {/if}
 
   {#if showLb}
@@ -1189,10 +943,9 @@
 
         <div class="admin-sec">
           <h3>Authored content</h3>
-          <p class="sub">World, NPCs, story, puzzles. Import is validated + non-destructive (upsert).</p>
+          <p class="sub">World, NPCs, story, puzzles — authored in the YAML files (the single source of truth). Seeding reconciles the DB to the files on every load.</p>
           <button onclick={exportContent}>Export YAML</button>
-          <label class="filebtn">Import YAML/JSON<input type="file" accept=".yaml,.yml,.json" onchange={importContentFile} /></label>
-          <button onclick={openEditor}>Edit content…</button>
+          <button onclick={openGraph}>View story graph…</button>
         </div>
 
         <div class="admin-sec">
@@ -1226,108 +979,33 @@
     </div>
   {/if}
 
-  {#snippet formFields()}
-    {#each FIELDS[editKind] as f (f.key)}
-      <div class="field">
-        <label>{f.key}{#if f.ref} <span class="sub">→ {f.ref}</span>{/if}</label>
-        {#if f.t === 'bool'}
-          <input type="checkbox" class="chk" bind:checked={form[f.key]} />
-        {:else if f.t === 'number'}
-          <input type="number" bind:value={form[f.key]} />
-        {:else if f.t === 'longtext'}
-          <textarea rows={f.rows ?? 6} bind:value={form[f.key]}></textarea>
-        {:else if f.t === 'json'}
-          <textarea rows={f.rows ?? 8} class="json" value={form[f.key]} oninput={(e) => setJson(f.key, e.target.value)}></textarea>
-          {#if jsonErrors[f.key]}<div class="json-err">{jsonErrors[f.key]}</div>{/if}
-        {:else if f.t === 'select'}
-          <select bind:value={form[f.key]}>
-            {#if f.ref}<option value="">—</option>{/if}
-            {#each optionsFor(f) as o}<option value={o}>{o}</option>{/each}
-          </select>
-        {:else}
-          <input type="text" bind:value={form[f.key]} readonly={f.key === 'id' && selId !== null} />
-        {/if}
-      </div>
-    {/each}
-    <div class="row">
-      <button class="primary" onclick={saveEntity} disabled={!canSave || busy}>Save</button>
-      {#if selId !== null}<button class="danger" onclick={deleteCurrent} disabled={busy}>Delete</button>{/if}
-    </div>
-  {/snippet}
-
   {#if showEditor}
     <div class="modal" onclick={() => (showEditor = false)}>
       <div class="modal-card editor" onclick={(e) => e.stopPropagation()}>
         <div class="editor-head">
-          <h2>⚙ Edit content</h2>
-          <div class="viewtabs">
-            <button class:active={editorView === 'list'} onclick={() => (editorView = 'list')}>List</button>
-            <button class:active={editorView === 'graph'} onclick={setGraphView}>Graph</button>
-          </div>
-          <div class="undobar">
-            <button onclick={doUndo} disabled={logHead <= 0 || busy} title="Undo">↶</button>
-            <span class="sub">#{logHead}</span>
-            <button onclick={doRedo} disabled={!canRedo || busy} title="Redo">↷</button>
+          <h2>🕸 Story graph <span class="sub">— read-only; authoring lives in the YAML files</span></h2>
+        </div>
+        {#if graphMsg}<div class="notice">{graphMsg}</div>{/if}
+
+        <div class="graphwrap">
+          <div class="canvas">
+            <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} {edgeTypes} fitView
+              minZoom={0.25} fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }}
+              nodesConnectable={false} elementsSelectable={false}
+              onnodedragstop={onNodeDragStop}
+              onnodepointerenter={({ node, event }) => showHover('node', node.data.rec, event)}
+              onnodepointerleave={() => (hover = null)}
+              onedgepointerenter={({ edge, event }) => showHover('edge', edge.data.rec, event)}
+              onedgepointerleave={() => (hover = null)}>
+              <Background />
+              <Controls fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }} />
+            </SvelteFlow>
+            <div class="graphtools">
+              <button onclick={spreadOut} disabled={busy} title="Spread the nodes out: even spacing, similar edge lengths, no overlap">⤢ Spread out</button>
+              <span class="sub">drag a node to reposition it (saved to YAML) · edit content in the YAML files</span>
+            </div>
           </div>
         </div>
-        {#if editorMsg}<div class="notice">{editorMsg}</div>{/if}
-
-        {#if editorView === 'list'}
-          <div class="kindtabs">
-            {#each KINDS as k}
-              <button class="link" class:active={k === editKind} onclick={() => selectKind(k)}>{k}</button>
-            {/each}
-          </div>
-          <div class="editor-grid">
-            <div class="idlist">
-              <button class:sel={selId === null} onclick={newEntity}>+ New {singular(editKind)}</button>
-              {#each (content?.[editKind] ?? []) as x}
-                <button class:sel={x.id === selId} onclick={() => pickEntity(x.id)}>{x.id}</button>
-              {/each}
-            </div>
-            <div class="form">{@render formFields()}</div>
-          </div>
-        {:else}
-          <div class="graphwrap">
-            <div class="canvas">
-              <SvelteFlow bind:nodes={flowNodes} bind:edges={flowEdges} {nodeTypes} {edgeTypes} fitView
-                minZoom={0.25} fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }}
-                onnodeclick={onNodeClick} onedgeclick={onEdgeClick}
-                onconnect={onConnect} onnodedragstop={onNodeDragStop}
-                onnodepointerenter={({ node, event }) => showHover('node', node.data.rec, event)}
-                onnodepointerleave={() => (hover = null)}
-                onedgepointerenter={({ edge, event }) => showHover('edge', edge.data.rec, event)}
-                onedgepointerleave={() => (hover = null)}>
-                <Background />
-                <Controls fitViewOptions={{ padding: 0.2, minZoom: 0.02, maxZoom: 1.5 }} />
-              </SvelteFlow>
-              <div class="graphtools">
-                <button onclick={addNode} disabled={busy}>+ Node</button>
-                <button onclick={spreadOut} disabled={busy} title="Spread the nodes out: even spacing, similar edge lengths, no overlap">⤢ Spread out</button>
-                {#if selId !== null}<button class="danger" onclick={deleteCurrent} disabled={busy}>Delete {editKind === 'edges' ? 'edge' : 'node'}</button>{/if}
-                <span class="sub">drag a node to move · drag handle→node to connect · click to edit</span>
-              </div>
-            </div>
-            <div class="graphside">
-              {#if selId !== null}
-                <div class="sidehd">{editKind === 'edges' ? 'Edge' : 'Node'}: <code>{selId}</code></div>
-                <div class="form">{@render formFields()}</div>
-              {:else}
-                <p class="sub">Select a node or edge to edit it, or use “+ Node”.</p>
-              {/if}
-            </div>
-          </div>
-        {/if}
-
-        <details class="history">
-          <summary>History — {logRows.length} action(s), at #{logHead}</summary>
-          <ul>
-            {#each logRows.slice().reverse() as e (e.seq)}
-              <li><button class="link" class:athead={e.seq === logHead} class:undone={!e.applied} onclick={() => gotoSeq(e.seq)}>#{e.seq} {e.op} {e.kind} {e.entity_id}</button></li>
-            {/each}
-            <li><button class="link" class:athead={logHead === 0} onclick={() => gotoSeq(0)}>#0 baseline (current world)</button></li>
-          </ul>
-        </details>
 
         <button class="editor-close" onclick={() => (showEditor = false)}>Close</button>
       </div>
@@ -1429,6 +1107,10 @@
   .opt input { display:inline; width:auto; margin-right:.5rem; }
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
+  .mapopen { margin:1rem 0 .5rem; }
+  .mapopen button { width:100%; }
+  .maphint { margin:.4rem 0 0; text-align:center; }
+  .modal-card.worldmap { width:min(960px,94vw); max-height:92vh; overflow:auto; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
   .notes { margin-top:1.5rem; }
   button { background:#2a3550; color:#e8e8f0; border:1px solid #3a456a; padding:.55rem .8rem; border-radius:6px; cursor:pointer; text-align:left; }
@@ -1454,33 +1136,8 @@
     border-radius:0; overflow:hidden; display:flex; flex-direction:column; padding:1rem 1.5rem; }
   .editor-head { display:flex; align-items:center; gap:1rem; }
   .editor-head h2 { flex:1; margin:.2rem 0; }
-  .viewtabs { display:flex; gap:.2rem; }
-  .viewtabs button { padding:.25rem .7rem; font-size:.85rem; }
-  .viewtabs button.active { background:#34416a; color:#cdbb9a; }
-  .undobar { display:flex; align-items:center; gap:.4rem; }
-  .undobar button { padding:.25rem .55rem; }
-  .kindtabs { display:flex; flex-wrap:wrap; gap:.2rem; border-bottom:1px solid #2a2e3e; padding-bottom:.5rem; margin:.4rem 0 .6rem; }
-  .kindtabs .link { padding:.2rem .5rem; }
-  .kindtabs .link.active { color:#cdbb9a; font-weight:bold; }
-  .editor-grid { display:grid; grid-template-columns:260px 1fr; gap:1rem; flex:1 1 auto; min-height:0; }
-  .idlist { overflow:auto; display:flex; flex-direction:column; gap:.15rem; }
-  .idlist button { width:100%; font-size:.95rem; padding:.45rem .6rem; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-  .idlist button.sel { background:#34416a; color:#cdbb9a; }
-  .form { overflow:auto; max-width:760px; }
-  .form .field { margin-bottom:1.4rem; }
-  .form .field label { display:block; font-size:.9rem; color:#9a9ab0; margin-bottom:.2rem; }
-  .form input, .form textarea, .form select { width:100%; box-sizing:border-box; background:#0d0e14; border:1px solid #2a2e3e; color:#e8e8f0; padding:.65rem .75rem; border-radius:6px; font:inherit; font-size:1.05rem; }
-  .form textarea.json { font-family:monospace; font-size:.95rem; }
-  .form input[readonly] { opacity:.55; }
-  .form .chk { width:auto; display:inline-block; transform:scale(1.3); margin:.3rem 0; }
-  .json-err { color:#e06c75; font-size:.85rem; margin-top:.15rem; }
   /* graph view */
-  .graphwrap { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:1rem; flex:1 1 auto; min-height:0; }
-  /* right-hand edit panel: boxes fill the width, taller, more spacing */
-  .graphside .form { max-width:none; }
-  .graphside .field { margin-bottom:1.6rem; }
-  .graphside textarea { min-height:6rem; }
-  .graphside textarea.json { min-height:9rem; }
+  .graphwrap { display:grid; grid-template-columns:minmax(0,1fr); gap:1rem; flex:1 1 auto; min-height:0; }
   .canvas { position:relative; height:100%; border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
   .canvas :global(.svelte-flow) { background:#0d0e14; }
   /* Zoom / fit / interactivity controls: dark buttons with bright icons (the
@@ -1501,22 +1158,7 @@
   }
   .graphtools { position:absolute; left:.5rem; top:.5rem; z-index:5; display:flex; gap:.4rem; align-items:center; flex-wrap:wrap; }
   .graphtools button { padding:.3rem .6rem; font-size:.82rem; }
-  /* right panel: drag its inner (left) edge to resize width; content fills width.
-     direction:rtl puts the native resize grip on the bottom-left (the divider side). */
-  .graphside { height:100%; overflow:auto; width:440px; min-width:280px; max-width:80vw;
-    resize:horizontal; direction:rtl; padding-left:1.1rem; box-sizing:border-box; }
-  .graphside > * { direction:ltr; }
-  .graphside .sidehd { margin-bottom:.4rem; font-size:1rem; }
   .editor-close { align-self:flex-end; margin-top:.5rem; padding:.7rem .8rem; font-size:.8rem; line-height:1.4; text-align:center; }
-  /* bottom history panel: drag its bottom edge to resize height; list scrolls inside */
-  .history { margin-top:.8rem; border-top:1px solid #2a2e3e; padding-top:.4rem;
-    resize:vertical; overflow:auto; min-height:1.8rem; height:20vh; }
-  .history:not([open]) { height:auto; min-height:0; resize:none; overflow:visible; }
-  .history summary { cursor:pointer; color:#9a9ab0; font-size:.85rem; }
-  .history ul { list-style:none; padding:.3rem 0 0; }
-  .history .link { font-size:.8rem; font-family:monospace; }
-  .history .athead { color:#cdbb9a; font-weight:bold; }
-  .history .undone { opacity:.45; text-decoration:line-through; }
   .gtip { position:fixed; z-index:1000; pointer-events:none; max-width:320px; background:#1a1d28; border:1px solid #3a456a;
           border-radius:6px; padding:.4rem .6rem; font-size:.8rem; box-shadow:0 2px 10px rgba(0,0,0,.5); word-break:break-word; }
   .paneltitle { background:none; border:none; color:#e8e8f0; font:inherit; padding:0; cursor:pointer; }
