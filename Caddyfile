@@ -14,6 +14,13 @@
 		reverse_proxy api:8000
 	}
 
+	# Content assets (map background, icons, banners) are served by the API from the
+	# mounted game-data dir at /content-static/* — route them to the API too, or every
+	# image 404s on the deployed site (the web server has no such path).
+	handle /content-static/* {
+		reverse_proxy api:8000
+	}
+
 	# Everything else: the production web app (vite preview serving the built bundle).
 	reverse_proxy web:5173
 }
