@@ -104,11 +104,15 @@ embeddings provider wired). See `MEMORY_AND_LEAKAGE.md`.
   text in a house sepia style (with `POLLINATIONS_TOKEN`, a real reference photo is restyled via
   image-to-image, fetched server-side → data URI). Warm every theme up front:
   `docker compose run --rm api python -m app.gen_images [--force]`. See `ATMOSPHERE.md`, `MEDIA_PROVIDERS.md`.
-- **Admin content editor** (`content_edit.py`, `content_log.py`, `content_repair.py`, `/api/admin/content/*`,
-  graph UI in `App.svelte`): an admins-only in-UI editor that mutates the materialized content cache
-  through an append-only **content-event log** with undo/redo. A save/delete that would fail the spine
-  lint is **auto-repaired** (minimal generated nodes/edges folded into the same event, reverted together
-  on undo). This edits the DB, *not* the YAML data repo — it's a separate path from the seed pipeline. See `ADMIN.md`.
+- **Admin panel** (`admin.py`, `content.py`, `content_log.py`, `map_write.py`, `/api/admin/*` in `main.py`,
+  ⚙ UI in `App.svelte`): admins-only (`ONELIFE_ADMIN_EMAILS`). **The DB-mutating in-UI content editor —
+  with its content-event log, undo/redo and auto-repair — was retired.** The YAML files are now the single
+  source of truth and git is the history; the in-app story-graph is a **read-only** view. The only writes
+  it makes go *back into the YAML*: dragging a node persists `pos:` and the map editor persists `map`/
+  `world_exit` placements, both via `map_write.py` as **surgical, byte-preserving text edits** (so the
+  `/content` mount must be **read-write**). `admin.py` is the hidden export/import panel (authored content
+  is **export-only**; full-DB and per-player saves round-trip via `json_agg`/`json_populate_recordset`,
+  destructive imports require typing `REPLACE`). See `ADMIN.md`.
 
 ### Frontend (`web/src`)
 A single Svelte 5 component `App.svelte` (runes: `$state`/`$derived`/`$effect`) drives phases

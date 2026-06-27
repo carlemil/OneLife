@@ -2,23 +2,25 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## What this repo is
+## What this folder is
 
-This is the **game-data folder of the repo** for the [OneLife](../OneLife) engine — a dark text
+This is the **Sandby Mystery game-data set** for the OneLife engine — a dark text
 adventure set in 1992 southern Sweden (Skåne), opening at Killebäckskolan in Södra
-Sandby. It contains **no code**, only authored content as YAML. The engine is
-data-agnostic: it mounts this repo at `/content` and seeds it into Postgres.
+Sandby. It contains **no code**, only authored content as YAML.
 
-The engine lives in the sibling directory `../OneLife` (on this machine,
-`D:\source\OneLife`). Authoring rules and the full field reference live in the
-engine's `../OneLife/AUTHORING.md`, `STORY_AND_PUZZLES.md`, and `AI_DIALOGUE_GATES.md`.
-The engine expects this repo as `../OneLife-KBK-mystery` by default; override with
-`GAME_DATA_DIR` in the engine's `.env`.
+It lives **in-repo** at `games/SandbyMystery/data/` within the OneLife engine repo
+(repo root on this machine: `D:\source\OneLife`). The engine is data-agnostic: it
+mounts this folder at `/content` and seeds it into Postgres. This is the **default
+dataset** (`GAME_DATA_DIR=./games/SandbyMystery/data`); point the engine at another
+dataset by overriding `GAME_DATA_DIR` in the repo-root `.env`.
+
+Authoring rules and the full field reference live in the engine docs at the repo root:
+`../../../AUTHORING.md`, `../../../STORY_AND_PUZZLES.md`, `../../../AI_DIALOGUE_GATES.md`.
 
 ## Commands
 
-There is no build step here. Validate and load content **from the engine repo**
-(`../OneLife`):
+There is no build step here. Validate and load content **from the repo root**
+(`../../..`, i.e. `D:\source\OneLife`):
 
 ```bash
 make lint     # validate this data — schema, references, spine reachability (no DB)
@@ -27,48 +29,53 @@ make up       # build + start everything (also auto-seeds on API startup)
 make reset    # wipe the DB volume and start fresh
 ```
 
-On Windows/PowerShell without `make`, use the underlying commands (run from `../OneLife`):
+On Windows/PowerShell without `make`, use the underlying commands (run from the repo root):
 
 ```bash
 docker compose run --rm --no-deps api python -m app.seed --lint   # lint
 docker compose run --rm api python -m app.seed                    # seed
 ```
 
-**Always `make lint` after editing YAML** — it is the only check this repo has.
+**Always `make lint` after editing YAML** — it is the only check this folder has.
 
 ## How the content model works
 
-Every `*.yaml` file may contain any subset of these top-level lists, and **all files
-are merged**, so files are organized by area/feature (`killebackskolan.yaml`,
-`lund.yaml`, `malmo.yaml`, `sandby.yaml`, `marta.yaml`), not by type. `npcs.yaml`
-and `puzzles.yaml` are **inert libraries** — characters/puzzles not yet wired into a
-node, so they don't affect the spine lint until referenced.
+Every `*.yaml` file may contain any subset of the top-level lists below, and **all
+files are merged** — so the file an entity lives in is purely organizational. This
+dataset is organized **by type**, one file per kind:
 
-| List | Defines |
-|---|---|
-| `arcs` | Narrative threads; `main` is `is_spine: true` |
-| `cells` / `locations` | The travel grid (cells) and places within them |
-| `characters` | NPCs — `id`, `name`, optional `reveal_name`, and a `persona` (2nd-person brief the AI Actor reads) |
-| `nodes` | Story beats, with **edges embedded inline** |
-| `gates` | AI-dialogue specs referenced by `gate` nodes |
-| `puzzles` | Puzzle specs referenced by `puzzle` nodes |
-| `clues` | Woven clue fragments that feed a puzzle's `required_clues` |
-| `edges` | **Standalone** edges (with explicit `from`) to attach a route to a node defined in *another* file |
+| File(s) | Top-level list | Defines |
+|---|---|---|
+| `arcs.yaml` | `arcs` | Narrative threads; `main` is `is_spine: true` |
+| `cells.yaml` | `cells` | The travel grid (one cell per place, with `arrival_node`) |
+| `locations.yaml` | `locations` | Places within cells |
+| `characters.yaml` | `characters` | NPCs — `id`, `name`, optional `reveal_name`, `persona` |
+| `nodes-{narration,location,gate,puzzle,death,ending}.yaml` | `nodes` | Story beats by node type, with **edges embedded inline** |
+| `gates.yaml` | `gates` | AI-dialogue specs referenced by `gate` nodes |
+| `puzzles.yaml` | `puzzles` | Puzzle specs referenced by `puzzle` nodes |
+| `clues.yaml` | `clues` | Woven clue fragments that feed a puzzle's `required_clues` |
+| `edges.yaml` | `edges` | **Standalone** edges (explicit `from`) attaching routes to nodes in other files |
+
+The `old/` directory holds the **previous by-area layout** (`killebackskolan.yaml`,
+`lund.yaml`, `malmo.yaml`, `sandby.yaml`, `marta.yaml`, `npcs.yaml`, …) kept for
+reference; it is **not** seeded. `images/maps/` holds generated map art.
 
 ### Nodes and edges
 
 - `node.type` is one of `narration | location | gate | puzzle | death | ending`.
 - A `gate` node sets `gate: <gate-id>`; a `puzzle` node sets `puzzle: <puzzle-id>`.
 - Edges normally live **inside** their source node (`from` is implied). To add a
-  route from a node defined elsewhere, use a top-level `edges:` entry with explicit
-  `from` (see `marta.yaml` adding routes off `kbk-entrance-hall`).
+  route from a node defined in another file, use a top-level `edges:` entry in
+  `edges.yaml` with explicit `from`.
 - `media: {image_theme, music_theme, real_place, reference_image}` drives generated
   art and the atmosphere soundtrack. `world_access: true` marks travel-hub nodes.
+- `body_variants` swap a node's body text based on a condition (`when: {all: [...]}`).
 - `sort_order` orders choices in the UI; "leave/back" edges conventionally use a
   high value (e.g. `9`) so they sort last.
-- `pos: {x, y}` is the node's position in the story-graph editor (pixel coords) and,
-  after normalization, where its location icon sits on the overview map. It is authored
-  here in YAML; dragging a node in the read-only graph editor writes this line back.
+- `pos: {x, y}` is the node's position in the story-graph editor (pixel coords);
+  dragging a node in the read-only graph editor writes this line back.
+- `map: {x, y, rx, ry, scale}` places a node/cell/location on the hand-drawn overview
+  map (normalized 0–1 coords).
 
 ### The condition / effect DSL (same one the engine evaluates)
 
@@ -106,11 +113,13 @@ a puzzle with no `hint_ladder`; unreachable nodes; unresolved `required_clues`.
 ## Authoring conventions in this world
 
 - Setting is fixed at 1992; **travel changes place, never the year**.
-- NPCs in `npcs.yaml` are each a real character (book/film/TV/real life) given a
-  Swedish play-on-words name; the `persona` is always written in the second person.
-- These YAML files are the **single source of truth** for all world data; the
-  database holds only player state and runtime/derived data (NPC memories, the image
-  cache). Seeding **reconciles** the DB to the files — it upserts every row and prunes
-  authored rows you've removed from YAML (a row a live player still references is kept,
-  with a warning). There is no in-app content editor: edit the YAML and re-seed (the
-  story graph is a read-only view whose only edit is dragging a node, saved as `pos:`).
+- NPCs in `characters.yaml` are each a real character (book/film/TV/real life) given a
+  Swedish play-on-words name, documented in a `# ←` comment above the entry (e.g.
+  Hannibal Lecter → "Hannibal Läcker"; *läcker* = "delicious"). The `persona` is the
+  second-person brief the AI Actor reads; `reveal_name` is the name revealed in play.
+- These YAML files are the **single source of truth** for all world data; the database
+  holds only player state and runtime/derived data (NPC memories, the image cache).
+  Seeding **reconciles** the DB to the files — it upserts every row and prunes authored
+  rows you've removed from YAML (a row a live player still references is kept, with a
+  warning). The in-app admin content editor edits the **DB cache**, not these files —
+  it is a separate path; to change the canonical world, edit the YAML and re-seed.

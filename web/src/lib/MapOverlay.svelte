@@ -75,15 +75,26 @@
         </svg>
 
         {#each nodes as n}
+          <!-- The icon's visual. When it has a `hit` hotspot the icon itself is
+               inert (pointer-events:none, via .withhit) and the square below is the
+               sole hover/click target; otherwise the icon is the target as before. -->
           <div class="mo-node" class:reachable={n.reachable} class:current={n.current}
-               class:disabled={!n.reachable && !n.current}
+               class:disabled={!n.reachable && !n.current} class:hovered={hovered === n.id}
+               class:withhit={!!n.hit}
                style={`left:${cx(n)}px; top:${cy(n)}px`}
-               role="button" tabindex={n.reachable ? 0 : -1} aria-label={`Go to ${n.title}`}
+               role="button" tabindex={n.reachable && !n.hit ? 0 : -1} aria-label={`Go to ${n.title}`}
                onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
                onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
             <img class="mo-icon" style={`--mo-scale:${n.scale ?? 1}`}
                  src={contentAsset(n.icon)} alt={n.title} draggable="false" />
           </div>
+          {#if n.hit}
+            <div class="mo-hit" class:reachable={n.reachable} class:disabled={!n.reachable && !n.current}
+                 style={`left:${cx(n)}px; top:${cy(n)}px; width:${n.hit * cw}px; height:${n.hit * cw}px`}
+                 role="button" tabindex={n.reachable ? 0 : -1} aria-label={`Go to ${n.title}`}
+                 onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
+                 onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}></div>
+          {/if}
         {/each}
 
         {#if hovered && byId[hovered]}
@@ -121,7 +132,16 @@
     color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
   .mo-node.disabled { opacity:.45; filter:grayscale(.5); }
   .mo-node.reachable { cursor:pointer; }
-  .mo-node.reachable:hover .mo-icon { transform:scale(1.12); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  /* When a hotspot square owns the pointer, the icon is inert; its hover-grow is
+     then driven by the shared `hovered` state instead of the icon's own :hover. */
+  .mo-node.withhit { pointer-events:none; }
+  .mo-node.reachable:hover .mo-icon,
+  .mo-node.reachable.hovered .mo-icon { transform:scale(1.12); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  /* The hotspot hit-area: invisible until hovered, then a faint ink outline. */
+  .mo-hit { position:absolute; transform:translate(-50%, -50%); z-index:6; box-sizing:border-box;
+    border:1.5px dashed transparent; border-radius:5px; transition:border-color .15s, background .15s; }
+  .mo-hit.reachable { cursor:pointer; }
+  .mo-hit:hover { border-color:rgba(46,33,20,.5); background:rgba(46,33,20,.06); }
   .mo-node.current .mo-icon { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 6px rgba(192,86,58,.9));
     animation:mopulse 1.8s infinite; }
   @keyframes mopulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }

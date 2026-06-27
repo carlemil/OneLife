@@ -21,8 +21,9 @@ def _files():
 
 def _fmt(value: dict) -> str:
     """Inline flow mapping in the house style, e.g.
-    `{x: 0.42, y: 0.55, rx: 0.06, ry: 0.04, scale: 1.5}` (only the keys present)."""
-    return "{" + ", ".join(f"{k}: {value[k]}" for k in ("x", "y", "rx", "ry", "scale")
+    `{x: 0.42, y: 0.55, rx: 0.06, ry: 0.04, scale: 1.5, hit: 0.08}` (only the keys
+    present). `hit` is the icon's hover/click square side (fraction of map width)."""
+    return "{" + ", ".join(f"{k}: {value[k]}" for k in ("x", "y", "rx", "ry", "scale", "hit")
                            if k in value) + "}"
 
 

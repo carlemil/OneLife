@@ -735,6 +735,12 @@
             {:else if atmo?.image_svg}
               <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
             {/if}
+            {#if gameMap && gameMap.nodes.length}
+              <button class="mapthumb" onclick={() => (showMap = true)} disabled={busy}
+                      aria-label="Open map" title="Open map">
+                <img src="/map-button.png" alt="Map" draggable="false" />
+              </button>
+            {/if}
           </div>
           <h2>{game.node.title}</h2>
           <p class="body">{game.node.body}</p>
@@ -764,11 +770,6 @@
             {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
           {/if}
 
-          {#if gameMap && gameMap.nodes.length}
-            <div class="mapopen">
-              <button onclick={() => (showMap = true)} disabled={busy}>🗺 Open map</button>
-            </div>
-          {/if}
           <div class="edges">
             {#each game.edges.filter((e) => !e.on_map) as e}
               <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
@@ -1067,14 +1068,17 @@
   .bannerrow { display:flex; gap:.6rem; align-items:stretch; margin-bottom:1rem; }
   .banner { position:relative; flex:1 1 auto; min-width:0; border-radius:8px; overflow:hidden; border:1px solid #2a2e3e; }
   .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
-  .mapthumb { flex:0 0 auto; width:180px; height:140px; position:relative; padding:0; cursor:pointer;
-    border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14; }
-  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; }
-  .mapthumb .maplabel { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
-    font-size:1.5rem; font-weight:700; letter-spacing:.12em; text-transform:uppercase; color:#f3e9d2;
-    text-shadow:0 1px 4px #000, 0 0 14px #000; background:rgba(20,12,6,.22); transition:background .15s; }
+  /* The map-access button: the word MAP is baked into the aged parchment image,
+     sized to match the location banner's height. */
+  .mapthumb { flex:0 0 auto; width:186px; height:140px; padding:0; cursor:pointer;
+    border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14;
+    transition:border-color .15s; }
+  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transition:filter .15s, transform .15s; }
   .mapthumb:hover { border-color:#cdbb9a; }
-  .mapthumb:hover .maplabel { background:rgba(20,12,6,.05); }
+  .mapthumb:hover img { filter:brightness(1.06); transform:scale(1.02); }
+  .mapthumb:disabled { opacity:.5; cursor:default; }
+  .mapthumb:disabled:hover { border-color:#2a2e3e; }
+  .mapthumb:disabled:hover img { filter:none; transform:none; }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
   .vol { display:flex; align-items:center; gap:.5rem; margin:.6rem 0 0; font-size:.9rem; color:#9a9ab0; }
   .vol input[type=range] { flex:1; accent-color:#7a7ad0; cursor:pointer; }
@@ -1124,8 +1128,6 @@
   .opt input { display:inline; width:auto; margin-right:.5rem; }
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
-  .mapopen { margin:1rem 0 .5rem; }
-  .mapopen button { width:100%; }
   .maphint { margin:.4rem 0 0; text-align:center; }
   .modal-card.worldmap { width:min(960px,94vw); max-height:92vh; overflow:auto; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }

@@ -214,6 +214,18 @@ def _jmap(v) -> dict:
     return (json.loads(v) if isinstance(v, str) else v) or {}
 
 
+def _hit(nm: dict):
+    """The icon's optional interactive hotspot: a square centred on the icon whose
+    side is `map.hit` as a fraction of the parchment width (so it renders visually
+    square). None → the player map falls back to the icon image's bounds."""
+    h = nm.get("hit")
+    try:
+        h = float(h)
+    except (TypeError, ValueError):
+        return None
+    return round(h, 4) if h > 0 else None
+
+
 def _auto_layout(ids: list[str]) -> dict:
     """Deterministic grid placement (normalized 0..1) for nodes lacking an
     explicit `map`, so every place is clickable before the author positions it."""
@@ -376,7 +388,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                       "icon": f"images/maps/icons/{loc}.png",
                       "x": x_y[0], "y": x_y[1], "current": bool(is_current),
                       "reachable": reachable, "action": action, "target": target,
-                      "scale": scale})
+                      "scale": scale, "hit": _hit(nm)})
 
     # Roads: intra-cell edges between shown anchors + lanes between adjacent
     # discovered cells' arrival places, keyed by location id to match the icons.
@@ -468,7 +480,7 @@ async def map_overview(conn) -> dict:
         nodes.append({"id": r["loc_id"], "node_id": r["node_id"], "cell": r["cell"],
                       "title": r["title"],
                       "icon": f"images/maps/icons/{r['loc_id']}.png",
-                      "x": x, "y": y, "scale": scale})
+                      "x": x, "y": y, "scale": scale, "hit": _hit(nm)})
 
     roads, seen = [], {}
     erows = await conn.fetch(

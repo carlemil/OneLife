@@ -256,6 +256,10 @@ class MapScaleBody(BaseModel):
     id: str       # the location's anchor node id
     scale: float
 
+class MapHitBody(BaseModel):
+    id: str               # the location's anchor node id
+    hit: float | None     # square side as a fraction of map width; null/0 clears it
+
 class MapEdgeBody(BaseModel):
     from_node: str        # source anchor node id
     to_node: str          # target anchor node id
@@ -891,6 +895,36 @@ async def admin_map_scale(body: MapScaleBody, authorization: str | None = Header
         await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
                            body.id, json.dumps(cur))
     return {"ok": True, "scale": scale}
+
+
+@app.post("/api/admin/map/hit")
+async def admin_map_hit(body: MapHitBody, authorization: str | None = Header(default=None)):
+    """Set (or clear) one icon's interactive hotspot — a square centred on the icon
+    whose side is `story_nodes.map.hit` as a fraction of the map width. Written back
+    to the YAML (preserving any x/y/rx/ry/scale) and mirrored into the live DB."""
+    await _admin_session(authorization)
+    hit = None if body.hit is None else round(max(0.0, min(0.5, float(body.hit))), 4)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE id=$1", body.id)
+        if row is None:
+            raise HTTPException(404, f"no such node {body.id}")
+        cur = row["map"]
+        cur = json.loads(cur) if isinstance(cur, str) else (dict(cur) if cur else {})
+        if hit and hit > 0:
+            cur["hit"] = hit
+        else:
+            cur.pop("hit", None)
+            hit = None
+        try:
+            map_write.set_node_map(body.id, cur)
+        except FileNotFoundError:
+            raise HTTPException(404, f"no YAML defines node {body.id}")
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(500, f"could not write YAML: {e}")
+        await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
+                           body.id, json.dumps(cur))
+    return {"ok": True, "hit": hit}
 
 
 @app.post("/api/admin/map/edge")
