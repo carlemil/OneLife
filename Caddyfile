@@ -21,6 +21,18 @@
 		reverse_proxy api:8000
 	}
 
+	# FastAPI auto-docs live at the root (not under /api): the Swagger UI at /docs and
+	# ReDoc at /redoc both load the schema from /openapi.json. Route all three to the API.
+	handle /docs* {
+		reverse_proxy api:8000
+	}
+	handle /redoc* {
+		reverse_proxy api:8000
+	}
+	handle /openapi.json {
+		reverse_proxy api:8000
+	}
+
 	# Everything else: the production web app (vite preview serving the built bundle).
 	reverse_proxy web:5173
 }
