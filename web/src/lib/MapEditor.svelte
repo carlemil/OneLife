@@ -7,6 +7,7 @@
   // Coordinates are normalized 0..1 against the parchment, matching the player map.
   import { api, contentAsset } from './api.js';
   import { roadPath } from './maputil.js';   // shared with the player map (MapOverlay)
+  import './map.css';                        // shared .map-* styles (also used by MapOverlay)
 
   let { onClose } = $props();
 
@@ -282,7 +283,7 @@
               </defs>
               {#each roads as r, i}
                 {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
-                  <path class="me-road" fill="none" stroke={`url(#meroad${i})`} d={roadPath(byId, r, cw, ch)} />
+                  <path class="map-road" fill="none" stroke={`url(#meroad${i})`} d={roadPath(byId, r, cw, ch)} />
                 {/if}
               {/each}
               {#if drawFrom && byId[drawFrom] && cursor}
@@ -292,11 +293,14 @@
             </svg>
             {#each nodes as n}
               {#if visible.has(n.id)}
+              <!-- clickbox: icons WITHOUT a hotspot click via their image bounds, so
+                   outline that box. Icons WITH a hit get the .me-hit square instead. -->
               <div class="me-icon" class:dragging={drag?.loc === n.id} class:drawsrc={drawFrom === n.id}
-                   style={`left:${n.x * cw}px; top:${n.y * ch}px; --s:${n.scale ?? 1}`}
+                   class:clickbox={!n.hit}
+                   style={`left:${n.x * cw}px; top:${n.y * ch}px; --map-scale:${n.scale ?? 1}`}
                    onpointerdown={(e) => startDrag(e, n)}
                    onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
-                <img src={contentAsset(n.icon)} alt={n.title} draggable="false" />
+                <img class="map-icon" src={contentAsset(n.icon)} alt={n.title} draggable="false" />
               </div>
               {/if}
             {/each}
@@ -316,7 +320,7 @@
             {/each}
 
             {#if hovered && byId[hovered] && visible.has(hovered)}
-              <div class="me-hover-lbl">{byId[hovered].title}</div>
+              <div class="map-label">{byId[hovered].title}</div>
             {/if}
 
             {#if selected && byId[selected] && visible.has(selected)}
@@ -369,10 +373,14 @@
   .me-missing { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     color:#9a9ab0; font-size:.9rem; }
   .me-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
-  .me-road { stroke-width:4; stroke-linecap:round; }   /* gradient stroke set inline (matches player) */
+  /* Icon image (.map-icon), hover label (.map-label) and roads (.map-road) are styled
+     in the shared ./map.css; only editor-specific affordances live here. */
   .me-icon { position:absolute; transform:translate(-50%, -50%); cursor:grab;
     touch-action:none; user-select:none; }
   .me-icon.dragging { cursor:grabbing; z-index:5; }
+  /* A thin outline of each icon's fallback clickable box (icons with a hotspot show
+     the .me-hit square instead). Outline doesn't grow the box, so centring holds. */
+  .me-icon.clickbox { outline:1px dashed rgba(192,86,58,.45); outline-offset:0; border-radius:3px; }
   .me-icon.drawsrc img { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 7px rgba(192,86,58,.95)); }
   /* The interactive hotspot square (centred on the icon). Faint until selected. */
   .me-hit { position:absolute; transform:translate(-50%, -50%); z-index:8; box-sizing:border-box;
@@ -386,13 +394,6 @@
   .me-hint { position:absolute; left:50%; top:8px; transform:translateX(-50%); z-index:20;
     background:rgba(192,86,58,.92); color:#fff; font:600 12px Georgia, serif; padding:.3rem .7rem;
     border-radius:6px; pointer-events:none; white-space:nowrap; box-shadow:0 2px 8px rgba(0,0,0,.4); }
-  /* Match the player map's icon sizing so the editor shows the true on-map scale. */
-  .me-icon img { width:calc(clamp(56px, 9.8vw, 101px) * var(--s, 1)); height:auto; display:block;
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); pointer-events:none; }
-  /* The hovered icon's name, shown large and centred ~10% down from the top. */
-  .me-hover-lbl { position:absolute; left:50%; top:10%; transform:translate(-50%, -50%);
-    z-index:15; pointer-events:none; white-space:nowrap; font:700 clamp(20px, 3.2vw, 38px) Georgia, serif;
-    color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
   .me-scale { position:absolute; transform:translate(-50%, -135%); z-index:10; display:flex;
     align-items:center; gap:.4rem; background:rgba(18,20,28,.96); border:1px solid #3a456a;
     border-radius:6px; padding:.25rem .5rem; white-space:nowrap; pointer-events:auto;

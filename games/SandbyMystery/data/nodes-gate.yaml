@@ -42,7 +42,7 @@ nodes:
         body: "Inside the cathedral annex, the night librarian shelves books beneath her single lamp. She has already told you what she carries — the fire at the school in 1998, the child that was lost, the caretaker who never spoke of it again. She watches you over her glasses, gentler now, as if she'd handed you something heavy and isn't sure she should have."
     edges:
       - id: e-library-square
-        road: [[0.768, 0.5509], [0.7571, 0.5517]]
+        road: [[0.7547, 0.5539], [0.7378, 0.5559]]
         to: lund-square
         label: Back out to the square
         effects: {log: "You left the library."}
@@ -63,7 +63,7 @@ nodes:
         body: "The cellar is warm with candlelight, the table still laid for two. The host sits back, content — you have traded him a true piece of yourself, and he has given you a name off his guest list, a guest from the year the school burned. \"Do stay,\" he murmurs, refilling your glass. You think, this time, that you will not."
     edges:
       - id: e-cellar-square
-        road: [[0.7799, 0.5916], [0.7352, 0.5819]]
+        road: [[0.7687, 0.593], [0.723, 0.5882]]
         to: lund-square
         label: Make your excuses and climb back to the square
         effects: {log: "You left the cellar — while you still could."}
@@ -71,7 +71,7 @@ nodes:
   # --- Skärlök Holm: the lodgings ---
   - id: lund-lodgings
     pos: {x: 2367, y: 1838}
-    map: {x: 0.2463, y: 0.7117, rx: 0.05, ry: 0.045, scale: 1.8}
+    map: {x: 0.2463, y: 0.7117, rx: 0.05, ry: 0.045, scale: 1.8, hit: 0.09}
     arc: main
     type: gate
     location: lund-lodgings
@@ -86,7 +86,7 @@ nodes:
         body: "The room still boils with pipe-smoke and pinned paper. The gaunt detective has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
     edges:
       - id: e-lodgings-square
-        road: [[0.6113, 0.5511], [0.6393, 0.5573]]
+        road: [[0.6147, 0.5611], [0.6467, 0.5691]]
         to: lund-square
         label: Show yourself back out to the square
         effects: {log: "You left Holm to his clippings."}
@@ -107,7 +107,7 @@ nodes:
         body: "The candles still gutter in the open hall and the rats still keep their distance. The count stands as before with his back to the cold hearth — but he has told you what he watched from these windows across the years, the school burning among them, and every threshold between you has stayed closed. \"You kept your doorways,\" he says, approving. \"So few do.\""
     edges:
       - id: e-manor-square
-        road: [[0.6509, 0.6235], [0.6878, 0.5919]]
+        road: [[0.6509, 0.6364], [0.6801, 0.6017]]
         to: lund-square
         label: Step back across the threshold and go
         effects: {log: "You left the manor, and were glad the door let you."}
@@ -115,7 +115,7 @@ nodes:
   # --- Karl von Vinné: the botanical garden ---
   - id: lund-botanical
     pos: {x: 4658, y: 2932}
-    map: {x: 0.3074, y: 0.8725, rx: 0.05, ry: 0.045, scale: 2.6}
+    map: {x: 0.3074, y: 0.8725, rx: 0.05, ry: 0.045, scale: 2.6, hit: 0.09}
     arc: main
     type: gate
     location: lund-botanical
@@ -130,7 +130,7 @@ nodes:
         body: "The glasshouse still glows green and dripping. The drunken cataloguer has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
     edges:
       - id: e-botanical-square
-        road: [[0.7621, 0.6836], [0.7271, 0.623]]
+        road: [[0.7591, 0.6846], [0.7252, 0.6336]]
         to: lund-square
         label: Leave him to his specimens
         effects: {log: "You left the glasshouse and its collector."}
@@ -139,8 +139,8 @@ nodes:
   # --- from malmo ---
   # --- Zoltan Ibrahimson: Rosengård ---
   - id: malmo-rosengard
-    pos: {x: 789, y: 774}
-    map: {x: 0.7818, y: 0.68, rx: 0.05, ry: 0.045, scale: 2.4}
+    pos: {x: 768, y: 529}
+    map: {x: 0.7818, y: 0.68, rx: 0.05, ry: 0.045, scale: 2.4, hit: 0.09}
     arc: main
     type: gate
     location: malmo-rosengard
@@ -153,7 +153,7 @@ nodes:
         body: "Concrete towers box in the floodlit cage pitch. Zoltan still holds the court alone, but he greets you now like a debt already settled — he has given you the name off the harbour locker, the one that leads back to Sandby. \"Zoltan does not forget a face with spine,\" he says, and sends the ball cracking up off the boards."
     edges:
       - id: e-rosengard-harbor
-        road: [[0.3901, 0.4149], [0.3682, 0.4401]]
+        road: [[0.3888, 0.3878], [0.366, 0.4288]]
         to: malmo-harbor
         label: Head back down toward the harbour
         effects: {log: "You left Rosengård."}
@@ -161,7 +161,7 @@ nodes:
   # --- Lisbet Salamander: the server basement ---
   - id: malmo-server-basement
     pos: {x: -557, y: 1824}
-    map: {x: 0.2959, y: 0.6687, rx: 0.05, ry: 0.045, scale: 1.35}
+    map: {x: 0.2959, y: 0.6687, rx: 0.05, ry: 0.045, scale: 1.35, hit: 0.0793}
     arc: main
     type: gate
     location: malmo-server-basement
@@ -176,15 +176,15 @@ nodes:
         body: "The fans still roar and the racks blink green in the dark. The hacker hasn't turned from her six screens, but she's already given you what you came for — the name someone scrubbed out of the 1998 fire file. \"You're still here,\" she says flatly. \"I told you what I found. Don't make it weird.\""
     edges:
       - id: e-basement-harbor
-        road: [[0.3227, 0.5141], [0.3249, 0.5053]]
+        road: [[0.3225, 0.4954], [0.3259, 0.4864]]
         to: malmo-harbor
         label: Back up the stairs to the street
         effects: {log: "You left the basement and its screens."}
         sort_order: 9
   # --- Kurt Vallmo: police HQ ---
   - id: malmo-police
-    pos: {x: 619, y: 1883}
-    map: {x: 0.7669, y: 0.3563, rx: 0.05, ry: 0.045, scale: 1.25}
+    pos: {x: 451, y: 2051}
+    map: {x: 0.7669, y: 0.3563, rx: 0.05, ry: 0.045, scale: 1.25, hit: 0.0767}
     arc: main
     type: gate
     location: malmo-police
@@ -199,7 +199,7 @@ nodes:
         body: "One window still burns on the upper floor. The rumpled detective sits where you left him among his folders and the one old case on the board — but he's said his piece now: the disappearance they made him drop, the fire file signed out and never returned. He watches you with tired, unguarded eyes, a battered evidence box now set out at his elbow."
     edges:
       - id: e-police-harbor
-        road: [[0.3931, 0.5535], [0.3883, 0.5474]]
+        road: [[0.3844, 0.5652], [0.3821, 0.5537]]
         to: malmo-harbor
         label: Leave the detective to his folders
         effects: {log: "You left the police house."}
@@ -232,8 +232,8 @@ nodes:
   # --- from sandby ---
   # --- Herr Dödblek: the churchyard ---
   - id: sandby-church
-    pos: {x: 2604, y: -251}
-    map: {x: 0.4132, y: 0.3789, rx: 0.05, ry: 0.045, scale: 1.85}
+    pos: {x: 2605, y: -420}
+    map: {x: 0.4132, y: 0.3789, rx: 0.05, ry: 0.045, scale: 1.85, hit: 0.09}
     arc: main
     type: gate
     location: sandby-church
@@ -246,7 +246,7 @@ nodes:
         body: "The church door stands open on cold air. The pale figure still sits among the leaning stones, the chess set laid between you — but he has already told you what he remembers of the night the school burned, the child who came to him out of the smoke. He inclines his head a fraction, and waits, in no hurry at all."
     edges:
       - id: e-church-street
-        road: [[0.5884, 0.249], [0.5865, 0.2719]]
+        road: [[0.5893, 0.2307], [0.581, 0.261]]
         to: sandby-street
         label: Leave the churchyard
         effects: {log: "You left the church behind you."}
@@ -254,7 +254,7 @@ nodes:
   # --- Norman Båts: the gravel-pit motel ---
   - id: sandby-quarry
     pos: {x: 4363, y: 239}
-    map: {x: 0.4595, y: 0.9138, rx: 0.05, ry: 0.045, scale: 2.3}
+    map: {x: 0.4595, y: 0.9138, rx: 0.05, ry: 0.045, scale: 2.3, hit: 0.09}
     arc: main
     type: gate
     location: sandby-quarry
@@ -269,7 +269,7 @@ nodes:
         body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. The motelkeeper fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
     edges:
       - id: e-quarry-street
-        road: [[0.6791, 0.29], [0.6465, 0.3088]]
+        road: [[0.67, 0.2883], [0.6449, 0.3042]]
         to: sandby-street
         label: Get back on the road to the village
         effects: {log: "You left the lake behind you."}
@@ -277,7 +277,7 @@ nodes:
   # --- Pippa Långskugga: the crooked house ---
   - id: sandby-crooked-house
     pos: {x: 3589, y: -343}
-    map: {x: 0.8612, y: 0.3993, rx: 0.05, ry: 0.045, scale: 1.25}
+    map: {x: 0.8612, y: 0.3993, rx: 0.05, ry: 0.045, scale: 1.25, hit: 0.09}
     arc: main
     type: gate
     location: sandby-crooked-house
@@ -292,7 +292,7 @@ nodes:
         body: "The house leans as if listening. The red-braided woman still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
     edges:
       - id: e-crooked-street
-        road: [[0.6804, 0.1803], [0.6008, 0.3148]]
+        road: [[0.6258, 0.2684], [0.604, 0.3]]
         to: sandby-street
         label: Back toward the lit streets
         effects: {log: "You walked back to where the lamps still worked."}

@@ -1071,14 +1071,14 @@
   /* The map-access button: the word MAP is baked into the aged parchment image,
      sized to match the location banner's height. */
   .mapthumb { flex:0 0 auto; width:186px; height:140px; padding:0; cursor:pointer;
-    border:1px solid #2a2e3e; border-radius:8px; overflow:hidden; background:#0d0e14;
-    transition:border-color .15s; }
-  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transition:filter .15s, transform .15s; }
-  .mapthumb:hover { border-color:#cdbb9a; }
-  .mapthumb:hover img { filter:brightness(1.06); transform:scale(1.02); }
+    border:none; border-radius:8px; overflow:hidden; background:transparent; }
+  /* Scale the parchment up so it fills the button: the source PNG has transparent
+     margins around the art, which overflow:hidden then crops away. */
+  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.2);
+    transition:filter .15s, transform .15s; }
+  .mapthumb:hover img { filter:brightness(1.06); transform:scale(1.24); }
   .mapthumb:disabled { opacity:.5; cursor:default; }
-  .mapthumb:disabled:hover { border-color:#2a2e3e; }
-  .mapthumb:disabled:hover img { filter:none; transform:none; }
+  .mapthumb:disabled:hover img { filter:none; transform:scale(1.2); }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
   .vol { display:flex; align-items:center; gap:.5rem; margin:.6rem 0 0; font-size:.9rem; color:#9a9ab0; }
   .vol input[type=range] { flex:1; accent-color:#7a7ad0; cursor:pointer; }

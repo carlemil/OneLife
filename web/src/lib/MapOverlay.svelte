@@ -7,6 +7,7 @@
   import { contentAsset } from './api.js';
   import { roadPath } from './maputil.js';   // shared with the admin map editor
   import { fade } from 'svelte/transition';
+  import './map.css';                        // shared .map-* styles (also used by MapEditor)
 
   let {
     block,                 // { image, nodes:[{id,title,icon,x,y,current,reachable,action,target}], roads:[{from,to}] }
@@ -43,7 +44,7 @@
 <div class="mo-modal" role="dialog" aria-label="Map" onclick={(e) => e.target === e.currentTarget && onClose?.()}>
   <div class="mo-card">
     <div class="mo" bind:clientWidth={cw} bind:clientHeight={ch}
-         style={imgOk ? '' : 'aspect-ratio:4/3'}>
+         style={imgOk ? '' : 'width:min(900px,90vw); aspect-ratio:4/3'}>
       <img class="mo-bg" src={contentAsset(block.image)} alt="" draggable="false"
            onload={() => (imgOk = true)} onerror={() => (imgOk = false)} />
       {#if !imgOk}
@@ -67,7 +68,7 @@
           </defs>
           {#each roads as r, i}
             {#if byId[r.from] && byId[r.to]}
-              <path class="mo-road" fill="none" stroke={`url(#moroad${i})`} d={roadPath(byId, r, cw, ch)} />
+              <path class="map-road" fill="none" stroke={`url(#moroad${i})`} d={roadPath(byId, r, cw, ch)} />
             {/if}
           {/each}
           {#if walk}
@@ -86,7 +87,7 @@
                role="button" tabindex={n.reachable && !n.hit ? 0 : -1} aria-label={`Go to ${n.title}`}
                onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
                onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
-            <img class="mo-icon" style={`--mo-scale:${n.scale ?? 1}`}
+            <img class="map-icon" style={`--map-scale:${n.scale ?? 1}`}
                  src={contentAsset(n.icon)} alt={n.title} draggable="false" />
           </div>
           {#if n.hit}
@@ -106,7 +107,7 @@
             <!-- |global so the fade still plays when the surrounding {#if hovered}
                  toggles (moving between icons briefly clears `hovered`); a plain
                  local transition would be suppressed by that ancestor change. -->
-            <div class="mo-hover-lbl" in:fade|global={{ duration: 200 }} out:fade|global={{ duration: 200 }}>{byId[hovered].title}</div>
+            <div class="map-label" in:fade|global={{ duration: 200 }} out:fade|global={{ duration: 200 }}>{byId[hovered].title}</div>
           {/key}
         {/if}
 
@@ -122,35 +123,36 @@
   /* A layer above the rest of the game UI, with a thin transparent border. */
   .mo-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
     justify-content:center; background:rgba(0,0,0,.72); padding:1.5rem; }
-  .mo-card { position:relative; width:min(1100px, 96vw); max-height:94vh; overflow:auto;
-    border:1px solid transparent; border-radius:10px; line-height:0; }
-  .mo { position:relative; width:100%; }
-  .mo-bg { display:block; width:100%; height:auto; border-radius:10px; }
+  /* The card shrinks to the image (flex item → content size). The image is capped by
+     BOTH width and height with width/height:auto, so it always fits the viewport with
+     its aspect preserved — no width-driven height that could overflow. overflow:hidden
+     guarantees no scrollbar, killing the appear/disappear feedback loop. */
+  .mo-card { position:relative; max-width:min(1100px, 96vw); max-height:94vh; overflow:hidden;
+    border-radius:10px; line-height:0; display:flex; }
+  .mo { position:relative; }
+  .mo-bg { display:block; width:auto; height:auto; max-width:min(1100px, 96vw); max-height:94vh;
+    border-radius:10px; }
   .mo-missing { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
     justify-content:center; text-align:center; color:#9a9ab0; font-size:.9rem; line-height:1.4; }
   .mo-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
-  .mo-road { stroke-width:4; stroke-linecap:round; }
+  /* Icon image (.map-icon), hover label (.map-label) and roads (.map-road) are styled
+     in the shared ./map.css; only player-specific behaviour lives here. */
 
   .mo-node { position:absolute; transform:translate(-50%, -50%); }
-  .mo-icon { width:calc(clamp(56px, 9.8vw, 101px) * var(--mo-scale, 1)); height:auto; display:block; line-height:0;
-    filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); transition:transform .12s, filter .12s; }
-  /* The hovered icon's name, shown large and centred ~13% down from the top. */
-  .mo-hover-lbl { position:absolute; left:50%; top:13%; transform:translate(-50%, -50%);
-    z-index:15; pointer-events:none; white-space:nowrap; font:700 clamp(20px, 3.2vw, 38px) Georgia, serif;
-    color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
   .mo-node.disabled { opacity:.45; filter:grayscale(.5); }
   .mo-node.reachable { cursor:pointer; }
   /* When a hotspot square owns the pointer, the icon is inert; its hover-grow is
      then driven by the shared `hovered` state instead of the icon's own :hover. */
   .mo-node.withhit { pointer-events:none; }
-  .mo-node.reachable:hover .mo-icon,
-  .mo-node.reachable.hovered .mo-icon { transform:scale(1.12); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
+  /* Hover grows the icon 5% (animated via .map-icon's transition:transform). */
+  .mo-node.reachable:hover .map-icon,
+  .mo-node.reachable.hovered .map-icon { transform:scale(1.05); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
   /* The hotspot hit-area: invisible until hovered, then a faint ink outline. */
   .mo-hit { position:absolute; transform:translate(-50%, -50%); z-index:6; box-sizing:border-box;
     border:1.5px dashed transparent; border-radius:5px; transition:border-color .15s, background .15s; }
   .mo-hit.reachable { cursor:pointer; }
   .mo-hit:hover { border-color:rgba(46,33,20,.5); background:rgba(46,33,20,.06); }
-  .mo-node.current .mo-icon { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 6px rgba(192,86,58,.9));
+  .mo-node.current .map-icon { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 6px rgba(192,86,58,.9));
     animation:mopulse 1.8s infinite; }
   @keyframes mopulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
 

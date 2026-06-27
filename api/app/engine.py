@@ -207,6 +207,10 @@ def _resolve_name(char, known: bool) -> tuple[str, str | None, bool]:
 # map (reached via the few remaining in-place buttons).
 _PLACE_TYPES = ("location", "gate", "ending")
 
+# The overview-map parchment backdrop, served from /content. Both the player map and
+# the admin editor use this same image so their layouts line up.
+MAP_BACKGROUND = "images/maps/parchment2.png"
+
 
 def _jmap(v) -> dict:
     if v is None:
@@ -428,7 +432,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                     rd = {"from": k[0], "to": k[1], "points": []}
                     seen[k] = rd; roads.append(rd)
 
-    block = {"image": "images/maps/parchment.png", "nodes": nodes, "roads": roads}
+    block = {"image": MAP_BACKGROUND, "nodes": nodes, "roads": roads}
     return block, on_map
 
 
@@ -506,7 +510,7 @@ async def map_overview(conn) -> dict:
     start_cell = await conn.fetchval(
         """SELECT l.cell_id FROM story_nodes n JOIN locations l ON l.id = n.location_id
            WHERE n.is_entry LIMIT 1""")
-    return {"image": "images/maps/parchment.png", "nodes": nodes, "roads": roads,
+    return {"image": MAP_BACKGROUND, "nodes": nodes, "roads": roads,
             "bounds": bounds, "start_cell": start_cell}
 
 

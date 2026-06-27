@@ -1,0 +1,26 @@
+/* Shared map presentation — imported by BOTH the player map (MapOverlay) and the
+   admin map editor (MapEditor) so the two views stay visually identical and a tweak
+   here lands in both at once. Plain (unscoped) CSS: these .map-* classes are used
+   verbatim in both components' markup. View-specific behaviour (hover-scale, drag,
+   hotspot editing, the walk trail) stays in each component's own scoped <style>. */
+
+/* Location icon image. Size = a viewport-clamped base times the per-icon
+   --map-scale. Non-interactive, so any hover-grow is purely cosmetic and never
+   enlarges the click target. */
+.map-icon {
+  width: calc(clamp(56px, 9.8vw, 101px) * var(--map-scale, 1));
+  height: auto; display: block; line-height: 0; pointer-events: none;
+  filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5));
+  transition: transform .12s, filter .12s;
+}
+
+/* The hovered icon's name — large, centred, ~13% down from the top of the map. */
+.map-label {
+  position: absolute; left: 50%; top: 13%; transform: translate(-50%, -50%);
+  z-index: 15; pointer-events: none; white-space: nowrap;
+  font: 700 clamp(20px, 3.2vw, 38px) Georgia, serif; color: #2e2114;
+  text-shadow: 0 1px 0 rgba(255, 250, 240, .9), 0 2px 10px rgba(255, 248, 235, .7);
+}
+
+/* Roads between icons. The gradient stroke itself is set inline per edge. */
+.map-road { stroke-width: 4; stroke-linecap: round; }
