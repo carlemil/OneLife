@@ -1,13 +1,11 @@
-/* Shared map presentation — imported by BOTH the player map (MapOverlay) and the
-   admin map editor (MapEditor) so the two views stay visually identical and a tweak
-   here lands in both at once. Plain (unscoped) CSS: these .map-* classes are used
-   verbatim in both components' markup. View-specific behaviour (hover-scale, drag,
-   edge-drawing, the walk trail) stays in each component's own scoped <style>. */
+/* Shared map presentation for MapOverlay (the single map component — player view and
+   admin edit mode in one). Plain (unscoped) CSS: these .map-* classes are used verbatim
+   in its markup. Behaviour that differs by mode (hover-scale, drag, edge-drawing, the
+   walk trail) lives in the component's own scoped <style>. */
 
-/* The base (unscaled) icon size, and the parchment's max footprint. Both the player
-   map and the editor size the parchment to the SAME rule, so the map — and therefore
-   every icon on it (icons are sized in vw, independent of container) — renders at the
-   same size in both views. */
+/* The base (unscaled) icon size, and the parchment's max footprint. Play and edit mode
+   size the parchment to the SAME rule, so the map — and therefore every icon on it
+   (icons are sized in vw, independent of container) — renders at the same size in both. */
 :root {
   --map-icon-size: clamp(56px, 9.8vw, 101px);
   --map-max-w: min(1100px, 88vw);

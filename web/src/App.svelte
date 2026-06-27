@@ -7,7 +7,6 @@
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
   import MapOverlay from './lib/MapOverlay.svelte';
-  import MapEditor from './lib/MapEditor.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -88,7 +87,7 @@
   // map: a single icon-on-parchment overview (game.map) opened as a full-screen
   // overlay above the rest of the UI; clicking a place walks or travels there.
   let showMap = $state(false);
-  let showMapEditor = $state(false);
+  let mapStartEdit = $state(false);   // admins: open the map straight into edit mode
   const gameMap = $derived(game?.map ?? null);
 
   // in-game help
@@ -738,7 +737,8 @@
             {#if gameMap && gameMap.nodes.length}
               <button class="mapthumb" onclick={() => (showMap = true)} disabled={busy}
                       aria-label="Open map" title="Open map">
-                <img src="/map-button.png" alt="Map" draggable="false" />
+                <img src="/parchment-button.png" alt="" draggable="false" />
+                <span class="maptext">MAP</span>
               </button>
             {/if}
           </div>
@@ -894,12 +894,9 @@
     </div>
   {/if}
 
-  {#if showMap && gameMap}
-    <MapOverlay block={gameMap} onPick={mapNav} onClose={() => (showMap = false)} {busy} />
-  {/if}
-
-  {#if showMapEditor}
-    <MapEditor onClose={() => (showMapEditor = false)} />
+  {#if showMap && (gameMap || isAdmin)}
+    <MapOverlay block={gameMap} onPick={mapNav} admin={isAdmin} startInEdit={mapStartEdit}
+                onClose={() => { showMap = false; mapStartEdit = false; }} {busy} />
   {/if}
 
   {#if showLb}
@@ -957,7 +954,7 @@
           <h3>Editors</h3>
           <p class="sub">Authoring lives in the YAML files; these editors write changes back to them.</p>
           <button onclick={() => { showAdmin = false; openGraph(); }}>Story graph…</button>
-          <button onclick={() => { showAdmin = false; showMapEditor = true; }}>Map editor…</button>
+          <button onclick={() => { showAdmin = false; mapStartEdit = true; showMap = true; }}>Map editor…</button>
         </div>
 
         <div class="admin-sec">
@@ -1070,15 +1067,23 @@
   .banner :global(svg), .banner img { display:block; width:100%; height:140px; object-fit:cover; }
   /* The map-access button: the word MAP is baked into the aged parchment image,
      sized to match the location banner's height. */
-  .mapthumb { flex:0 0 auto; width:186px; height:140px; padding:0; cursor:pointer;
+  .mapthumb { position:relative; flex:0 0 auto; width:186px; height:140px; padding:0; cursor:pointer;
     border:none; border-radius:8px; overflow:hidden; background:transparent; }
   /* Scale the parchment up so it fills the button: the source PNG has transparent
      margins around the art, which overflow:hidden then crops away. */
-  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.2);
+  .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.12);
     transition:filter .15s, transform .15s; }
-  .mapthumb:hover img { filter:brightness(1.06); transform:scale(1.24); }
+  /* "MAP" is live font text (not baked into the bitmap) so it stays crisp at any size
+     and never pixelates while the button animates. Centred over the parchment. */
+  .mapthumb .maptext { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+    font:700 clamp(40px, 5.2vw, 60px) Georgia, 'Times New Roman', serif; letter-spacing:.06em;
+    color:#3a2a18; text-shadow:1px 2px 2px rgba(60,40,20,.35); pointer-events:none;
+    transition:transform .15s; }
+  .mapthumb:hover img { filter:brightness(1.06); transform:scale(1.16); }
+  .mapthumb:hover .maptext { transform:scale(1.04); }
   .mapthumb:disabled { opacity:.5; cursor:default; }
-  .mapthumb:disabled:hover img { filter:none; transform:scale(1.2); }
+  .mapthumb:disabled:hover img { filter:none; transform:scale(1.12); }
+  .mapthumb:disabled:hover .maptext { transform:none; }
   .banner .setting { position:absolute; bottom:.4rem; right:.6rem; font-size:.75rem; color:#cdbb9a; background:rgba(0,0,0,.45); padding:.1rem .45rem; border-radius:4px; }
   .vol { display:flex; align-items:center; gap:.5rem; margin:.6rem 0 0; font-size:.9rem; color:#9a9ab0; }
   .vol input[type=range] { flex:1; accent-color:#7a7ad0; cursor:pointer; }

@@ -256,6 +256,11 @@ class MapScaleBody(BaseModel):
     id: str       # the location's anchor node id
     scale: float
 
+class MapPosBody(BaseModel):
+    id: str       # the location's anchor node id
+    x: float      # normalized 0..1 overview position
+    y: float
+
 class MapEdgeBody(BaseModel):
     from_node: str        # source anchor node id
     to_node: str          # target anchor node id
@@ -891,6 +896,34 @@ async def admin_map_scale(body: MapScaleBody, authorization: str | None = Header
         await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
                            body.id, json.dumps(cur))
     return {"ok": True, "scale": scale}
+
+
+@app.post("/api/admin/map/pos")
+async def admin_map_pos(body: MapPosBody, authorization: str | None = Header(default=None)):
+    """Set one icon's STABLE overview position (story_nodes.map.x/y, normalized 0..1),
+    written to the YAML (preserving any scale/rx/ry) and mirrored into the live DB so the
+    map reflects it without a full re-seed. This is the only thing dragging a node saves —
+    graph pixel positions are left alone, so no other icon ever moves."""
+    await _admin_session(authorization)
+    x = round(max(0.0, min(1.0, float(body.x))), 4)
+    y = round(max(0.0, min(1.0, float(body.y))), 4)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE id=$1", body.id)
+        if row is None:
+            raise HTTPException(404, f"no such node {body.id}")
+        cur = row["map"]
+        cur = json.loads(cur) if isinstance(cur, str) else (dict(cur) if cur else {})
+        cur["x"], cur["y"] = x, y
+        try:
+            map_write.set_node_map(body.id, cur)
+        except FileNotFoundError:
+            raise HTTPException(404, f"no YAML defines node {body.id}")
+        except Exception as e:  # noqa: BLE001
+            raise HTTPException(500, f"could not write YAML: {e}")
+        await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
+                           body.id, json.dumps(cur))
+    return {"ok": True, "x": x, "y": y}
 
 
 @app.post("/api/admin/map/edge")

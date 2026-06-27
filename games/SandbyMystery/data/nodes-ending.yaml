@@ -7,7 +7,8 @@ nodes:
   # once every puzzle in the game is solved (see e-harbor-crossing's conditions),
   # so the whole journey through Sandby, Lund and Malmö leads here.
   - id: malmo-crossing
-    pos: {x: -2457, y: 368}
+    map: {x: 0.2048, y: 0.2368}
+    pos: {x: -2546, y: -2621}
     arc: main
     type: ending
     location: malmo-crossing

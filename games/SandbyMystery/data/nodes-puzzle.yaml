@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-boiler-room
-    pos: {x: 3224, y: 514}
+    pos: {x: 2933, y: 3015}
     arc: main
     type: puzzle
     location: killebackskolan
@@ -30,7 +30,7 @@ nodes:
   # --- from lund ---
   # --- puzzle: the stuck departures board at Lund station (last-train-time) ---
   - id: lund-station-board
-    pos: {x: 3221, y: 1100}
+    pos: {x: 1526, y: 2079}
     arc: main
     type: puzzle
     location: lund-station
@@ -54,7 +54,7 @@ nodes:
         sort_order: 9
   # --- puzzle: Orlök's candle riddle (candle-riddle), once you've met him ---
   - id: lund-orlok-candle
-    pos: {x: 1982, y: 1575}
+    pos: {x: 40, y: 2439}
     arc: main
     type: puzzle
     location: lund-manor
@@ -78,7 +78,7 @@ nodes:
         sort_order: 8
   # --- puzzle: von Vinné's specimen (elder-specimen), once you've met him ---
   - id: lund-vinne-specimen
-    pos: {x: 2246, y: 1958}
+    pos: {x: 167, y: 2745}
     arc: main
     type: puzzle
     location: lund-botanical
@@ -103,7 +103,7 @@ nodes:
 
   # --- from malmo ---
   - id: malmo-locker
-    pos: {x: 177, y: 1973}
+    pos: {x: 1520, y: 563}
     arc: main
     type: puzzle
     location: malmo-locker
@@ -127,7 +127,7 @@ nodes:
         sort_order: 9
   # --- puzzle: the riddle scratched into the harbour wall (fog-riddle) ---
   - id: malmo-harbor-fog
-    pos: {x: 742, y: 1730}
+    pos: {x: 1604, y: 684}
     arc: main
     type: puzzle
     location: malmo-harbor
@@ -151,7 +151,7 @@ nodes:
         sort_order: 9
   # --- puzzle: the blank gravestone (gravestone-sum) ---
   - id: malmo-cemetery-stones
-    pos: {x: -134, y: 2209}
+    pos: {x: 1013, y: 1111}
     arc: main
     type: puzzle
     location: malmo-cemetery
@@ -175,7 +175,7 @@ nodes:
         sort_order: 9
   # --- puzzle: Vallmo's evidence-box word-lock (ystad-wordlock), once you've met him ---
   - id: malmo-vallmo-lock
-    pos: {x: 1510, y: 1409}
+    pos: {x: 1679, y: 40}
     arc: main
     type: puzzle
     location: malmo-police
@@ -201,7 +201,7 @@ nodes:
   # --- from marta ---
   # --- puzzle: the chalk letters on the classroom floor (marta-anagram) ---
   - id: kbk-chalk-letters
-    pos: {x: 3908, y: 726}
+    pos: {x: 2811, y: 2894}
     arc: main
     type: puzzle
     location: killebackskolan
@@ -229,7 +229,7 @@ nodes:
   # --- from sandby ---
   # --- puzzle: the riddle cut over the lych-gate (church-bell-riddle) ---
   - id: sandby-church-bell
-    pos: {x: 2391, y: 254}
+    pos: {x: 1871, y: 3456}
     arc: main
     type: puzzle
     location: sandby-church
@@ -253,7 +253,7 @@ nodes:
         sort_order: 8
   # --- puzzle: Dödblek's wager (dodblek-games), offered once you've met him ---
   - id: sandby-dodblek-count
-    pos: {x: 2349, y: 497}
+    pos: {x: 1701, y: 3359}
     arc: main
     type: puzzle
     location: sandby-church
@@ -277,7 +277,7 @@ nodes:
         sort_order: 7
   # --- puzzle: Pippa's riddle-game (shadow-riddle), offered once you've met her ---
   - id: sandby-pippa-shadow
-    pos: {x: 2953, y: 7}
+    pos: {x: 2136, y: 3301}
     arc: main
     type: puzzle
     location: sandby-crooked-house

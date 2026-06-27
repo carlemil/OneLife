@@ -1,13 +1,336 @@
 # OneLife nodes — type: death
+#
+# Death is never game-over: every runtime row is seq-stamped, so rolling back to a
+# prior moment voids everything after it (at a leaderboard cost). That makes liberal
+# deaths safe — they add teeth without dead-ending anyone. A death node has NO outgoing
+# edges; it is reached by a choice-edge that carries `danger: N` (1–3 paints the choice
+# red with a ⚠; 0 is a "gotcha" that reads as harmless). House style: restrained,
+# present-tense menace, 1992 Skåne, each body closing with the ▒ You have died. ▒ mark.
 
 nodes:
 
   # --- from killebackskolan ---
   - id: kbk-caught
-    pos: {x: 3576, y: 854}
+    pos: {x: 3090, y: 3275}
     arc: main
     type: death
     location: killebackskolan
     title: In the Dark
     media: {image_theme: boiler-room-dark, music_theme: low-dread}
     body: "You throw your shoulder against the PANNRUM door. It gives with a shriek of metal — into pure black. Something in that dark had been waiting a very long time. It does not hesitate. ▒ You have died. ▒"
+
+  - id: death-school-dark
+    arc: main
+    type: death
+    location: killebackskolan
+    title: The Long Corridor
+    media: {image_theme: school-hallway-dusk, music_theme: low-dread}
+    body: "You leave the lit hall and walk deeper into the school, past classrooms that should be empty and aren't quite. The dark thickens until it has a grain to it, a breathing. You turn to go back and the corridor is longer than it was. It is much longer than it was. Whatever shares it with you stops pretending to be far away. ▒ You have died. ▒"
+
+  # --- Hannibal Läcker: the supper club cellar (lund-cellar) ---
+  - id: death-cellar-meal
+    arc: main
+    type: death
+    location: lund-cellar
+    title: The Second Course
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "You clean your plate; it would be rude not to. He watches you eat with the soft delight of a man watching a circle close. \"You're wondering about the meat,\" he says, refilling your glass. \"You knew a moment ago. You've decided not to.\" He is right, and that is the trap — you decided not to know, and so you stayed, and so you are exactly where the last guest sat. The cardamom hides a great deal. By the time the room tilts you understand you are not the diner. ▒ You have died. ▒"
+
+  - id: death-cellar-curious
+    arc: main
+    type: death
+    location: lund-cellar
+    title: A Question of Taste
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "\"What is the meat,\" you ask, and the candlelight goes very still. He sets down his fork with infinite care. \"How disappointing,\" he murmurs, almost tenderly. \"I had hoped you were a guest.\" He rises, and he is faster than a courteous man in a pressed grey suit has any right to be, and the cellar door has no handle on the inside. He does so hate to waste a cut. ▒ You have died. ▒"
+
+  - id: death-cellar-rude
+    arc: main
+    type: death
+    location: lund-cellar
+    title: Discourtesy
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "\"People will be looking for me,\" you tell him. \"I'll see this place shut down.\" The threat lands in the warm air and dies there. He smiles, genuinely pained. \"Whenever I'm about to be bored,\" he says, \"someone is rude. It's almost a kindness — it makes the rest so easy.\" He is still smiling when he reaches you. He is the sort of man who finds free-range manners the most distasteful thing of all. ▒ You have died. ▒"
+
+  - id: death-cellar-kitchen
+    arc: main
+    type: death
+    location: lund-cellar
+    title: The Cold Room
+    media: {image_theme: candlelit-cellar, music_theme: cello-low}
+    body: "You make for the kitchen door while his back is turned. Behind it: not a kitchen but a cold white room, hooks in the ceiling, and on the hooks the answer to every question you were too polite to ask. You have time to understand the menu before the door clicks shut behind you and his hand finds your shoulder. \"You weren't ready for the kitchen,\" he says, sadly. \"So few are.\" ▒ You have died. ▒"
+
+  # --- Greve Orlök: the manor outside Lund (lund-manor) ---
+  - id: death-manor-invite
+    arc: main
+    type: death
+    location: lund-manor
+    title: An Open Door
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "\"You should come and see me,\" you say, meaning the town, meaning nothing — \"any time.\" The candles all lean the same way at once. \"Any time,\" he repeats, and the words have a weight you cannot take back, because a threshold only matters until it is offered, and you have just offered yours. He does not need to cross the manor's door now. He needs only to be where you will be. He smiles, and it is the patience of something that has all the time there is. ▒ You have died. ▒"
+
+  - id: death-manor-cup
+    arc: main
+    type: death
+    location: lund-manor
+    title: His Hospitality
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "He offers a dark cup in his twig-thin fingers and it would be discourteous to refuse a host so old. It is warm. It is not wine. By the time the manor swims you are already sitting, already still, already growing cold from the inside as he watches with his head tilted, unhurried, the way the village downwind grows sick a house at a time. He has fed slowly for centuries. He is in no rush with you. ▒ You have died. ▒"
+
+  - id: death-manor-linger
+    arc: main
+    type: death
+    location: lund-manor
+    title: After Dark
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "You stay too long; the conversation is interesting and the last light leaves the windows. When full dark settles the count changes — not his shape, but the room's relation to him, everything tilting his way as if down a drain. The rats go quiet. \"Now,\" he says softly, \"we needn't be formal.\" The door you came in by is very far across a floor that has begun, gently, to slope. ▒ You have died. ▒"
+
+  - id: death-manor-eyes
+    arc: main
+    type: death
+    location: lund-manor
+    title: A Quiet Request
+    media: {image_theme: derelict-manor-night, music_theme: dread-drone}
+    body: "You meet his eyes to show him you are not afraid, and that is the mistake. His voice goes low and reasonable and the candles gutter in time with it, and somewhere in the long even cadence of it you agree to follow him down to the cellars to see something he would so like to show you. Your feet are already moving. You go willingly, which is the only way he likes it, and the cellar door closes on its own behind you both. ▒ You have died. ▒"
+
+  # --- Herr Dödblek: the churchyard (sandby-church) ---
+  - id: death-church-lose
+    arc: main
+    type: death
+    location: sandby-church
+    title: Checkmate
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "You sit, and you wager the only thing he plays for, and for a while you even believe you are winning. Then his pale hand moves a piece you did not guard and the shape of the whole board changes and you see, too late, that you were always going to be here. \"A good game,\" he says, and he means it; he is courteous, and he never hurries, and he has lost exactly once and this is not that time. He turns over your king with one finger. The churchyard is very cold. ▒ You have died. ▒"
+
+  - id: death-church-upend
+    arc: main
+    type: death
+    location: sandby-church
+    title: The Spilled Board
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "You sweep the pieces off the table. They scatter among the leaning stones and the pale figure watches them fall without the smallest change in his mild, flat face. \"People think the game is the bargain,\" he says, gathering the pieces back with terrible patience. \"The game was the mercy.\" He sets the board between you again, but he is no longer offering to play. There was never a version of this where you simply walked away. ▒ You have died. ▒"
+
+  - id: death-church-when
+    arc: main
+    type: death
+    location: sandby-church
+    title: The One Question
+    media: {image_theme: church-graveyard-night, music_theme: funeral-cold}
+    body: "\"When,\" you demand. \"Just tell me when.\" It is the one question he will not answer, and you push, and push, until at last the mild face inclines and he says, \"You would rather see than be told,\" — and shows you. Knowing the hour turns out to be the same as arriving at it. The board did not even need to be played. ▒ You have died. ▒"
+
+  # --- Norman Båts: the gravel-pit motel (sandby-quarry) ---
+  - id: death-motel-room
+    arc: main
+    type: death
+    location: sandby-quarry
+    title: Just the One Night
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "You take a room. He is so pleased he nearly drops the key. The water runs warm and the bed is soft and you are almost asleep when the bathroom light throws a long shape across the curtain — too tall, in a dress that went out of fashion forty years ago, and behind it Norman's voice, very small, saying \"I told her not to, I told her—\". The curtain rings shriek along the rail. Some guests check in and stay in the lake. ▒ You have died. ▒"
+
+  - id: death-motel-mother
+    arc: main
+    type: death
+    location: sandby-quarry
+    title: Meeting Mother
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "\"I'd like to meet your mother,\" you say, and all the boyish fluster drains out of him at once, leaving something flat and cold behind the eyes. \"She'd like that,\" he says, in a voice that isn't quite his. \"She's been wanting to meet you.\" He opens the door to the house above the office. She has been waiting at the top of the stairs in the dark for a very long time, and she does not like questions, and she is not, in any sense that matters, alive. ▒ You have died. ▒"
+
+  - id: death-motel-boathouse
+    arc: main
+    type: death
+    location: sandby-quarry
+    title: The Boathouse
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "The boathouse door is unlocked. Inside, in the green underwater light, are the things the lake gave back and Norman could not bear to let go — the cases, the coats, the little inventory of everyone who only stayed the one night. You are still counting them when the boards creak behind you and Mother's shadow fills the doorway, and you understand you have walked into the part of the lake that is kept indoors. ▒ You have died. ▒"
+
+  - id: death-quarry-swim
+    arc: main
+    type: death
+    location: sandby-quarry
+    title: What the Lake Keeps
+    media: {image_theme: quarry-lake-night, music_theme: low-dread}
+    body: "You wade in to see what pales under the surface. The old gravel pit drops away without warning a single step from the shore — straight down, the way quarries do — and the cold closes a fist around your chest and will not open it. Something helps you under. The water is patient and very deep and it does not, as Norman tried to tell you, give anything back. ▒ You have died. ▒"
+
+  # --- Karl von Vinné: the glasshouse (lund-botanical) ---
+  - id: death-glasshouse-pin
+    arc: main
+    type: death
+    location: lund-botanical
+    title: A New Specimen
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "You stand still and let him bring the glass to your face, because it seems a harmless vanity to be admired. \"Remarkable,\" he breathes, circling. \"Quite unrecorded.\" He has named and pinned every living thing in Skåne, and he has never once been able to stop at naming. The needle is longer than you expected and he handles it with a lover's care. He is already lettering the label as the board comes up to meet you. He gets the Latin right. ▒ You have died. ▒"
+
+  - id: death-glasshouse-flask
+    arc: main
+    type: death
+    location: lund-botanical
+    title: A Drink Among the Leaves
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "He pours you a measure from the dark bottle at his elbow and toasts your new species-name. It is not wine. It is what he keeps the specimens in, and it works on you the way it works on them — slowly, thoroughly, from the inside out, fixing you mid-gesture for the board. \"Hold that expression,\" he says, delighted, reaching for a fresh pin. \"It's perfect.\" ▒ You have died. ▒"
+
+  - id: death-glasshouse-third
+    arc: main
+    type: death
+    location: lund-botanical
+    title: The Third Thing
+    media: {image_theme: glasshouse-night, music_theme: glasshouse-hum}
+    body: "\"Show me the third thing,\" you say — the one that should not exist, the one he will not say where he keeps. The drunken delight falls off his face. \"Ah,\" he says quietly. \"It does so like to be asked for.\" He leads you to the back of the glasshouse, to a board larger than the others, draped. The thing pinned to it has been waiting to be looked at. When it opens what it has instead of eyes, it is already too late to look away. ▒ You have died. ▒"
+
+  # --- Pippa Långskugga: the crooked house (sandby-crooked-house) ---
+  - id: death-crooked-armwrestle
+    arc: main
+    type: death
+    location: sandby-crooked-house
+    title: Best of Three
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "\"Arm-wrestle you?\" She lights up like a struck match. \"Nobody ever wants to play!\" She sets her elbow on the rail and takes your hand in hers, and she is grinning, and she means no harm at all — that is the whole trouble. She has bent a horseshoe straight in those fingers without noticing. She does not know her own strength because nothing has ever taught her its edges, and your hand is not a horseshoe. The crack carries out across the dark fields. She is still apologising as it goes dark. ▒ You have died. ▒"
+
+  - id: death-crooked-game
+    arc: main
+    type: death
+    location: sandby-crooked-house
+    title: One More Game
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "You keep playing, because she laughs when you do and there is something unbearable about the loneliness underneath the laughing. The games get rougher the way a child's do — tag, then catch, then a swinging game where she takes your hands and spins — and she is so strong, and so happy, and she forgets, the way she forgets everything sad, that you are only made of the ordinary stuff. The crooked house wheels past. Then the sky. Then nothing. ▒ You have died. ▒"
+
+  - id: death-crooked-gold
+    arc: main
+    type: death
+    location: sandby-crooked-house
+    title: A Coin from the Case
+    media: {image_theme: crooked-house-night, music_theme: music-box-broken}
+    body: "The suitcase of gold sits open on the porch, and you take a single coin while she looks at the stars. The singing stops. When you turn she is already there — she crossed the porch without a sound, which a woman that size should not be able to do — and the too-wide grin has gone flat and far too old for her face. \"That's mine,\" she says, in the sharp grown voice she keeps underneath. She is lawless, and lonely, and very, very strong, and there is no one for miles. ▒ You have died. ▒"
+
+  # --- Lisbet Salamander: the server basement (malmo-server-basement) ---
+  - id: death-basement-grab
+    arc: main
+    type: death
+    location: malmo-server-basement
+    title: Wasted Time
+    media: {image_theme: server-glow, music_theme: fan-hum}
+    body: "You grab the laptop and run for the stairs. You make it three steps. She does not shout — people who watch the exits never need to — and the taser drops you twitching between the humming racks. She stands over you unhurried, salamander tattoo lit green by the screens, and what she does next she does because someone, long ago, taught her that mercy was a thing other people got. She is very good at not being found out. ▒ You have died. ▒"
+
+  - id: death-basement-betray
+    arc: main
+    type: death
+    location: malmo-server-basement
+    title: A Name to Sell
+    media: {image_theme: server-glow, music_theme: fan-hum}
+    body: "You take what she gives you and you go, already deciding who will pay for the name. You should have remembered she pulls a whole life off a single old login. She knows the buyer before you've met him; she knows your route home; she has been three steps ahead of trusting men her entire life. You never hear which wire it came down — only that the city has a great many quiet places, and she chose yours. ▒ You have died. ▒"
+
+  # --- Kurt Vallmo: police HQ (malmo-police) ---
+  - id: death-police-lunge
+    arc: main
+    type: death
+    location: malmo-police
+    title: The Tired Man's Hand
+    media: {image_theme: night-office, music_theme: low-dread}
+    body: "You lunge for the service pistol lying among his folders. He is exhausted, and diabetic, and three decades slower than he was — but he has done this since before you were born, and his hand is already there, because a part of him never stopped expecting the worst of a late visitor. \"Shouldn't have,\" he says, almost gently, almost sorry, over the ringing. He'll write it up himself, in the morning, with cold coffee, the way he writes up everything. ▒ You have died. ▒"
+
+  # --- Skärlök Holm: the lodgings (lund-lodgings) ---
+  - id: death-lodgings-beaker
+    arc: main
+    type: death
+    location: lund-lodgings
+    title: The Beaker on the Bench
+    media: {image_theme: cluttered-study, music_theme: violin-restless}
+    body: "Among the clippings and the chemistry a beaker holds something amber that looks, in the lamplight, almost like brandy. You drink while his back is turned. It is not brandy; it is whatever the gaunt man distils to fill the grey hours between murders, and it was never meant to go anywhere near a throat. He turns at the sound you make. \"You drank the bench reagent,\" he observes, with the flat interest of a man cataloguing a fact. \"Fascinating dose-response.\" He does not reach you in time, and would have found the data more interesting than the loss. ▒ You have died. ▒"
+
+  # --- Zoltan Ibrahimson: Rosengård (malmo-rosengard) ---
+  - id: death-rosengard-mock
+    arc: main
+    type: death
+    location: malmo-rosengard
+    title: His Part of Town
+    media: {image_theme: estate-floodlight, music_theme: night-bass}
+    body: "\"Rosengård,\" you sneer. \"Explains a lot.\" The ball stops dead under his boot. The grin stays but everything behind it goes to iron, because the chip he carries from these estates is the realest thing about him and you have just flicked it. He does not raise his voice. He doesn't have to; he knows everyone within these towers and not one of them owes you a thing. The floodlights are very bright and there are a great many quiet ways out of a cage pitch after midnight. ▒ You have died. ▒"
+
+  - id: death-rosengard-swing
+    arc: main
+    type: death
+    location: malmo-rosengard
+    title: Brave, or Lost
+    media: {image_theme: estate-floodlight, music_theme: night-bass}
+    body: "You swing at him. It is, briefly, the bravest thing you have ever done. He catches the punch the way he traps a long ball — without seeming to move, without seeming to care — and looks at your fist in his enormous working-man's hand with something almost like pity. \"Zoltan does not wait for buses,\" he says, which makes no sense, and is the last thing you hear clearly. He is built like a cathedral. You are not. ▒ You have died. ▒"
+
+  # --- lethal places ---
+
+  - id: death-crypt-dark
+    arc: main
+    type: death
+    location: lund-crypt
+    title: Where the Giant Pulls
+    media: {image_theme: stone-crypt, music_theme: dread-drone}
+    body: "You feel your way past the squat pillars, deeper than the carved giant Finn, into a dark the cathedral has kept down here longer than there has been a cathedral. The ticking water stops. The floor is no longer level. When you put out a hand the stone is warm, and it moves, and the whole patient weight the giant has been straining against for a thousand years chooses this moment, with you beneath it, to come down. ▒ You have died. ▒"
+
+  - id: death-apothecary-tincture
+    arc: main
+    type: death
+    location: lund-apothecary
+    title: Bitter Almonds
+    media: {image_theme: shuttered-pharmacy, music_theme: cathedral-cold}
+    body: "You work the grille loose and slip in among the clouded jars. One is still half-full, labelled in a careful nineteenth-century hand, and you wet a finger and taste it the way you would test a thing in a dream. Bitter almonds — the smell that was in the back room all along. Old poison keeps better than old medicine. You barely reach the counter before the jar's careful label has the last word. ▒ You have died. ▒"
+
+  - id: death-harbor-water
+    arc: main
+    type: death
+    location: malmo-harbor
+    title: The Waterline
+    media: {image_theme: harbor-night, music_theme: distant-trains}
+    body: "An iron ladder goes down the quay wall into the black slap of the Öresund, and you climb down to see what the cranes are looking at. The bottom rungs are slick with weed and the cold takes your hands first. You miss your grip. The harbour water is colder than thought and deeper than the cranes are tall, and the tide that runs through these old docks has carried better swimmers out past the breakwater and not brought them back. ▒ You have died. ▒"
+
+  - id: death-torso-ledge
+    arc: main
+    type: death
+    location: malmo-turning-torso
+    title: The Lit Window
+    media: {image_theme: twisting-tower, music_theme: high-cold}
+    body: "You find the one lift that still runs and ride it up through the tower's slow stone twist to the single lit window, where the light moved and went still. The window is open. The ledge beyond it is barely a ledge, and the wind off the sound comes round the building's turning the wrong way, the way it has all night, and shoulders you off almost gently. The Western Harbour wheels up to meet you, each storey wrung a little further than the last. ▒ You have died. ▒"
+
+  - id: death-triangeln-tracks
+    arc: main
+    type: death
+    location: malmo-citytunnel
+    title: One Minute
+    media: {image_theme: deep-platform, music_theme: tunnel-hum}
+    body: "The board has held the same train at one minute out since you came down. You step off the tiled edge onto the track to see why it never arrives — and the warm air pushes harder out of the tunnel mouth, that long exhalation, and far down the dark the single light you have been waiting for finally, finally begins to move. The minute the train never reached arrives all at once. There is no time to climb back up. ▒ You have died. ▒"
+
+  - id: death-station-lasttrain
+    arc: main
+    type: death
+    location: lund-station
+    title: The Last Train
+    media: {image_theme: station-night, music_theme: distant-trains}
+    body: "A train you did not hear arrive stands at the empty platform, lit warm and yellow, doors open, not a soul aboard. It is very late and you are very tired and you step on. The doors sigh shut. It pulls out smooth and silent through a Skåne that goes dark at the glass and stays dark, and somewhere past the third station that isn't on any map you understand the last train does not run to where the living get off. The doors do not open again for you. ▒ You have died. ▒"
+
+  - id: death-castle-moat
+    arc: main
+    type: death
+    location: malmo-castle
+    title: Thin Ice
+    media: {image_theme: moated-fortress, music_theme: dread-drone}
+    body: "Rather than the footbridge you try the moat itself, skinned over grey and still. The ice holds for four steps — long enough to be sure of it — and gives on the fifth without a crack, just a sudden silent opening, and the black water under the red-brick fortress closes over the hole as neatly as a mouth. The walls were built to keep people in. The moat has always done its share of the work. ▒ You have died. ▒"
+
+  - id: death-cemetery-grave
+    arc: main
+    type: death
+    location: malmo-cemetery
+    title: A Plot the Right Size
+    media: {image_theme: foggy-graveyard, music_theme: funeral-cold}
+    body: "A light moves between the leaning stones — a lantern, you think, someone tending late — and you follow it down the rows of limes into the fog. It leads you to a grave dug open and waiting, the earth fresh, the hole the exact length of a person your height. The light goes out. The fog closes the way a hand closes. You were right that someone tended these plots; you were wrong about who, and for whom. ▒ You have died. ▒"
+
+  - id: death-woods-offpath
+    arc: main
+    type: death
+    location: skane-woods
+    title: Off the Path
+    media: {image_theme: forest-dark, music_theme: low-dread}
+    body: "There are lights between the pines, low and warm, and you leave the track to go to them the way you have wanted to since you came under the trees. The path is gone the moment you can no longer see it. The lights stay always the same distance ahead, patient, drawing you deeper into a dark that was old before the road was cut, and the forest closes its long green silence behind you. The Skåne woods do not give you back. ▒ You have died. ▒"
+
+  - id: death-pildamms-water
+    arc: main
+    type: death
+    location: malmo-pildamms
+    title: Between the Reeds
+    media: {image_theme: dark-park-lake, music_theme: reeds-wind}
+    body: "Something pale waits out among the reeds where the lamps don't reach, and you wade off the gravel path to see it. The park lake has no proper bottom, only a soft cold deepening that takes your boots, then your knees, then your patience for the shore. The reeds hiss closed over the place where you went in. By morning the paths will have rearranged themselves again, and no one will walk quite that way, and the flat black water will lie waiting between the trees as if nothing had been added to it. ▒ You have died. ▒"

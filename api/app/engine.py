@@ -292,6 +292,18 @@ async def map_block(conn, node) -> tuple[dict | None, set]:
     return block, set(mapped)
 
 
+def _map_xy(nm: dict, fallback):
+    """A node's stable overview position: its saved normalized `map: {x, y}` when both
+    are present, else the graph-layout-derived `fallback` (x, y). Returns (x, y)."""
+    mx, my = nm.get("x"), nm.get("y")
+    if mx is not None and my is not None:
+        try:
+            return float(mx), float(my)
+        except (TypeError, ValueError):
+            pass
+    return fallback
+
+
 def _normalize_positions(pts: dict, margin: float = 0.2) -> dict:
     """Map raw graph-editor pixel positions {id: (x, y)} into normalized 0..1
     map coordinates, preserving the layout's shape, inset by `margin` so icons
@@ -355,7 +367,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
     for r in rows:
         if r["cell_id"] not in discovered:
             continue                                   # fog-of-war
-        loc, x_y = r["loc_id"], norm[r["loc_id"]]
+        loc = r["loc_id"]
         is_current = r["loc_id"] == node["location_id"]   # the place you're in
         action, target, reachable = None, None, False
         if cur_cell is not None and r["cell_id"] == cur_cell["id"]:
@@ -376,6 +388,9 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
             scale = float(nm.get("scale", 1.0))
         except (TypeError, ValueError):
             scale = 1.0
+        # Stable overview position from `map: {x, y}` (player + editor share it), with the
+        # graph-layout spot as the fallback for never-positioned places.
+        x_y = _map_xy(nm, norm[loc])
         nodes.append({"id": loc, "title": r["title"],
                       "icon": f"images/maps/icons/{loc}.png",
                       "x": x_y[0], "y": x_y[1], "current": bool(is_current),
@@ -468,7 +483,11 @@ async def map_overview(conn) -> dict:
             scale = float(nm.get("scale", 1.0))
         except (TypeError, ValueError):
             scale = 1.0
-        x, y = norm[r["loc_id"]]
+        # A node's saved `map: {x, y}` is the STABLE overview position (normalized 0..1)
+        # — used verbatim, so a dragged icon stays exactly where it was dropped and no
+        # other icon moves. Only places never positioned on the map fall back to the
+        # graph-layout-derived spot (`norm`).
+        x, y = _map_xy(nm, norm.get(r["loc_id"]))
         nodes.append({"id": r["loc_id"], "node_id": r["node_id"], "cell": r["cell"],
                       "title": r["title"],
                       "icon": f"images/maps/icons/{r['loc_id']}.png",

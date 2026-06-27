@@ -68,6 +68,9 @@ export const api = {
   mapOverview: () => req('/api/admin/map/overview'),
   saveRoads: (roads) => req('/api/admin/map/roads', { method: 'POST', body: { roads } }),
   setNodeScale: (id, scale) => req('/api/admin/map/scale', { method: 'POST', body: { id, scale } }),
+  // Save an icon's stable overview position (normalized 0..1) — dragging a node persists
+  // this and nothing else, so no other icon ever moves.
+  moveNodeMap: (id, x, y) => req('/api/admin/map/pos', { method: 'POST', body: { id, x, y } }),
   addEdge: (from, to, label = '', bidirectional = true) =>
     req('/api/admin/map/edge', { method: 'POST', body: { from_node: from, to_node: to, label, bidirectional } }),
 

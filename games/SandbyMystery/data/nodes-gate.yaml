@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-janitor-gate
-    pos: {x: 3236, y: 597}
+    pos: {x: 2692, y: 3325}
     arc: main
     type: gate
     location: killebackskolan
@@ -28,8 +28,8 @@ nodes:
 
   # --- from lund ---
   - id: lund-library
-    pos: {x: 5243, y: 1545}
-    map: {x: 0.4645, y: 0.3042, rx: 0.05, ry: 0.045, scale: 1.0}
+    pos: {x: 268, y: 5460}
+    map: {x: 0.4662, y: 0.7899, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: gate
     location: lund-library
@@ -42,15 +42,15 @@ nodes:
         body: "Inside the cathedral annex, the night librarian shelves books beneath her single lamp. She has already told you what she carries — the fire at the school in 1998, the child that was lost, the caretaker who never spoke of it again. She watches you over her glasses, gentler now, as if she'd handed you something heavy and isn't sure she should have."
     edges:
       - id: e-library-square
-        road: [[0.775, 0.5563], [0.6768, 0.592]]
+        road: [[0.3881, 0.8026], [0.3841, 0.7962]]
         to: lund-square
         label: Back out to the square
         effects: {log: "You left the library."}
         sort_order: 9
   # --- Hannibal Läcker: the supper club cellar ---
   - id: lund-cellar
-    pos: {x: 4788, y: 2199}
-    map: {x: 0.6231, y: 0.5102, rx: 0.05, ry: 0.045, scale: 1.0}
+    pos: {x: -1125, y: 5608}
+    map: {x: 0.3368, y: 0.8, rx: 0.05, ry: 0.045, scale: 1.6}
     arc: main
     type: gate
     location: lund-cellar
@@ -62,16 +62,40 @@ nodes:
       - when: {all: [{gate_passed: lund-hannibal}]}
         body: "The cellar is warm with candlelight, the table still laid for two. The host sits back, content — you have traded him a true piece of yourself, and he has given you a name off his guest list, a guest from the year the school burned. \"Do stay,\" he murmurs, refilling your glass. You think, this time, that you will not."
     edges:
+      - id: e-cellar-meal
+        to: death-cellar-meal
+        label: Accept the second helping
+        effects: {log: "You cleaned your plate. He watched you do it, delighted."}
+        danger: 0
+        sort_order: 6
+      - id: e-cellar-curious
+        to: death-cellar-curious
+        label: Ask what the meat is
+        effects: {log: "You asked your host what the meat was."}
+        danger: 2
+        sort_order: 7
+      - id: e-cellar-rude
+        to: death-cellar-rude
+        label: Threaten to have the place shut down
+        effects: {log: "You threatened your host."}
+        danger: 2
+        sort_order: 7
+      - id: e-cellar-kitchen
+        to: death-cellar-kitchen
+        label: Slip out through the kitchen door
+        effects: {log: "You went looking for the kitchen."}
+        danger: 1
+        sort_order: 8
       - id: e-cellar-square
-        road: [[0.7211, 0.5908], [0.7128, 0.5961]]
+        road: [[0.3314, 0.816], [0.3419, 0.794]]
         to: lund-square
         label: Make your excuses and climb back to the square
         effects: {log: "You left the cellar — while you still could."}
         sort_order: 9
   # --- Skärlök Holm: the lodgings ---
   - id: lund-lodgings
-    pos: {x: 2367, y: 1838}
-    map: {x: 0.2463, y: 0.7117, rx: 0.05, ry: 0.045, scale: 1.8}
+    pos: {x: -637, y: 3400}
+    map: {x: 0.3821, y: 0.6489, rx: 0.05, ry: 0.045, scale: 1.8}
     arc: main
     type: gate
     location: lund-lodgings
@@ -85,16 +109,22 @@ nodes:
       - when: {all: [{gate_passed: lund-holm}]}
         body: "The room still boils with pipe-smoke and pinned paper. The gaunt detective has turned around now — you brought him something worth his while, and he laid out his case in return: the 1998 fire was set, and the police let the disappearance die. He studies you the way he studies an unfinished diagram on the wall."
     edges:
+      - id: e-lodgings-beaker
+        to: death-lodgings-beaker
+        label: Sip from the beaker on his bench
+        effects: {log: "You drank the amber liquid from Holm's bench."}
+        danger: 0
+        sort_order: 8
       - id: e-lodgings-square
-        road: [[0.5693, 0.5743], [0.6303, 0.5837]]
+        road: [[0.3552, 0.6421], [0.3569, 0.6801]]
         to: lund-square
         label: Show yourself back out to the square
         effects: {log: "You left Holm to his clippings."}
         sort_order: 9
   # --- Greve Orlök: the manor ---
   - id: lund-manor
-    pos: {x: 2943, y: 2511}
-    map: {x: 0.8314, y: 0.3608, rx: 0.05, ry: 0.045, scale: 1.0}
+    pos: {x: -1751, y: 2981}
+    map: {x: 0.1341, y: 0.6366, rx: 0.05, ry: 0.045, scale: 2.2}
     arc: main
     type: gate
     location: lund-manor
@@ -106,16 +136,40 @@ nodes:
       - when: {all: [{gate_passed: lund-orlok}]}
         body: "The candles still gutter in the open hall and the rats still keep their distance. The count stands as before with his back to the cold hearth — but he has told you what he watched from these windows across the years, the school burning among them, and every threshold between you has stayed closed. \"You kept your doorways,\" he says, approving. \"So few do.\""
     edges:
+      - id: e-manor-invite
+        to: death-manor-invite
+        label: Tell him to call on you any time
+        effects: {log: "You told the count he'd be welcome any time."}
+        danger: 0
+        sort_order: 6
+      - id: e-manor-cup
+        to: death-manor-cup
+        label: Drink from the cup he offers
+        effects: {log: "You drank what the count poured."}
+        danger: 2
+        sort_order: 7
+      - id: e-manor-linger
+        to: death-manor-linger
+        label: Stay and talk until full dark
+        effects: {log: "You lingered in the manor until nightfall."}
+        danger: 2
+        sort_order: 7
+      - id: e-manor-eyes
+        to: death-manor-eyes
+        label: Meet his eyes and let him speak
+        effects: {log: "You held the count's gaze."}
+        danger: 1
+        sort_order: 8
       - id: e-manor-square
-        road: [[0.6311, 0.642], [0.6367, 0.6395]]
+        road: [[0.2137, 0.5813], [0.3493, 0.7239]]
         to: lund-square
         label: Step back across the threshold and go
         effects: {log: "You left the manor, and were glad the door let you."}
         sort_order: 9
   # --- Karl von Vinné: the botanical garden ---
   - id: lund-botanical
-    pos: {x: 5098, y: 3648}
-    map: {x: 0.3074, y: 0.8725, rx: 0.05, ry: 0.045, scale: 2.6}
+    pos: {x: -1568, y: 4539}
+    map: {x: 0.1295, y: 0.8155, rx: 0.05, ry: 0.045, scale: 2.6}
     arc: main
     type: gate
     location: lund-botanical
@@ -129,8 +183,26 @@ nodes:
       - when: {all: [{gate_passed: lund-vinne}]}
         body: "The glasshouse still glows green and dripping. The drunken cataloguer has shown you his prize — the thing he pressed from the ash by the burnt school, a flowering with no business in this hemisphere — and now he beams at you as a fellow creature of the catalogue, topping up his wine and your invented species-name both."
     edges:
+      - id: e-botanical-pin
+        to: death-glasshouse-pin
+        label: Hold still and let him examine you
+        effects: {log: "You stood still for von Vinné's glass."}
+        danger: 0
+        sort_order: 6
+      - id: e-botanical-flask
+        to: death-glasshouse-flask
+        label: Accept a glass from the dark bottle
+        effects: {log: "You drank from von Vinné's dark bottle."}
+        danger: 1
+        sort_order: 7
+      - id: e-botanical-third
+        to: death-glasshouse-third
+        label: Ask to see the third thing that should not exist
+        effects: {log: "You asked to see the third specimen."}
+        danger: 2
+        sort_order: 8
       - id: e-botanical-square
-        road: [[0.7267, 0.7172], [0.6968, 0.6635]]
+        road: [[0.2422, 0.7218], [0.3082, 0.7289]]
         to: lund-square
         label: Leave him to his specimens
         effects: {log: "You left the glasshouse and its collector."}
@@ -139,8 +211,8 @@ nodes:
   # --- from malmo ---
   # --- Zoltan Ibrahimson: Rosengård ---
   - id: malmo-rosengard
-    pos: {x: -67, y: 500}
-    map: {x: 0.7818, y: 0.68, rx: 0.05, ry: 0.045, scale: 2.4}
+    pos: {x: 464, y: -1177}
+    map: {x: 0.4844, y: 0.3356, rx: 0.05, ry: 0.045, scale: 2.4}
     arc: main
     type: gate
     location: malmo-rosengard
@@ -152,16 +224,28 @@ nodes:
       - when: {all: [{gate_passed: malmo-zoltan}]}
         body: "Concrete towers box in the floodlit cage pitch. Zoltan still holds the court alone, but he greets you now like a debt already settled — he has given you the name off the harbour locker, the one that leads back to Sandby. \"Zoltan does not forget a face with spine,\" he says, and sends the ball cracking up off the boards."
     edges:
+      - id: e-rosengard-mock
+        to: death-rosengard-mock
+        label: Mock Rosengård to his face
+        effects: {log: "You sneered at Zoltan's part of town."}
+        danger: 2
+        sort_order: 7
+      - id: e-rosengard-swing
+        to: death-rosengard-swing
+        label: Take a swing at him
+        effects: {log: "You swung at Zoltan."}
+        danger: 2
+        sort_order: 7
       - id: e-rosengard-harbor
-        road: [[0.3558, 0.4214], [0.3365, 0.4466]]
+        road: [[0.4377, 0.3014], [0.4373, 0.3273]]
         to: malmo-harbor
         label: Head back down toward the harbour
         effects: {log: "You left Rosengård."}
         sort_order: 9
   # --- Lisbet Salamander: the server basement ---
   - id: malmo-server-basement
-    pos: {x: -825, y: 1791}
-    map: {x: 0.2959, y: 0.6687, rx: 0.05, ry: 0.045, scale: 1.35}
+    pos: {x: 1072, y: -1795}
+    map: {x: 0.5408, y: 0.2933, rx: 0.05, ry: 0.045, scale: 1.35}
     arc: main
     type: gate
     location: malmo-server-basement
@@ -175,16 +259,28 @@ nodes:
       - when: {all: [{gate_passed: malmo-lisbet}]}
         body: "The fans still roar and the racks blink green in the dark. The hacker hasn't turned from her six screens, but she's already given you what you came for — the name someone scrubbed out of the 1998 fire file. \"You're still here,\" she says flatly. \"I told you what I found. Don't make it weird.\""
     edges:
+      - id: e-basement-grab
+        to: death-basement-grab
+        label: Grab her laptop and run for the stairs
+        effects: {log: "You grabbed Lisbet's laptop and ran."}
+        danger: 2
+        sort_order: 7
+      - id: e-basement-betray
+        to: death-basement-betray
+        label: Promise her a name you mean to sell
+        effects: {log: "You took Lisbet's name, meaning to sell it on."}
+        danger: 0
+        sort_order: 8
       - id: e-basement-harbor
-        road: [[0.3383, 0.5224], [0.337, 0.5129]]
+        road: [[0.5135, 0.3106], [0.4444, 0.384]]
         to: malmo-harbor
         label: Back up the stairs to the street
         effects: {log: "You left the basement and its screens."}
         sort_order: 9
   # --- Kurt Vallmo: police HQ ---
   - id: malmo-police
-    pos: {x: -52, y: 2518}
-    map: {x: 0.7669, y: 0.3563, rx: 0.05, ry: 0.045, scale: 1.25}
+    pos: {x: -1492, y: 254}
+    map: {x: 0.3027, y: 0.4335, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate
     location: malmo-police
@@ -198,8 +294,14 @@ nodes:
       - when: {all: [{gate_passed: malmo-vallmo}]}
         body: "One window still burns on the upper floor. The rumpled detective sits where you left him among his folders and the one old case on the board — but he's said his piece now: the disappearance they made him drop, the fire file signed out and never returned. He watches you with tired, unguarded eyes, a battered evidence box now set out at his elbow."
     edges:
+      - id: e-police-lunge
+        to: death-police-lunge
+        label: Lunge for the pistol among his folders
+        effects: {log: "You lunged for Vallmo's service pistol."}
+        danger: 3
+        sort_order: 7
       - id: e-police-harbor
-        road: [[0.3821, 0.5945], [0.3747, 0.5382]]
+        road: [[0.2788, 0.3516], [0.3636, 0.3854]]
         to: malmo-harbor
         label: Leave the detective to his folders
         effects: {log: "You left the police house."}
@@ -207,7 +309,7 @@ nodes:
 
   # --- from marta ---
   - id: kbk-classroom
-    pos: {x: 3478, y: 534}
+    pos: {x: 2863, y: 3209}
     map: {x: 0.2777, y: 0.705, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: gate
@@ -232,8 +334,8 @@ nodes:
   # --- from sandby ---
   # --- Herr Dödblek: the churchyard ---
   - id: sandby-church
-    pos: {x: 3054, y: -532}
-    map: {x: 0.4132, y: 0.3789, rx: 0.05, ry: 0.045, scale: 1.85}
+    pos: {x: 2515, y: 3942}
+    map: {x: 0.6748, y: 0.686, rx: 0.05, ry: 0.045, scale: 1.85}
     arc: main
     type: gate
     location: sandby-church
@@ -245,16 +347,34 @@ nodes:
       - when: {all: [{gate_passed: sandby-dodblek}]}
         body: "The church door stands open on cold air. The pale figure still sits among the leaning stones, the chess set laid between you — but he has already told you what he remembers of the night the school burned, the child who came to him out of the smoke. He inclines his head a fraction, and waits, in no hurry at all."
     edges:
+      - id: e-church-lose
+        to: death-church-lose
+        label: Wager your life on a game of chess
+        effects: {log: "You sat down to play Dödblek for the stake he prefers."}
+        danger: 3
+        sort_order: 7
+      - id: e-church-upend
+        to: death-church-upend
+        label: Sweep the pieces from the board
+        effects: {log: "You scattered Dödblek's chessmen among the stones."}
+        danger: 2
+        sort_order: 7
+      - id: e-church-when
+        to: death-church-when
+        label: Demand he tell you when you will die
+        effects: {log: "You pressed Dödblek to name the hour."}
+        danger: 1
+        sort_order: 8
       - id: e-church-street
-        road: [[0.5844, 0.3024], [0.6027, 0.3252]]
+        road: [[0.6785, 0.6273], [0.7027, 0.6019]]
         to: sandby-street
         label: Leave the churchyard
         effects: {log: "You left the church behind you."}
         sort_order: 9
   # --- Norman Båts: the gravel-pit motel ---
   - id: sandby-quarry
-    pos: {x: 5690, y: -1139}
-    map: {x: 0.4595, y: 0.9138, rx: 0.05, ry: 0.045, scale: 2.3}
+    pos: {x: 3863, y: 4684}
+    map: {x: 0.8, y: 0.7368, rx: 0.05, ry: 0.045, scale: 2.3}
     arc: main
     type: gate
     location: sandby-quarry
@@ -268,16 +388,40 @@ nodes:
       - when: {all: [{gate_passed: sandby-norman}]}
         body: "Black water fills the old gravel pit, flat and patient, the VACANCY sign still buzzing pink. The motelkeeper fusses behind the desk but won't meet your eye now — not since he let slip what the lake keeps, and what Mother doesn't like him saying. He keeps glancing at the dark water, and at the office door."
     edges:
+      - id: e-quarry-room
+        to: death-motel-room
+        label: Take a room for the night
+        effects: {log: "You took a room at the motel by the lake."}
+        danger: 0
+        sort_order: 6
+      - id: e-quarry-mother
+        to: death-motel-mother
+        label: Ask to meet his mother
+        effects: {log: "You asked Norman if you could meet Mother."}
+        danger: 2
+        sort_order: 7
+      - id: e-quarry-boathouse
+        to: death-motel-boathouse
+        label: Go and search the boathouse
+        effects: {log: "You went down to the boathouse alone."}
+        danger: 2
+        sort_order: 7
+      - id: e-quarry-swim
+        to: death-quarry-swim
+        label: Wade into the lake to see for yourself
+        effects: {log: "You waded into the gravel-pit lake."}
+        danger: 1
+        sort_order: 8
       - id: e-quarry-street
-        road: [[0.7748, 0.1905], [0.729, 0.2191]]
+        road: [[0.792, 0.6765], [0.788, 0.6297]]
         to: sandby-street
         label: Get back on the road to the village
         effects: {log: "You left the lake behind you."}
         sort_order: 9
   # --- Pippa Långskugga: the crooked house ---
   - id: sandby-crooked-house
-    pos: {x: 3726, y: -605}
-    map: {x: 0.8612, y: 0.3993, rx: 0.05, ry: 0.045, scale: 1.25}
+    pos: {x: 3028, y: 4831}
+    map: {x: 0.7225, y: 0.7468, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate
     location: sandby-crooked-house
@@ -291,8 +435,26 @@ nodes:
       - when: {all: [{gate_passed: sandby-pippa}]}
         body: "The house leans as if listening. The red-braided woman still swings her boots on the porch rail, the bent horseshoe in her lap — but the play has gone quiet in her. She has told you what she saw carried out of the burning school, small as a child, and the telling sits oddly on her too-bright face."
     edges:
+      - id: e-crooked-armwrestle
+        to: death-crooked-armwrestle
+        label: Challenge her to arm-wrestle
+        effects: {log: "You set your elbow against Pippa's."}
+        danger: 2
+        sort_order: 7
+      - id: e-crooked-game
+        to: death-crooked-game
+        label: Keep playing her game
+        effects: {log: "You kept playing Pippa's games."}
+        danger: 0
+        sort_order: 6
+      - id: e-crooked-gold
+        to: death-crooked-gold
+        label: Help yourself to a coin from her case
+        effects: {log: "You took a coin from Pippa's suitcase of gold."}
+        danger: 2
+        sort_order: 7
       - id: e-crooked-street
-        road: [[0.6546, 0.2024], [0.6294, 0.3673]]
+        road: [[0.7454, 0.6149], [0.7516, 0.5987]]
         to: sandby-street
         label: Back toward the lit streets
         effects: {log: "You walked back to where the lamps still worked."}

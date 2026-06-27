@@ -1,5 +1,5 @@
-// Shared map geometry so the player map (MapOverlay) and the admin editor
-// (MapEditor) draw roads identically — the editor is meant to preview the player map.
+// Shared road geometry for the map (MapOverlay) — used identically by its player view
+// and its admin edit mode, so the editor is a faithful preview of the player map.
 
 // A road is a Catmull-Rom spline through its endpoints + any saved waypoints
 // (`r.points`, set by the editor's "Redraw roads"); with no waypoints it's a
