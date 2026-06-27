@@ -5,7 +5,7 @@ nodes:
   # --- from killebackskolan ---
   - id: kbk-entrance-hall
     pos: {x: 3775, y: 476}
-    map: {x: 0.7918, y: 0.4487, rx: 0.05, ry: 0.045, scale: 3.0}
+    map: {x: 0.8905, y: 0.6413, rx: 0.05, ry: 0.045, scale: 3.0}
     arc: main
     type: location
     location: killebackskolan
@@ -49,7 +49,7 @@ nodes:
   # --- atmosphere: the old apothecary ---
   - id: lund-apothecary
     pos: {x: 274, y: 3795}
-    map: {x: 0.4667, y: 0.6759, rx: 0.05, ry: 0.045, scale: 1.0}
+    map: {x: 0.405, y: 0.6568, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: location
     location: lund-apothecary
@@ -64,7 +64,7 @@ nodes:
         danger: 0
         sort_order: 7
       - id: e-apothecary-square
-        road: [[0.4093, 0.6635], [0.3682, 0.7526]]
+        road: [[0.3967, 0.7223], [0.3711, 0.7712]]
         to: lund-square
         label: Back to the cathedral square
         effects: {log: "You left the shuttered apothecary."}
@@ -72,7 +72,7 @@ nodes:
   # --- atmosphere: the cathedral crypt ---
   - id: lund-crypt
     pos: {x: 743, y: 4695}
-    map: {x: 0.5103, y: 0.7375, rx: 0.05, ry: 0.045, scale: 1.75}
+    map: {x: 0.5368, y: 0.8064, rx: 0.05, ry: 0.045, scale: 1.75}
     arc: main
     type: location
     location: lund-crypt
@@ -87,7 +87,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-crypt-square
-        road: [[0.4352, 0.7262], [0.4173, 0.728]]
+        road: [[0.4835, 0.7852], [0.3956, 0.8069]]
         to: lund-square
         label: Climb back up to the square
         effects: {log: "You climbed back out of the crypt."}
@@ -96,7 +96,7 @@ nodes:
   # --- from malmo ---
   - id: malmo-harbor
     pos: {x: 432, y: -141}
-    map: {x: 0.4814, y: 0.4065, rx: 0.05, ry: 0.045, scale: 1.75}
+    map: {x: 0.4268, y: 0.3251, rx: 0.05, ry: 0.045, scale: 1.75}
     arc: main
     type: location
     location: malmo-harbor
@@ -124,7 +124,7 @@ nodes:
   # --- atmosphere ---
   - id: malmo-stortorget
     pos: {x: -631, y: 1463}
-    map: {x: 0.3827, y: 0.5163, rx: 0.05, ry: 0.045, scale: 1.5}
+    map: {x: 0.3777, y: 0.4593, rx: 0.05, ry: 0.045, scale: 1.5}
     arc: main
     type: location
     location: malmo-stortorget
@@ -133,19 +133,19 @@ nodes:
     body: "The great square opens out, far too large for the few lit windows around it. A bronze king rides his bronze horse at the centre, green with age, facing nothing. Wind comes straight off the water and worries at the flags. Smaller streets lead off toward a older, tighter square."
     edges:
       - id: e-stortorget-harbor
-        road: [[0.37, 0.4331], [0.3937, 0.4223]]
+        road: [[0.4166, 0.4122], [0.4218, 0.3955]]
         to: malmo-harbor
         label: Back toward the harbour road
         effects: {log: "You left Stortorget."}
         sort_order: 9
       - id: e-stortorget-lilla
-        road: [[0.3043, 0.4654], [0.2887, 0.4562]]
+        road: [[0.3412, 0.4439], [0.3193, 0.4193]]
         to: malmo-lilla-torg
         label: Slip into the little timbered square
         effects: {progress_points: 3, log: "You crossed to Lilla Torg."}
   - id: malmo-lilla-torg
     pos: {x: -1188, y: 982}
-    map: {x: 0.3309, y: 0.4834, rx: 0.05, ry: 0.045, scale: 1.55}
+    map: {x: 0.2905, y: 0.3974, rx: 0.05, ry: 0.045, scale: 1.55}
     arc: main
     type: location
     location: malmo-lilla-torg
@@ -154,7 +154,7 @@ nodes:
     body: "Crooked timbered houses lean over a cobbled square of shuttered bars and stacked, chained chairs. Somewhere a knot of laughter rises — and stops the moment you look for it. Heat-lamps stand cold. The big square is back the way you came."
     edges:
       - id: e-lilla-stortorget
-        road: [[0.2887, 0.4562], [0.3043, 0.4654]]
+        road: [[0.3193, 0.4193], [0.3412, 0.4439]]
         to: malmo-stortorget
         label: Back out to the great square
         effects: {log: "You returned to Stortorget."}
@@ -176,14 +176,14 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-castle-harbor
-        road: [[0.3214, 0.1784], [0.3231, 0.2731]]
+        road: [[0.3464, 0.2439], [0.3835, 0.3103]]
         to: malmo-harbor
         label: Recross the bridge and go
         effects: {log: "You left the castle behind its moat."}
         sort_order: 9
   - id: malmo-turning-torso
     pos: {x: -2598, y: -281}
-    map: {x: 0.2, y: 0.3969, rx: 0.05, ry: 0.045, scale: 2.25}
+    map: {x: 0.1168, y: 0.2619, rx: 0.05, ry: 0.045, scale: 2.25}
     arc: main
     type: location
     location: malmo-turning-torso
@@ -198,14 +198,14 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-torso-harbor
-        road: [[0.2041, 0.3153], [0.326, 0.3676]]
+        road: [[0.1809, 0.2791], [0.3569, 0.3491]]
         to: malmo-harbor
         label: Turn back from the water's edge
         effects: {log: "You left the twisting tower."}
         sort_order: 9
   - id: malmo-pildamms
     pos: {x: 2521, y: -1140}
-    map: {x: 0.6754, y: 0.3381, rx: 0.05, ry: 0.045, scale: 2.05}
+    map: {x: 0.805, y: 0.2301, rx: 0.05, ry: 0.045, scale: 2.05}
     arc: main
     type: location
     location: malmo-pildamms
@@ -220,13 +220,13 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-pildamms-harbor
-        road: [[0.5809, 0.3476], [0.5715, 0.3511]]
+        road: [[0.7308, 0.2754], [0.573, 0.3437]]
         to: malmo-harbor
         label: Find your way back out of the park
         effects: {log: "You left the park, eventually."}
         sort_order: 9
   - id: malmo-cemetery
-    map: {x: 0.6302, y: 0.3026, scale: 1.8}
+    map: {x: 0.6423, y: 0.2387, scale: 1.8}
     pos: {x: 2034, y: -1659}
     arc: main
     type: location
@@ -242,7 +242,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-cemetery-harbor
-        road: [[0.5583, 0.3061], [0.5408, 0.3285]]
+        road: [[0.6164, 0.2778], [0.5159, 0.358]]
         to: malmo-harbor
         label: Back through the gate to the streets
         effects: {log: "You left the old cemetery."}
@@ -264,7 +264,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-citytunnel-harbor
-        road: [[0.5049, 0.4061], [0.4826, 0.409]]
+        road: [[0.5105, 0.4025], [0.4697, 0.3895]]
         to: malmo-harbor
         label: Ride the long escalator back up
         effects: {log: "You climbed back up out of the tunnel."}
@@ -272,7 +272,7 @@ nodes:
 
   # --- from skane-woods ---
   - id: woods-path
-    map: {x: 0.7148, y: 0.5036}
+    map: {x: 0.765, y: 0.5471}
     pos: {x: 2945, y: 1278}
     arc: main
     type: location
@@ -292,7 +292,7 @@ nodes:
   # --- from world ---
   - id: sandby-street
     pos: {x: 3484, y: 2672}
-    map: {x: 0.7648, y: 0.599, rx: 0.05, ry: 0.045, scale: 1.3}
+    map: {x: 0.7823, y: 0.7187, rx: 0.05, ry: 0.045, scale: 1.3}
     arc: main
     type: location
     location: sandby-street
@@ -302,13 +302,13 @@ nodes:
     body: "Sandby's main street lies dark and empty beyond the school, streetlamps buzzing against the rain. The village is silent, but roads lead away into the wider night — toward Lund, and toward Malmö and the water."
     edges:
       - id: e-street-inside
-        road: [[0.7701, 0.5155], [0.7804, 0.4587]]
+        road: [[0.8184, 0.6929], [0.8544, 0.6671]]
         to: kbk-entrance-hall
         label: Climb back in through the broken window
         effects: {log: "You went back into the school."}
   - id: lund-square
     pos: {x: -467, y: 4905}
-    map: {x: 0.3979, y: 0.7519, scale: 3.0}
+    map: {x: 0.3559, y: 0.8361, scale: 3.0}
     arc: main
     type: location
     location: lund-square
@@ -318,13 +318,13 @@ nodes:
     body: "Lund's cathedral looms over the empty square, its twin towers lost in low cloud. Cobblestones glisten. A side street leads down toward the railway station."
     edges:
       - id: e-square-station
-        road: [[0.3858, 0.7193], [0.487, 0.6438]]
+        road: [[0.4154, 0.7668], [0.4494, 0.7148]]
         to: lund-station
         label: Walk down to the station
         effects: {progress_points: 5, log: "You walked to Lund station."}
   - id: lund-station
     pos: {x: 1344, y: 3721}
-    map: {x: 0.5661, y: 0.6708, rx: 0.05, ry: 0.045, scale: 1.65}
+    map: {x: 0.4986, y: 0.6555, rx: 0.05, ry: 0.045, scale: 1.65}
     arc: main
     type: location
     location: lund-station
@@ -342,7 +342,7 @@ nodes:
         danger: 0
         sort_order: 7
       - id: e-station-square
-        road: [[0.487, 0.6438], [0.3858, 0.7193]]
+        road: [[0.4494, 0.7148], [0.4154, 0.7668]]
         to: lund-square
         label: Back up to the cathedral square
         effects: {log: "You returned to the square."}

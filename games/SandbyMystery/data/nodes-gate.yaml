@@ -29,7 +29,7 @@ nodes:
   # --- from lund ---
   - id: lund-library
     pos: {x: 268, y: 5460}
-    map: {x: 0.4662, y: 0.7899, rx: 0.05, ry: 0.045, scale: 1.0}
+    map: {x: 0.4523, y: 0.8658, rx: 0.05, ry: 0.045, scale: 1.4}
     arc: main
     type: gate
     location: lund-library
@@ -42,7 +42,7 @@ nodes:
         body: "Inside the cathedral annex, the night librarian shelves books beneath her single lamp. She has already told you what she carries — the fire at the school in 1998, the child that was lost, the caretaker who never spoke of it again. She watches you over her glasses, gentler now, as if she'd handed you something heavy and isn't sure she should have."
     edges:
       - id: e-library-square
-        road: [[0.3881, 0.8026], [0.3841, 0.7962]]
+        road: [[0.4176, 0.857], [0.3874, 0.8528]]
         to: lund-square
         label: Back out to the square
         effects: {log: "You left the library."}
@@ -50,7 +50,7 @@ nodes:
   # --- Hannibal Läcker: the supper club cellar ---
   - id: lund-cellar
     pos: {x: -1125, y: 5608}
-    map: {x: 0.3368, y: 0.8, rx: 0.05, ry: 0.045, scale: 1.6}
+    map: {x: 0.2686, y: 0.8387, rx: 0.05, ry: 0.045, scale: 1.6}
     arc: main
     type: gate
     location: lund-cellar
@@ -87,7 +87,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-cellar-square
-        road: [[0.3314, 0.816], [0.3419, 0.794]]
+        road: [[0.3089, 0.8416], [0.3199, 0.8469]]
         to: lund-square
         label: Make your excuses and climb back to the square
         effects: {log: "You left the cellar — while you still could."}
@@ -95,7 +95,7 @@ nodes:
   # --- Skärlök Holm: the lodgings ---
   - id: lund-lodgings
     pos: {x: -637, y: 3400}
-    map: {x: 0.3821, y: 0.6489, rx: 0.05, ry: 0.045, scale: 1.8}
+    map: {x: 0.2805, y: 0.674, rx: 0.05, ry: 0.045, scale: 1.8}
     arc: main
     type: gate
     location: lund-lodgings
@@ -116,7 +116,7 @@ nodes:
         danger: 0
         sort_order: 8
       - id: e-lodgings-square
-        road: [[0.3552, 0.6421], [0.3569, 0.6801]]
+        road: [[0.3111, 0.7279], [0.3348, 0.744]]
         to: lund-square
         label: Show yourself back out to the square
         effects: {log: "You left Holm to his clippings."}
@@ -124,7 +124,7 @@ nodes:
   # --- Greve Orlök: the manor ---
   - id: lund-manor
     pos: {x: -1751, y: 2981}
-    map: {x: 0.1341, y: 0.6366, rx: 0.05, ry: 0.045, scale: 2.2}
+    map: {x: 0.1623, y: 0.6671, rx: 0.05, ry: 0.045, scale: 2.2}
     arc: main
     type: gate
     location: lund-manor
@@ -161,7 +161,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-manor-square
-        road: [[0.2137, 0.5813], [0.3493, 0.7239]]
+        road: [[0.1889, 0.6901], [0.3253, 0.7791]]
         to: lund-square
         label: Step back across the threshold and go
         effects: {log: "You left the manor, and were glad the door let you."}
@@ -202,7 +202,7 @@ nodes:
         danger: 2
         sort_order: 8
       - id: e-botanical-square
-        road: [[0.2422, 0.7218], [0.3082, 0.7289]]
+        road: [[0.1706, 0.8255], [0.3495, 0.8151]]
         to: lund-square
         label: Leave him to his specimens
         effects: {log: "You left the glasshouse and its collector."}
@@ -212,7 +212,7 @@ nodes:
   # --- Zoltan Ibrahimson: Rosengård ---
   - id: malmo-rosengard
     pos: {x: 464, y: -1177}
-    map: {x: 0.4844, y: 0.3356, rx: 0.05, ry: 0.045, scale: 2.4}
+    map: {x: 0.4732, y: 0.1987, rx: 0.05, ry: 0.045, scale: 2.4}
     arc: main
     type: gate
     location: malmo-rosengard
@@ -237,7 +237,7 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-rosengard-harbor
-        road: [[0.4377, 0.3014], [0.4373, 0.3273]]
+        road: [[0.5139, 0.1963], [0.4514, 0.3249]]
         to: malmo-harbor
         label: Head back down toward the harbour
         effects: {log: "You left Rosengård."}
@@ -245,7 +245,7 @@ nodes:
   # --- Lisbet Salamander: the server basement ---
   - id: malmo-server-basement
     pos: {x: 1072, y: -1795}
-    map: {x: 0.5408, y: 0.2933, rx: 0.05, ry: 0.045, scale: 1.35}
+    map: {x: 0.5305, y: 0.2735, rx: 0.05, ry: 0.045, scale: 1.35}
     arc: main
     type: gate
     location: malmo-server-basement
@@ -272,7 +272,7 @@ nodes:
         danger: 0
         sort_order: 8
       - id: e-basement-harbor
-        road: [[0.5135, 0.3106], [0.4444, 0.384]]
+        road: [[0.5317, 0.3216], [0.478, 0.3522]]
         to: malmo-harbor
         label: Back up the stairs to the street
         effects: {log: "You left the basement and its screens."}
@@ -280,7 +280,7 @@ nodes:
   # --- Kurt Vallmo: police HQ ---
   - id: malmo-police
     pos: {x: -1492, y: 254}
-    map: {x: 0.3027, y: 0.4335, rx: 0.05, ry: 0.045, scale: 1.25}
+    map: {x: 0.2332, y: 0.3432, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate
     location: malmo-police
@@ -301,7 +301,7 @@ nodes:
         danger: 3
         sort_order: 7
       - id: e-police-harbor
-        road: [[0.2788, 0.3516], [0.3636, 0.3854]]
+        road: [[0.254, 0.3266], [0.3956, 0.3597]]
         to: malmo-harbor
         label: Leave the detective to his folders
         effects: {log: "You left the police house."}
@@ -335,7 +335,7 @@ nodes:
   # --- Herr Dödblek: the churchyard ---
   - id: sandby-church
     pos: {x: 2515, y: 3942}
-    map: {x: 0.6748, y: 0.686, rx: 0.05, ry: 0.045, scale: 1.85}
+    map: {x: 0.7241, y: 0.8077, rx: 0.05, ry: 0.045, scale: 1.85}
     arc: main
     type: gate
     location: sandby-church
@@ -366,7 +366,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-church-street
-        road: [[0.6785, 0.6273], [0.7027, 0.6019]]
+        road: [[0.7332, 0.7818], [0.7406, 0.7662]]
         to: sandby-street
         label: Leave the churchyard
         effects: {log: "You left the church behind you."}
@@ -374,7 +374,7 @@ nodes:
   # --- Norman Båts: the gravel-pit motel ---
   - id: sandby-quarry
     pos: {x: 3863, y: 4684}
-    map: {x: 0.8, y: 0.7368, rx: 0.05, ry: 0.045, scale: 2.3}
+    map: {x: 0.9023, y: 0.8464, rx: 0.05, ry: 0.045, scale: 2.3}
     arc: main
     type: gate
     location: sandby-quarry
@@ -413,7 +413,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-quarry-street
-        road: [[0.792, 0.6765], [0.788, 0.6297]]
+        road: [[0.8905, 0.8218], [0.8389, 0.7845]]
         to: sandby-street
         label: Get back on the road to the village
         effects: {log: "You left the lake behind you."}
@@ -421,7 +421,7 @@ nodes:
   # --- Pippa Långskugga: the crooked house ---
   - id: sandby-crooked-house
     pos: {x: 3028, y: 4831}
-    map: {x: 0.7225, y: 0.7468, rx: 0.05, ry: 0.045, scale: 1.25}
+    map: {x: 0.8195, y: 0.8606, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate
     location: sandby-crooked-house
@@ -454,7 +454,7 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-crooked-street
-        road: [[0.7454, 0.6149], [0.7516, 0.5987]]
+        road: [[0.7967, 0.86], [0.7851, 0.746]]
         to: sandby-street
         label: Back toward the lit streets
         effects: {log: "You walked back to where the lamps still worked."}
