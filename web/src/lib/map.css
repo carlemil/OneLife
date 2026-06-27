@@ -2,13 +2,39 @@
    admin map editor (MapEditor) so the two views stay visually identical and a tweak
    here lands in both at once. Plain (unscoped) CSS: these .map-* classes are used
    verbatim in both components' markup. View-specific behaviour (hover-scale, drag,
-   hotspot editing, the walk trail) stays in each component's own scoped <style>. */
+   edge-drawing, the walk trail) stays in each component's own scoped <style>. */
 
-/* Location icon image. Size = a viewport-clamped base times the per-icon
-   --map-scale. Non-interactive, so any hover-grow is purely cosmetic and never
-   enlarges the click target. */
+/* The base (unscaled) icon size, and the parchment's max footprint. Both the player
+   map and the editor size the parchment to the SAME rule, so the map — and therefore
+   every icon on it (icons are sized in vw, independent of container) — renders at the
+   same size in both views. */
+:root {
+  --map-icon-size: clamp(56px, 9.8vw, 101px);
+  --map-max-w: min(1100px, 88vw);
+  --map-max-h: 86vh;
+}
+
+/* The positioned parchment stage: the bg image, the roads <svg>, and the absolutely
+   positioned icons all live inside it. cw/ch are measured from this element. */
+.map-stage { position: relative; line-height: 0; }
+
+/* The parchment backdrop, capped by BOTH width and height (aspect preserved via
+   width/height:auto) so it always fits without a width-driven overflow. */
+.map-bg {
+  display: block; width: auto; height: auto;
+  max-width: var(--map-max-w); max-height: var(--map-max-h);
+  border-radius: 10px;
+}
+
+/* The roads layer, overlaid on the parchment and never intercepting the pointer. */
+.map-svg { position: absolute; left: 0; top: 0; overflow: visible; pointer-events: none; }
+
+/* Location icon image. Visual size = the base times the per-icon --map-scale.
+   Non-interactive (pointer-events:none) so the hover-grow is purely cosmetic and
+   never enlarges the click target — which is the .mo-node box that shrinks to this
+   image's resting size, so what you see is what you click. */
 .map-icon {
-  width: calc(clamp(56px, 9.8vw, 101px) * var(--map-scale, 1));
+  width: calc(var(--map-icon-size) * var(--map-scale, 1));
   height: auto; display: block; line-height: 0; pointer-events: none;
   filter: drop-shadow(0 2px 3px rgba(0, 0, 0, .5));
   transition: transform .12s, filter .12s;

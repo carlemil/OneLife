@@ -25,8 +25,6 @@
   let cursor = $state(null);          // {x,y} px while rubber-banding to the pointer
   let pressTimer = null;              // long-press timer handle (non-reactive)
   const LONG_MS = 450;                // hold this long on an icon to start drawing an edge
-  let hitDrag = $state(null);         // { id } while dragging a hotspot's resize handle
-  const DEFAULT_HIT = 0.09;           // default hotspot side (fraction of map width)
 
   const nodes = $derived(block?.nodes ?? []);
   const roads = $derived(block?.roads ?? []);
@@ -130,19 +128,6 @@
     }, LONG_MS);
   }
   function onMove(e) {
-    if (hitDrag) {                           // resize the centred hotspot square
-      if (!cw || !ch || !stageEl) return;
-      const n = byId[hitDrag.id];
-      if (!n) return;
-      const r = stageEl.getBoundingClientRect();
-      // The square is centred on the icon; its side is twice the larger of the
-      // pointer's x/y distance from that centre (so the corner tracks the cursor).
-      const half = Math.max(Math.abs((e.clientX - r.left) - n.x * cw),
-                            Math.abs((e.clientY - r.top) - n.y * ch));
-      n.hit = +Math.max(0.02, Math.min(0.5, (2 * half) / cw)).toFixed(4);
-      block = { ...block, nodes: [...nodes] };
-      return;
-    }
     if (drawFrom) {                          // rubber-band the edge to the pointer
       if (!stageEl) return;
       const r = stageEl.getBoundingClientRect();
@@ -164,16 +149,6 @@
   }
   async function endDrag(e) {
     clearTimeout(pressTimer);
-    if (hitDrag) {                   // finished resizing a hotspot → persist to YAML
-      const n = byId[hitDrag.id];
-      hitDrag = null;
-      try { stageEl?.releasePointerCapture?.(e.pointerId); } catch (_) {}
-      if (n) {
-        try { await api.setNodeHit(n.node_id, n.hit); msg = `Saved “${n.title}” hotspot ${(n.hit).toFixed(3)}.`; }
-        catch (err) { msg = `Hotspot save failed: ${err.message}`; }
-      }
-      return;
-    }
     if (drawFrom) return;            // long-press armed draw mode; await the target click
     if (!drag) return;
     const n = byId[drag.loc], moved = drag.moved;
@@ -210,23 +185,6 @@
     finally { busy = false; }
   }
 
-  // --- Hotspot: the centred square that governs hover/click on the player map ------
-  function startHitDrag(e, n) {
-    e.preventDefault(); e.stopPropagation();
-    hitDrag = { id: n.id };
-    stageEl?.setPointerCapture?.(e.pointerId);
-  }
-  async function addHotspot(n) {
-    n.hit = DEFAULT_HIT; block = { ...block, nodes: [...nodes] };
-    try { await api.setNodeHit(n.node_id, n.hit); msg = `Added “${n.title}” hotspot — drag its corner to size.`; }
-    catch (e) { msg = `Hotspot failed: ${e.message}`; }
-  }
-  async function clearHotspot(n) {
-    n.hit = null; block = { ...block, nodes: [...nodes] };
-    try { await api.setNodeHit(n.node_id, null); msg = `Cleared “${n.title}” hotspot.`; }
-    catch (e) { msg = `Hotspot failed: ${e.message}`; }
-  }
-
   // --- Edit a selected icon's scale; live-resize on input, save to YAML on release ---
   function setScaleLive(n, v) { n.scale = v; block = { ...block, nodes: [...nodes] }; }
   async function saveScale(n, v) {
@@ -249,7 +207,7 @@
         {busy ? 'Working…' : '🛣 Redraw roads'}</button>
       <label class="me-fog" title="Off shows only the starting cell's places, as a new player first sees the map">
         <input type="checkbox" bind:checked={revealAll} /> Reveal all (no fog)</label>
-      <span class="sub">{nodes.length ? `${nodes.length} places · ${roads.length} roads · drag to move · click to set scale / hotspot · long-press to draw an edge` : ''}</span>
+      <span class="sub">{nodes.length ? `${nodes.length} places · ${roads.length} roads · drag to move · click to set scale · long-press to draw an edge` : ''}</span>
       <button class="me-x" onclick={onClose}>✕</button>
     </div>
     {#if msg}<p class="me-msg">{msg}</p>{/if}
@@ -257,17 +215,17 @@
 
     {#if block}
       <div class="me-scroll">
-        <div class="me-stage" bind:this={stageEl} bind:clientWidth={cw} bind:clientHeight={ch}
+        <div class="me-stage map-stage" bind:this={stageEl} bind:clientWidth={cw} bind:clientHeight={ch}
              onpointermove={onMove} onpointerup={endDrag}
-             style={imgOk ? '' : 'aspect-ratio:4/3'}>
-          <img class="me-bg" src={contentAsset(block.image)} alt="" draggable="false"
+             style={imgOk ? '' : 'width:min(900px,88vw); aspect-ratio:4/3'}>
+          <img class="map-bg" src={contentAsset(block.image)} alt="" draggable="false"
                onload={() => (imgOk = true)} onerror={() => (imgOk = false)} />
           {#if !imgOk}<div class="me-missing">map background missing: <code>{block.image}</code></div>{/if}
           {#if drawFrom && byId[drawFrom]}
             <div class="me-hint">Drawing an edge from “{byId[drawFrom].title}” — click another place to connect, or Esc to cancel</div>
           {/if}
           {#if cw > 0 && ch > 0}
-            <svg class="me-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
+            <svg class="map-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
               <defs>
                 {#each roads as r, i}
                   {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
@@ -293,29 +251,12 @@
             </svg>
             {#each nodes as n}
               {#if visible.has(n.id)}
-              <!-- clickbox: icons WITHOUT a hotspot click via their image bounds, so
-                   outline that box. Icons WITH a hit get the .me-hit square instead. -->
               <div class="me-icon" class:dragging={drag?.loc === n.id} class:drawsrc={drawFrom === n.id}
-                   class:clickbox={!n.hit}
                    style={`left:${n.x * cw}px; top:${n.y * ch}px; --map-scale:${n.scale ?? 1}`}
                    onpointerdown={(e) => startDrag(e, n)}
                    onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
                 <img class="map-icon" src={contentAsset(n.icon)} alt={n.title} draggable="false" />
               </div>
-              {/if}
-            {/each}
-
-            <!-- Hotspot squares: a faint outline for every icon that has one; the
-                 selected icon also gets a corner handle to resize it. -->
-            {#each nodes as n}
-              {#if visible.has(n.id) && n.hit}
-                <div class="me-hit" class:sel={selected === n.id}
-                     style={`left:${n.x * cw}px; top:${n.y * ch}px; width:${n.hit * cw}px; height:${n.hit * cw}px`}>
-                  {#if selected === n.id}
-                    <div class="me-hit-handle" title="Drag to resize the hover/click square"
-                         onpointerdown={(e) => startHitDrag(e, n)}></div>
-                  {/if}
-                </div>
               {/if}
             {/each}
 
@@ -330,13 +271,6 @@
                   oninput={(e) => setScaleLive(byId[selected], +e.target.value)}
                   onchange={(e) => saveScale(byId[selected], +e.target.value)} />
                 <span class="me-scale-v">{(byId[selected].scale ?? 1).toFixed(2)}×</span>
-                {#if byId[selected].hit}
-                  <button class="me-scale-x" title="Remove the hover/click square (falls back to the icon)"
-                    onclick={() => clearHotspot(byId[selected])}>▢ clear</button>
-                {:else}
-                  <button class="me-scale-x" title="Add a centred hover/click square; drag its corner to size"
-                    onclick={() => addHotspot(byId[selected])}>▢ hotspot</button>
-                {/if}
                 <button class="me-scale-x" onclick={() => (selected = null)}>done</button>
               </div>
             {/if}
@@ -364,31 +298,19 @@
   .me-x { margin-left:auto; }
   .me-msg { margin:.2rem 0; color:#9fd29f; font-size:.85rem; }
   .me-err { margin:.2rem 0; color:#e0a; font-size:.85rem; }
+  /* Centre the map (sized by the shared .map-bg rule, identical to the player map) in
+     the available area; overflow:auto is just a safety net for very short windows. */
   .me-scroll { overflow:auto; border:1px solid #2a2e3e; border-radius:8px; background:#0d0e14;
-    flex:1 1 auto; min-height:0; display:flex; }
-  /* Fill the card: as large a 4:3 map as fits the available height/width. */
-  .me-stage { position:relative; line-height:0; width:100%;
-    max-width:calc((90vh - 4rem) * 4 / 3); margin:auto; }
-  .me-bg { display:block; width:100%; height:auto; }
+    flex:1 1 auto; min-height:0; display:flex; align-items:center; justify-content:center; }
   .me-missing { position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
     color:#9a9ab0; font-size:.9rem; }
-  .me-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
-  /* Icon image (.map-icon), hover label (.map-label) and roads (.map-road) are styled
-     in the shared ./map.css; only editor-specific affordances live here. */
+  /* Stage (.map-stage), backdrop (.map-bg), roads (.map-svg), icon image (.map-icon),
+     hover label (.map-label) and roads (.map-road) are styled in the shared ./map.css;
+     only editor-specific affordances live here. */
   .me-icon { position:absolute; transform:translate(-50%, -50%); cursor:grab;
     touch-action:none; user-select:none; }
   .me-icon.dragging { cursor:grabbing; z-index:5; }
-  /* A thin outline of each icon's fallback clickable box (icons with a hotspot show
-     the .me-hit square instead). Outline doesn't grow the box, so centring holds. */
-  .me-icon.clickbox { outline:1px dashed rgba(192,86,58,.45); outline-offset:0; border-radius:3px; }
   .me-icon.drawsrc img { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 7px rgba(192,86,58,.95)); }
-  /* The interactive hotspot square (centred on the icon). Faint until selected. */
-  .me-hit { position:absolute; transform:translate(-50%, -50%); z-index:8; box-sizing:border-box;
-    border:1.5px dashed rgba(192,86,58,.45); border-radius:3px; pointer-events:none; }
-  .me-hit.sel { border-color:#c0563a; background:rgba(192,86,58,.10); }
-  .me-hit-handle { position:absolute; right:-7px; bottom:-7px; width:14px; height:14px; border-radius:3px;
-    background:#c0563a; border:2px solid #fff; cursor:nwse-resize; pointer-events:auto; touch-action:none;
-    box-shadow:0 1px 4px rgba(0,0,0,.5); }
   /* Rubber-band line while drawing a new edge. */
   .me-draw { stroke:#c0563a; stroke-width:2; stroke-dasharray:6 4; opacity:.95; pointer-events:none; }
   .me-hint { position:absolute; left:50%; top:8px; transform:translateX(-50%); z-index:20;

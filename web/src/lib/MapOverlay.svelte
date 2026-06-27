@@ -17,16 +17,36 @@
   } = $props();
 
   const WALK_MS = 1150;
+  let stageEl = $state(null);           // the parchment stage (for pointer coords)
   let cw = $state(0), ch = $state(0);   // rendered parchment size in px
   let imgOk = $state(true);
   let walk = $state(null);              // { d } while animating
   let walking = $state(false);
-  let hovered = $state(null);           // id of the icon under the mouse (big label)
+  let hovered = $state(null);           // id of the nearest icon to the pointer
 
   const nodes = $derived(block?.nodes ?? []);
   const roads = $derived(block?.roads ?? []);
   const byId = $derived(Object.fromEntries(nodes.map((n) => [n.id, n])));
   const cx = (n) => n.x * cw, cy = (n) => n.y * ch;
+  const hoverReachable = $derived(!!(hovered && byId[hovered]?.reachable));
+
+  // No per-icon hitboxes: the whole map is one surface, and the icon whose centre is
+  // nearest the pointer is the selection (Voronoi-style). Highlight any nearest icon;
+  // clicking navigates only if it's reachable (pick() guards that).
+  function nearestNode(clientX, clientY) {
+    if (!stageEl || !cw || !ch || !nodes.length) return null;
+    const r = stageEl.getBoundingClientRect();
+    const px = clientX - r.left, py = clientY - r.top;
+    let best = null, bestD = Infinity;
+    for (const n of nodes) {
+      const dx = px - n.x * cw, dy = py - n.y * ch, d = dx * dx + dy * dy;
+      if (d < bestD) { bestD = d; best = n; }
+    }
+    return best;
+  }
+  function onMapMove(e) { hovered = nearestNode(e.clientX, e.clientY)?.id ?? null; }
+  function onMapLeave() { hovered = null; }
+  function onMapClick(e) { const n = nearestNode(e.clientX, e.clientY); if (n) pick(n); }
 
   async function pick(n) {
     if (walking || busy || !n.reachable) return;
@@ -43,16 +63,18 @@
 
 <div class="mo-modal" role="dialog" aria-label="Map" onclick={(e) => e.target === e.currentTarget && onClose?.()}>
   <div class="mo-card">
-    <div class="mo" bind:clientWidth={cw} bind:clientHeight={ch}
+    <div class="mo map-stage" bind:this={stageEl} bind:clientWidth={cw} bind:clientHeight={ch}
+         class:canclick={hoverReachable} role="presentation"
+         onpointermove={onMapMove} onpointerleave={onMapLeave} onclick={onMapClick}
          style={imgOk ? '' : 'width:min(900px,90vw); aspect-ratio:4/3'}>
-      <img class="mo-bg" src={contentAsset(block.image)} alt="" draggable="false"
+      <img class="map-bg" src={contentAsset(block.image)} alt="" draggable="false"
            onload={() => (imgOk = true)} onerror={() => (imgOk = false)} />
       {#if !imgOk}
         <div class="mo-missing">map background missing<br /><code>{block.image}</code></div>
       {/if}
 
       {#if cw > 0 && ch > 0}
-        <svg class="mo-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
+        <svg class="map-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
           <defs>
             {#each roads as r, i}
               {#if byId[r.from] && byId[r.to]}
@@ -77,26 +99,14 @@
         </svg>
 
         {#each nodes as n}
-          <!-- The icon's visual. When it has a `hit` hotspot the icon itself is
-               inert (pointer-events:none, via .withhit) and the square below is the
-               sole hover/click target; otherwise the icon is the target as before. -->
+          <!-- Pure visual: pointer handling lives on the stage (nearest-icon), so the
+               icons themselves are inert. -->
           <div class="mo-node" class:reachable={n.reachable} class:current={n.current}
                class:disabled={!n.reachable && !n.current} class:hovered={hovered === n.id}
-               class:withhit={!!n.hit}
-               style={`left:${cx(n)}px; top:${cy(n)}px`}
-               role="button" tabindex={n.reachable && !n.hit ? 0 : -1} aria-label={`Go to ${n.title}`}
-               onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
-               onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}>
+               style={`left:${cx(n)}px; top:${cy(n)}px`}>
             <img class="map-icon" style={`--map-scale:${n.scale ?? 1}`}
                  src={contentAsset(n.icon)} alt={n.title} draggable="false" />
           </div>
-          {#if n.hit}
-            <div class="mo-hit" class:reachable={n.reachable} class:disabled={!n.reachable && !n.current}
-                 style={`left:${cx(n)}px; top:${cy(n)}px; width:${n.hit * cw}px; height:${n.hit * cw}px`}
-                 role="button" tabindex={n.reachable ? 0 : -1} aria-label={`Go to ${n.title}`}
-                 onclick={() => pick(n)} onkeydown={(e) => (e.key === 'Enter' || e.key === ' ') && pick(n)}
-                 onmouseenter={() => (hovered = n.id)} onmouseleave={() => (hovered === n.id && (hovered = null))}></div>
-          {/if}
         {/each}
 
         {#if hovered && byId[hovered]}
@@ -123,35 +133,23 @@
   /* A layer above the rest of the game UI, with a thin transparent border. */
   .mo-modal { position:fixed; inset:0; z-index:50; display:flex; align-items:center;
     justify-content:center; background:rgba(0,0,0,.72); padding:1.5rem; }
-  /* The card shrinks to the image (flex item → content size). The image is capped by
-     BOTH width and height with width/height:auto, so it always fits the viewport with
-     its aspect preserved — no width-driven height that could overflow. overflow:hidden
-     guarantees no scrollbar, killing the appear/disappear feedback loop. */
-  .mo-card { position:relative; max-width:min(1100px, 96vw); max-height:94vh; overflow:hidden;
-    border-radius:10px; line-height:0; display:flex; }
-  .mo { position:relative; }
-  .mo-bg { display:block; width:auto; height:auto; max-width:min(1100px, 96vw); max-height:94vh;
-    border-radius:10px; }
+  /* The card shrinks to the parchment (flex item → content size). The parchment stage
+     (.map-stage), backdrop (.map-bg) and roads (.map-svg) are sized in the shared
+     ./map.css to the SAME rule the editor uses, so the map is the same size in both.
+     overflow:hidden guarantees no scrollbar (kills the appear/disappear loop). */
+  .mo-card { position:relative; max-width:var(--map-max-w); max-height:var(--map-max-h);
+    overflow:hidden; border-radius:10px; line-height:0; display:flex; }
   .mo-missing { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
     justify-content:center; text-align:center; color:#9a9ab0; font-size:.9rem; line-height:1.4; }
-  .mo-svg { position:absolute; left:0; top:0; overflow:visible; pointer-events:none; }
-  /* Icon image (.map-icon), hover label (.map-label) and roads (.map-road) are styled
-     in the shared ./map.css; only player-specific behaviour lives here. */
+  /* The stage is one pointer surface (nearest-icon selection): a pointer cursor when
+     the nearest icon is reachable. */
+  .mo.canclick { cursor:pointer; }
 
-  .mo-node { position:absolute; transform:translate(-50%, -50%); }
+  /* Icons are pure visuals — inert; the stage handles all pointer input. */
+  .mo-node { position:absolute; transform:translate(-50%, -50%); pointer-events:none; }
   .mo-node.disabled { opacity:.45; filter:grayscale(.5); }
-  .mo-node.reachable { cursor:pointer; }
-  /* When a hotspot square owns the pointer, the icon is inert; its hover-grow is
-     then driven by the shared `hovered` state instead of the icon's own :hover. */
-  .mo-node.withhit { pointer-events:none; }
-  /* Hover grows the icon 5% (animated via .map-icon's transition:transform). */
-  .mo-node.reachable:hover .map-icon,
+  /* The nearest reachable icon grows 5% (animated via .map-icon's transition). */
   .mo-node.reachable.hovered .map-icon { transform:scale(1.05); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
-  /* The hotspot hit-area: invisible until hovered, then a faint ink outline. */
-  .mo-hit { position:absolute; transform:translate(-50%, -50%); z-index:6; box-sizing:border-box;
-    border:1.5px dashed transparent; border-radius:5px; transition:border-color .15s, background .15s; }
-  .mo-hit.reachable { cursor:pointer; }
-  .mo-hit:hover { border-color:rgba(46,33,20,.5); background:rgba(46,33,20,.06); }
   .mo-node.current .map-icon { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 6px rgba(192,86,58,.9));
     animation:mopulse 1.8s infinite; }
   @keyframes mopulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.08)} }
