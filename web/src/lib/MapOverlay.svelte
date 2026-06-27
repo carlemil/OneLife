@@ -395,6 +395,11 @@
   /* In edit mode the card carries a toolbar; give it room and a frame. */
   .mo-card.editing { max-width:90vw; max-height:90vh; background:#15171f;
     border:1px solid #2a2e3e; padding:.5rem; line-height:1.2; gap:.4rem; }
+  /* The editing card is a fixed 90vw box, so the stage (a flex child) would otherwise
+     STRETCH to the full card width — making cw wider than the parchment and pushing every
+     icon (positioned at x*cw) out of alignment. Centre it and shrink it to the image so
+     cw == the parchment width, exactly as in game mode. */
+  .mo-card.editing .map-stage { align-self:center; }
   .mo-missing { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center;
     justify-content:center; text-align:center; color:#9a9ab0; font-size:.9rem; line-height:1.4; }
 
