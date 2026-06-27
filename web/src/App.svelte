@@ -878,10 +878,7 @@
           <ul class="log">
             {#each logRev.slice(0, logShown) as l, i}
               <li><span class="seq">#{l.seq}</span> {l.summary || '…'}
-                {#if l.seq > 0 && i > 0}
-                  {#if l.kind === 'gate'}<button class="link rollback" title="Cheat death — return to here" aria-label="Cheat death — return to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
-                  {#if isAdmin}<button class="link rollback adminrb" title="Admin: roll back to this point" aria-label="Admin: roll back to this point" onclick={() => onRollback(l.seq)}>↺</button>{/if}
-                {/if}
+                {#if l.seq > 0 && i > 0}<button class="link rollback" title="Roll back to here" aria-label="Roll back to here" onclick={() => onRollback(l.seq)}>↩</button>{/if}
               </li>
             {/each}
           </ul>
@@ -1146,7 +1143,6 @@
   .dead { color:#c98; }
   .more { display:inline-block; margin-top:.5rem; }
   .rollback { font-size:1rem; line-height:1; }
-  .rollback.adminrb { color:#7da7d0; margin-left:.15rem; }   /* admin: roll back to ANY beat (distinct from the player ↩) */
   .notelist { list-style:disc; padding-left:1.1rem; margin:.3rem 0 0; font-size:.82rem; color:#cdbb9a; }
   .clipboard { width:100%; min-height:9rem; margin-top:.4rem; box-sizing:border-box; resize:vertical;
     background:#11131b; color:#e8e6df; border:1px solid #2a2e3e; border-radius:6px; padding:.55rem .65rem;
