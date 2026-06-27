@@ -24,6 +24,7 @@
     busy = false,          // parent-driven (a navigation is in flight)
     admin = false,         // show the editor toggle
     startInEdit = false,   // open straight into edit mode (admin panel entry)
+    onEdited,              // () => refresh game state, so the player view shows saved edits
   } = $props();
 
   const WALK_MS = 1150;
@@ -138,8 +139,16 @@
   }
   $effect(() => { if (edit && !editBlock && !working) loadEditBlock(); });
 
-  function toggleEdit() {
-    if (edit) { edit = false; cancelDraw(); selected = null; return; }
+  async function toggleEdit() {
+    if (edit) {
+      edit = false; cancelDraw(); selected = null;
+      // Refresh the player block so the game view reflects the just-saved positions /
+      // roads / scales (it was captured when the map opened), and drop the cached edit
+      // block so re-entering edit re-reads the saved YAML too.
+      editBlock = null;
+      await onEdited?.();
+      return;
+    }
     edit = true;   // the $effect above loads editBlock if it isn't cached yet
   }
 

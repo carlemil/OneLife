@@ -512,6 +512,28 @@ async def map_overview(conn) -> dict:
         elif pts and not seen[k]["points"]:
             seen[k]["points"] = pts
 
+    # Inter-cell lanes between the arrival places of grid-adjacent cells — the same
+    # world-map travel links the player map draws (unified_map_block), so the editor
+    # shows every road the game does. These have no story edge to store geometry on, so
+    # they stay straight (Save reports them as pairs_without_edge).
+    crows = await conn.fetch("SELECT id, grid_x, grid_y, arrival_node FROM world_cells")
+    grid = {c["id"]: (c["grid_x"], c["grid_y"]) for c in crows}
+    arrival_node = {c["id"]: c["arrival_node"] for c in crows}
+    arrivals = {r["cell"]: r["loc_id"] for r in rows
+                if r["node_id"] == arrival_node.get(r["cell"])}
+    acells = list(arrivals)
+    for i in range(len(acells)):
+        for j in range(i + 1, len(acells)):
+            ci, cj = acells[i], acells[j]
+            gi, gj = grid.get(ci), grid.get(cj)
+            if not gi or not gj:
+                continue
+            if abs(gi[0] - gj[0]) + abs(gi[1] - gj[1]) == 1:
+                k = tuple(sorted((arrivals[ci], arrivals[cj])))
+                if k not in seen:
+                    rd = {"from": k[0], "to": k[1], "points": []}
+                    seen[k] = rd; roads.append(rd)
+
     # The cell a fresh player starts in (entry node's cell) — the editor's fog
     # preview shows only this cell's places.
     start_cell = await conn.fetchval(

@@ -896,6 +896,7 @@
 
   {#if showMap && (gameMap || isAdmin)}
     <MapOverlay block={gameMap} onPick={mapNav} admin={isAdmin} startInEdit={mapStartEdit}
+                onEdited={refresh}
                 onClose={() => { showMap = false; mapStartEdit = false; }} {busy} />
   {/if}
 
