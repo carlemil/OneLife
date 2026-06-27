@@ -103,7 +103,10 @@
                element, crossfading the old text out while the new fades in (both
                absolutely positioned, so they overlap). -->
           {#key byId[hovered].title}
-            <div class="mo-hover-lbl" in:fade={{ duration: 200 }} out:fade={{ duration: 200 }}>{byId[hovered].title}</div>
+            <!-- |global so the fade still plays when the surrounding {#if hovered}
+                 toggles (moving between icons briefly clears `hovered`); a plain
+                 local transition would be suppressed by that ancestor change. -->
+            <div class="mo-hover-lbl" in:fade|global={{ duration: 200 }} out:fade|global={{ duration: 200 }}>{byId[hovered].title}</div>
           {/key}
         {/if}
 
