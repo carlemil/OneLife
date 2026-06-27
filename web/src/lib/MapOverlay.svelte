@@ -6,6 +6,7 @@
   // item's `action`/`target`. Coordinates are normalized 0..1 against the parchment.
   import { contentAsset } from './api.js';
   import { roadPath } from './maputil.js';   // shared with the admin map editor
+  import { fade } from 'svelte/transition';
 
   let {
     block,                 // { image, nodes:[{id,title,icon,x,y,current,reachable,action,target}], roads:[{from,to}] }
@@ -98,7 +99,12 @@
         {/each}
 
         {#if hovered && byId[hovered]}
-          <div class="mo-hover-lbl">{byId[hovered].title}</div>
+          <!-- Keyed on the title so a change from one location to another swaps the
+               element, crossfading the old text out while the new fades in (both
+               absolutely positioned, so they overlap). -->
+          {#key byId[hovered].title}
+            <div class="mo-hover-lbl" in:fade={{ duration: 200 }} out:fade={{ duration: 200 }}>{byId[hovered].title}</div>
+          {/key}
         {/if}
 
         {#if walk}
@@ -125,9 +131,8 @@
   .mo-node { position:absolute; transform:translate(-50%, -50%); }
   .mo-icon { width:calc(clamp(56px, 9.8vw, 101px) * var(--mo-scale, 1)); height:auto; display:block; line-height:0;
     filter:drop-shadow(0 2px 3px rgba(0,0,0,.5)); transition:transform .12s, filter .12s; }
-  /* The hovered icon's name, shown large and centred ~10% down from the top —
-     identical to the admin map editor. */
-  .mo-hover-lbl { position:absolute; left:50%; top:10%; transform:translate(-50%, -50%);
+  /* The hovered icon's name, shown large and centred ~13% down from the top. */
+  .mo-hover-lbl { position:absolute; left:50%; top:13%; transform:translate(-50%, -50%);
     z-index:15; pointer-events:none; white-space:nowrap; font:700 clamp(20px, 3.2vw, 38px) Georgia, serif;
     color:#2e2114; text-shadow:0 1px 0 rgba(255,250,240,.9), 0 2px 10px rgba(255,248,235,.7); }
   .mo-node.disabled { opacity:.45; filter:grayscale(.5); }

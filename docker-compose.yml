@@ -79,6 +79,16 @@ services:
       # The production overlay (docker-compose.prod.yml) overrides this to "" so the
       # built app makes same-origin /api requests through the Caddy reverse proxy.
       VITE_API_BASE: http://localhost:8000
+    volumes:
+      # Live source for Vite HMR — edits on the host reload in the browser without a
+      # rebuild. node_modules is an anonymous volume so the container's Linux-built
+      # deps aren't shadowed by the host's (Windows) node_modules.
+      - ./web/src:/app/src
+      - ./web/public:/app/public
+      - ./web/index.html:/app/index.html
+      - ./web/vite.config.js:/app/vite.config.js
+      - ./web/svelte.config.js:/app/svelte.config.js
+      - /app/node_modules
     # Loopback-only; in production Caddy serves the built app over the compose network.
     ports:
       - "127.0.0.1:5173:5173"
