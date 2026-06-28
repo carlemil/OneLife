@@ -779,8 +779,11 @@
             {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
           {/if}
 
+          <!-- Every condition-met choice is a button here (locations to go, people to
+               talk to, in-place actions). The overview map is an additional way to
+               navigate, not a replacement — so the options are always visible as text. -->
           <div class="edges">
-            {#each game.edges.filter((e) => !e.on_map) as e}
+            {#each game.edges as e}
               <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
                 {e.label}{#if e.danger > 0} ⚠{/if}
               </button>
