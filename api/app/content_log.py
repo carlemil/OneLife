@@ -19,6 +19,33 @@ _DDL = [
     # Road spline geometry lives on each edge (story_edges.road); add it to
     # non-fresh volumes that predate the column.
     "ALTER TABLE story_edges ADD COLUMN IF NOT EXISTS road JSONB NOT NULL DEFAULT '[]'",
+    # D&D-style alignment: one append-only, seq-stamped row per judged action,
+    # carrying the delta AND the resulting clamped coordinate (current = latest
+    # surviving row; trail = the history). Rollback deletes rows with created_seq > N.
+    """CREATE TABLE IF NOT EXISTS player_alignment_events (
+        id              BIGSERIAL PRIMARY KEY,
+        player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+        created_seq     BIGINT NOT NULL,
+        good_evil_delta DOUBLE PRECISION NOT NULL,
+        law_chaos_delta DOUBLE PRECISION NOT NULL,
+        good_evil       DOUBLE PRECISION NOT NULL,
+        law_chaos       DOUBLE PRECISION NOT NULL,
+        reason          TEXT NOT NULL DEFAULT '',
+        kind            TEXT NOT NULL,
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )""",
+    """CREATE INDEX IF NOT EXISTS player_alignment_events_player_idx
+        ON player_alignment_events (player_id, id)""",
+    # Static memo of an edge label's alignment shift, so a given authored choice is
+    # judged by the LLM once (not on every traversal). Player-independent; never
+    # rolled back.
+    """CREATE TABLE IF NOT EXISTS edge_alignment_cache (
+        edge_id         TEXT PRIMARY KEY,
+        good_evil_delta DOUBLE PRECISION NOT NULL,
+        law_chaos_delta DOUBLE PRECISION NOT NULL,
+        reason          TEXT NOT NULL DEFAULT '',
+        created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+    )""",
     "DROP TABLE IF EXISTS content_events",
     "DROP TABLE IF EXISTS content_log_state",
 ]

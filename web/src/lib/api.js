@@ -80,6 +80,7 @@ export const api = {
 
   // game
   state: () => req('/api/state'),
+  alignment: () => req('/api/alignment'),
   saveClipboard: (text) => req('/api/clipboard', { method: 'POST', body: { text } }),
   log: () => req('/api/log'),
   leaderboard: ({ offset = 0, limit = 20, q = '', around = 0 } = {}) =>

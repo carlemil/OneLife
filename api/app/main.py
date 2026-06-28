@@ -484,8 +484,34 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
             ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
             if not evaluate(json.loads(edge["conditions"]), ctx):
                 raise HTTPException(400, "edge conditions not met")
-            await engine.traverse_edge(conn, sess, edge)
+            move_seq = await engine.traverse_edge(conn, sess, edge)
+            # An explicit story choice shifts alignment (navigation via /api/walk and
+            # /api/travel does not). Judge the authored label, memoized per edge.
+            label = (edge["label"] or "").strip()
+            if label:
+                v = await _edge_alignment(conn, edge["id"], label)
+                await engine.record_alignment(
+                    conn, sess["player_id"], move_seq, v["good_evil_delta"],
+                    v["law_chaos_delta"], v["reason"], kind="edge")
         return await engine.render_state(conn, sess["player_id"], sess)
+
+
+async def _edge_alignment(conn, edge_id: str, label: str) -> dict:
+    """The alignment shift of taking an edge, judged from its (static) label ONCE
+    and cached, so a choice's moral weight is consistent and we don't pay an LLM
+    call on every traversal."""
+    row = await conn.fetchrow(
+        """SELECT good_evil_delta, law_chaos_delta, reason
+           FROM edge_alignment_cache WHERE edge_id=$1""", edge_id)
+    if row:
+        return {"good_evil_delta": row["good_evil_delta"],
+                "law_chaos_delta": row["law_chaos_delta"], "reason": row["reason"]}
+    v = await llm.judge_alignment(label, context="A deliberate story choice.")
+    await conn.execute(
+        """INSERT INTO edge_alignment_cache (edge_id, good_evil_delta, law_chaos_delta, reason)
+           VALUES ($1,$2,$3,$4) ON CONFLICT (edge_id) DO NOTHING""",
+        edge_id, v["good_evil_delta"], v["law_chaos_delta"], v["reason"])
+    return v
 
 
 @app.post("/api/walk")
@@ -603,6 +629,28 @@ async def get_log(authorization: str | None = Header(default=None)):
     # and places a beat's dialogue right after the beat itself.
     entries.sort(key=lambda e: (e["seq"], e["ord"]))
     return {"entries": entries}
+
+
+@app.get("/api/alignment")
+async def get_alignment(authorization: str | None = Header(default=None)):
+    """The caller's current D&D alignment + the full drift history (the chart's
+    fading trail). Only non-rolled-back rows exist (rollback deletes them)."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        ge, lc = await engine.current_alignment(conn, sess["player_id"])
+        rows = await conn.fetch(
+            """SELECT created_seq AS seq, good_evil, law_chaos, reason, kind
+               FROM player_alignment_events WHERE player_id=$1 ORDER BY id""",
+            sess["player_id"])
+    return {
+        "current": {"good_evil": ge, "law_chaos": lc,
+                    "label": engine.alignment_label(ge, lc)},
+        "history": [{"seq": r["seq"], "good_evil": r["good_evil"],
+                     "law_chaos": r["law_chaos"], "reason": r["reason"],
+                     "kind": r["kind"]} for r in rows],
+    }
 
 
 @app.get("/api/memories")

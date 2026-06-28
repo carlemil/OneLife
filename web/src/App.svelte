@@ -7,6 +7,7 @@
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
   import MapOverlay from './lib/MapOverlay.svelte';
+  import AlignmentChart from './lib/AlignmentChart.svelte';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | game
   let authMode = $state('login');       // login | register
@@ -35,6 +36,7 @@
   // game
   let game = $state(null);
   let logEntries = $state([]);
+  let alignment = $state(null);   // { current:{good_evil,law_chaos,label}, history:[…] }
   // Player clipboard: free-form notes, saved with the profile. Adopted from the
   // server on first load; thereafter locally owned and saved (debounced) on edit.
   let clipboard = $state('');
@@ -55,7 +57,7 @@
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
-    const def = { atmosphere: true, leaderboard: true, notes: true, log: true };
+    const def = { atmosphere: true, alignment: true, leaderboard: true, notes: true, log: true };
     try { return { ...def, ...JSON.parse(localStorage.getItem('onelife_panels') || '{}') }; }
     catch { return def; }
   }
@@ -211,6 +213,13 @@
   $effect(() => {
     const id = game?.node?.id;
     if (phase === 'game' && id && id !== _lastNode) { _lastNode = id; loadAtmosphere(); }
+  });
+
+  // Reload alignment (current + drift trail) after every action. logEntries gets a
+  // fresh array on each beat, so tracking it refetches without touching each handler.
+  $effect(() => {
+    logEntries;
+    if (phase === 'game') api.alignment().then((a) => (alignment = a)).catch(() => {});
   });
 
   // After acting, keep the scene's controls in view (the log grows below them).
@@ -840,6 +849,20 @@
                 width="100%" height="80" style="border:0;border-radius:8px" allow="autoplay; encrypted-media"></iframe>
             {/if}
           {/if}
+          {/if}
+        </div>
+        <div class="panel" class:collapsed={!panelOpen.alignment}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.alignment} onclick={() => togglePanel('alignment')}>
+              <span class="chev">{panelOpen.alignment ? '▲' : '▼'}</span> Alignment
+            </button>
+          </h3>
+          {#if panelOpen.alignment}
+            {#if alignment?.current}
+              <AlignmentChart current={alignment.current} history={alignment.history} />
+            {:else}
+              <p class="sub">no reading yet — act and speak to find your path</p>
+            {/if}
           {/if}
         </div>
         <div class="panel" class:collapsed={!panelOpen.leaderboard}>

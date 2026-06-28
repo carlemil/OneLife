@@ -15,6 +15,8 @@ class PlayerContext:
     found_clues: set[str] = field(default_factory=set)
     known_names: set[str] = field(default_factory=set)  # character ids whose name the player has learned
     story_time: int = 0
+    good_evil: float = 0.0   # alignment axis: +1 good … -1 evil
+    law_chaos: float = 0.0   # alignment axis: +1 lawful … -1 chaotic
 
 
 def evaluate(cond: dict | None, ctx: PlayerContext) -> bool:
@@ -41,5 +43,15 @@ def evaluate(cond: dict | None, ctx: PlayerContext) -> bool:
         return cond["clue_found"] in ctx.found_clues
     if "story_time_gte" in cond:
         return ctx.story_time >= int(cond["story_time_gte"])
+    # Alignment thresholds (running coordinates in [-1,1]); good/evil and
+    # lawful/chaotic are the two ends of each axis.
+    if "good_at_least" in cond:
+        return ctx.good_evil >= float(cond["good_at_least"])
+    if "evil_at_least" in cond:
+        return ctx.good_evil <= -float(cond["evil_at_least"])
+    if "lawful_at_least" in cond:
+        return ctx.law_chaos >= float(cond["lawful_at_least"])
+    if "chaotic_at_least" in cond:
+        return ctx.law_chaos <= -float(cond["chaotic_at_least"])
     # Unknown predicate => fail closed (never silently unlock content).
     return False

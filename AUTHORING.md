@@ -78,6 +78,12 @@ nodes:
   explicit `from`.
 - Condition/effect DSL is the same one the engine evaluates — see
   [STORY_AND_PUZZLES.md](STORY_AND_PUZZLES.md) §4.
+- **Alignment conditions** gate content on the player's D&D-style alignment (two
+  running coordinates in `[-1, 1]` that drift as an AI judge scores the player's
+  words and choices): `good_at_least: 0.4`, `evil_at_least: 0.4`,
+  `lawful_at_least: 0.4`, `chaotic_at_least: 0.4` (each true when the player has
+  drifted at least that far toward the named pole). E.g. an edge only a chaotic
+  player ever sees: `conditions: {chaotic_at_least: 0.5}`.
 - A gate's fields (everything except `id`/`location`/`character`) become its
   stored `spec` (criteria, `knowledge_boundary`, `hint_ladder`,
   `mercy_after_attempts`, `on_success`) — see [AI_DIALOGUE_GATES.md](AI_DIALOGUE_GATES.md) §3.

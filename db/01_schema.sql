@@ -215,6 +215,33 @@ CREATE TABLE gate_messages (
     created_at TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- D&D-style alignment drift: one append-only, seq-stamped row per judged action,
+-- carrying the delta AND the resulting clamped coordinate. Current = latest
+-- surviving row; trail = the history. Rollback deletes rows with created_seq > N.
+CREATE TABLE player_alignment_events (
+    id              BIGSERIAL PRIMARY KEY,
+    player_id       UUID NOT NULL REFERENCES players(id) ON DELETE CASCADE,
+    created_seq     BIGINT NOT NULL,            -- log seq; DELETE rows with created_seq > target on rollback
+    good_evil_delta DOUBLE PRECISION NOT NULL,  -- this action's shift, +good / -evil
+    law_chaos_delta DOUBLE PRECISION NOT NULL,  -- this action's shift, +lawful / -chaotic
+    good_evil       DOUBLE PRECISION NOT NULL,  -- cumulative, clamped [-1,1]
+    law_chaos       DOUBLE PRECISION NOT NULL,  -- cumulative, clamped [-1,1]
+    reason          TEXT NOT NULL DEFAULT '',
+    kind            TEXT NOT NULL,              -- gate | edge
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+CREATE INDEX player_alignment_events_player_idx ON player_alignment_events (player_id, id);
+
+-- Static memo of an edge label's alignment shift (judged by the LLM once, reused on
+-- every traversal). Player-independent; never rolled back.
+CREATE TABLE edge_alignment_cache (
+    edge_id         TEXT PRIMARY KEY,
+    good_evil_delta DOUBLE PRECISION NOT NULL,
+    law_chaos_delta DOUBLE PRECISION NOT NULL,
+    reason          TEXT NOT NULL DEFAULT '',
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- ---------- Authoring event log (admin content editor) ----------
 -- The authored world is canonical as: baseline #0 (the YAML seed) + replay of
 -- these events up to `head`. The content tables above are a materialized cache

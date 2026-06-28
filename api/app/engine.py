@@ -46,6 +46,7 @@ async def load_context(conn, player_id, story_time: int = 0) -> PlayerContext:
         toks = _name_tokens(c["reveal_name"] or c["name"])  # true name (reveal if withholding)
         if toks and any(re.search(r"\b" + re.escape(t) + r"\b", spoken) for t in toks):
             known_names.add(c["id"])
+    ge, lc = await current_alignment(conn, player_id)
     return PlayerContext(
         flags={r["flag"] for r in flags},
         visited_nodes={r["node_id"] for r in visited},
@@ -54,6 +55,8 @@ async def load_context(conn, player_id, story_time: int = 0) -> PlayerContext:
         found_clues={r["clue_id"] for r in clues},
         known_names=known_names,
         story_time=story_time,
+        good_evil=ge,
+        law_chaos=lc,
     )
 
 
@@ -121,6 +124,55 @@ async def apply_action(conn, player_id, log_id, *, node_id: str | None,
     # write_memory is recorded in the log summary for the slice; the full
     # agent_memories/pgvector path is deferred (see DATA_MODEL.md).
     return seq, story_time
+
+
+# --------------------------------------------------------------------------- #
+#  Alignment (D&D-style): running coordinate on two axes, seq-stamped per the
+#  rollback invariant. good_evil = +good/-evil; law_chaos = +lawful/-chaotic.
+# --------------------------------------------------------------------------- #
+def _clamp_unit(v: float) -> float:
+    return -1.0 if v < -1.0 else 1.0 if v > 1.0 else v
+
+
+async def current_alignment(conn, player_id) -> tuple[float, float]:
+    """The player's latest surviving (good_evil, law_chaos); (0.0, 0.0) if none.
+    Rollback deletes events, so the newest remaining row is always current."""
+    row = await conn.fetchrow(
+        """SELECT good_evil, law_chaos FROM player_alignment_events
+           WHERE player_id=$1 ORDER BY id DESC LIMIT 1""", player_id)
+    return (float(row["good_evil"]), float(row["law_chaos"])) if row else (0.0, 0.0)
+
+
+async def record_alignment(conn, player_id, seq: int, ge_delta: float,
+                           lc_delta: float, reason: str, kind: str) -> None:
+    """Append one judged shift, stamped with the log `seq` it happened at so it
+    rolls back with that beat. The stored coordinate is cumulative + clamped to
+    [-1,1]; the raw delta is kept too. No-op for a ~zero shift (neutral actions
+    don't clutter the trail). Must run inside the caller's transaction."""
+    if abs(ge_delta) < 1e-6 and abs(lc_delta) < 1e-6:
+        return
+    ge0, lc0 = await current_alignment(conn, player_id)
+    ge, lc = _clamp_unit(ge0 + ge_delta), _clamp_unit(lc0 + lc_delta)
+    await conn.execute(
+        """INSERT INTO player_alignment_events
+           (player_id, created_seq, good_evil_delta, law_chaos_delta,
+            good_evil, law_chaos, reason, kind)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)""",
+        player_id, seq, ge_delta, lc_delta, ge, lc, reason or "", kind)
+
+
+def alignment_label(ge: float, lc: float) -> str:
+    """A D&D label for a coordinate, e.g. 'chaotic-good', 'lawful neutral',
+    'true neutral' (the 3x3 grid; ±0.33 thresholds)."""
+    g = "good" if ge >= 0.33 else "evil" if ge <= -0.33 else "neutral"
+    l = "lawful" if lc >= 0.33 else "chaotic" if lc <= -0.33 else "neutral"
+    if g == "neutral" and l == "neutral":
+        return "true neutral"
+    if g == "neutral":
+        return f"{l} neutral"
+    if l == "neutral":
+        return f"neutral {g}"
+    return f"{l}-{g}"
 
 
 async def narrate_puzzle_prompt(conn, log_id, node, story_time):
@@ -512,11 +564,12 @@ async def map_road_anchors(conn) -> dict:
     return {r["loc_id"]: r["node_id"] for r in rows}
 
 
-async def traverse_edge(conn, sess, edge) -> None:
+async def traverse_edge(conn, sess, edge) -> int:
     """Apply a single story edge for the player: log the move, advance the
     current node + story_time, narrate any puzzle prompt, and discover clues.
-    Mutates `sess` (current_node/story_time) in place. The caller must have
-    already validated the edge is available and its conditions pass."""
+    Mutates `sess` (current_node/story_time) in place. Returns the move's log seq
+    (so the /api/edge handler can stamp an alignment event onto it). The caller
+    must have already validated the edge is available and its conditions pass."""
     effects = json.loads(edge["effects"])
     dest = await conn.fetchrow(
         "SELECT title, is_death FROM story_nodes WHERE id=$1", edge["to_node"])
@@ -541,6 +594,7 @@ async def traverse_edge(conn, sess, edge) -> None:
     await narrate_puzzle_prompt(conn, sess["log_id"], dest_node, story_time)
     await discover_clues(
         conn, sess["player_id"], sess["log_id"], story_time, sess["current_node"])
+    return seq
 
 
 # Nodes you may pass *through* while walking the cell map. A gate/puzzle node can
@@ -661,6 +715,9 @@ async def render_state(conn, player_id, session) -> dict:
         "notes": [r["reveal_text"] for r in found],
         "clipboard": clipboard or "",
         "story_time": session["story_time"],
+        # Current alignment coordinate (the full drift history is on /api/alignment).
+        "alignment": {"good_evil": ctx.good_evil, "law_chaos": ctx.law_chaos,
+                      "label": alignment_label(ctx.good_evil, ctx.law_chaos)},
     }
 
     if node["type"] == "gate":
@@ -726,6 +783,9 @@ async def rollback(conn, player_id, session, to_seq: int) -> dict:
         "DELETE FROM player_clues WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
     await conn.execute(
         "DELETE FROM player_cells WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
+    await conn.execute(
+        "DELETE FROM player_alignment_events WHERE player_id=$1 AND created_seq>$2",
+        player_id, to_seq)
     await conn.execute(
         """UPDATE puzzle_progress SET solved=FALSE, solved_at_seq=NULL
            WHERE player_id=$1 AND solved_at_seq>$2""", player_id, to_seq)

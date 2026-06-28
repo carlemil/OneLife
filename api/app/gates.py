@@ -3,7 +3,8 @@
 validated verdict."""
 import json
 from . import llm, memory
-from .engine import apply_action, discover_clues, next_seq
+from .engine import (apply_action, discover_clues, next_seq,
+                     record_alignment, current_alignment, alignment_label)
 
 
 def _identity(char) -> dict:
@@ -46,6 +47,15 @@ async def process_message(conn, player_id, session, text: str) -> dict:
            WHERE player_id=$1 AND gate_id=$2 ORDER BY seq, created_at""",
         player_id, gate_id)]
 
+    # Alignment: every thing the player SAYS shifts their alignment (whether or not
+    # it passes the gate). Stamp with cur_seq, the same seq the message rolls back
+    # with. Then read the (possibly shifted) standing so the NPC's tone reacts to it.
+    verdict_a = await llm.judge_alignment(
+        text, context=f"Talking to {char['name'] if char else 'someone'}.")
+    await record_alignment(conn, player_id, cur_seq, verdict_a["good_evil_delta"],
+                           verdict_a["law_chaos_delta"], verdict_a["reason"], kind="gate")
+    align_str = alignment_label(*await current_alignment(conn, player_id))
+
     attempts = ga["attempts"] + 1
     ladder = spec.get("hint_ladder", [])
     hint_level = min(attempts - 1, max(len(ladder) - 1, 0))
@@ -67,7 +77,7 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # edge to move on — we never force them out of the conversation.
     if ga["satisfied"]:
         reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                      identity=identity)
+                                      identity=identity, alignment=align_str)
         await _say(reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
@@ -81,7 +91,7 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     satisfied = llm.success_rule_met(spec, met) or (mercy is not None and attempts >= mercy)
 
     reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                  identity=identity, reveal=satisfied)
+                                  identity=identity, reveal=satisfied, alignment=align_str)
 
     await conn.execute(
         """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5
