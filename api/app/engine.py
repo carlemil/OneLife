@@ -414,6 +414,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
            JOIN world_cells w ON w.id = l.cell_id WHERE l.id=$1""",
         node["location_id"]) if node["location_id"] else None
     walk_paths = await cell_walk_paths(conn, player_id, node, story_time)
+    ctx = await load_context(conn, player_id, story_time)
 
     nodes, on_map = [], set()
     for r in rows:
@@ -447,6 +448,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                       "icon": f"images/maps/icons/{loc}.png",
                       "x": x_y[0], "y": x_y[1], "current": bool(is_current),
                       "reachable": reachable, "action": action, "target": target,
+                      "visited": bool(r["node_id"] in ctx.visited_nodes),
                       "scale": scale})
 
     # Roads: edges between shown anchors, keyed by location id to match the icons.

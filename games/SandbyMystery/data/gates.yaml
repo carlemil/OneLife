@@ -263,6 +263,7 @@ gates:
     success_rule: "reassured AND asked_something"
     knowledge_boundary:
       knows:
+        - "her name is Märta — once she trusts you she whispers it; she even chalked the letters of it on the classroom floor while she waited in the dark"
         - "she has been hiding in this classroom since the lights went out"
         - "she has seen the old caretaker creeping toward the boiler room in the dark"
       refuses:

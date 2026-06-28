@@ -38,6 +38,19 @@
   transition: transform .12s, filter .12s;
 }
 
+/* "Unknown destination" marker: a place reachable by an open road that the player
+   has not visited yet. Occupies the same footprint an icon would, so it sits exactly
+   where the place is, but shows a big inked "?" instead of revealing the artwork. */
+.map-q {
+  width: calc(var(--map-icon-size) * var(--map-scale, 1));
+  height: calc(var(--map-icon-size) * var(--map-scale, 1));
+  display: flex; align-items: center; justify-content: center;
+  font: 700 calc(var(--map-icon-size) * var(--map-scale, 1) * .8) Georgia, serif;
+  line-height: 1; color: #3a2a17; pointer-events: none; user-select: none;
+  text-shadow: 0 1px 0 rgba(255, 250, 240, .9), 0 0 12px rgba(255, 248, 235, .85);
+  transition: transform .12s, filter .12s;
+}
+
 /* The hovered icon's name — large, centred, ~13% down from the top of the map. */
 .map-label {
   position: absolute; left: 50%; top: 13%; transform: translate(-50%, -50%);

@@ -18,7 +18,7 @@
   import './map.css';                        // shared .map-* styles
 
   let {
-    block,                 // play block: { image, nodes:[{id,title,icon,x,y,current,reachable,action,target,scale}], roads }
+    block,                 // play block: { image, nodes:[{id,title,icon,x,y,current,reachable,visited,action,target,scale}], roads }
     onPick,                // (item) => go there (called after the walk animation)
     onClose,               // () => close the map
     busy = false,          // parent-driven (a navigation is in flight)
@@ -55,6 +55,16 @@
   const byId = $derived(Object.fromEntries(nodes.map((n) => [n.id, n])));
   const cx = (n) => n.x * cw, cy = (n) => n.y * ch;
   const hoverReachable = $derived(!!(hovered && byId[hovered]?.reachable));
+
+  // Play-mode map legibility:
+  //  - a place we can reach by an open road but have not yet been to is an unknown
+  //    destination — shown as a big "?" (and its name kept hidden) until we visit it.
+  //  - only roads we can actually move along right now are drawn: both endpoints must
+  //    be somewhere we're standing (current) or can step to (reachable).
+  // In edit mode the admin block carries no reachability, so neither rule applies.
+  const mystery = (n) => !edit && !!n?.reachable && !n?.visited && !n?.current;
+  const reachableHere = (n) => !!n && (n.current || n.reachable);
+  const roadOpen = (r) => edit || (reachableHere(byId[r.from]) && reachableHere(byId[r.to]));
 
   // Fog preview is an editor-only affordance: with "Reveal all" off, only the starting
   // cell's places are visible (as a fresh player first sees them). Play mode and edit-
@@ -325,7 +335,7 @@
         <svg class="map-svg" width={cw} height={ch} viewBox={`0 0 ${cw} ${ch}`}>
           <defs>
             {#each roads as r, i}
-              {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
+              {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to) && roadOpen(r)}
                 <linearGradient id={`moroad${i}`} gradientUnits="userSpaceOnUse"
                   x1={cx(byId[r.from])} y1={cy(byId[r.from])} x2={cx(byId[r.to])} y2={cy(byId[r.to])}>
                   <stop offset="0" stop-color="#7a5230" stop-opacity="0" />
@@ -337,7 +347,7 @@
             {/each}
           </defs>
           {#each roads as r, i}
-            {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to)}
+            {#if byId[r.from] && byId[r.to] && visible.has(r.from) && visible.has(r.to) && roadOpen(r)}
               <path class="map-road" fill="none" stroke={`url(#moroad${i})`} d={roadPath(byId, r, cw, ch)} />
             {/if}
           {/each}
@@ -357,18 +367,26 @@
             <div class="mo-node" class:reachable={n.reachable} class:current={n.current}
                  class:disabled={!edit && !n.reachable && !n.current} class:hovered={hovered === n.id}
                  class:dragging={edit && drag?.loc === n.id} class:drawsrc={drawFrom === n.id}
+                 class:mystery={mystery(n)}
                  style={`left:${cx(n)}px; top:${cy(n)}px`}>
-              <img class="map-icon" style={`--map-scale:${n.scale ?? 1}`}
-                   src={contentAsset(n.icon)} alt={n.title} draggable="false" />
+              {#if mystery(n)}
+                <!-- Reachable but never visited: an unknown place, marked with a "?". -->
+                <div class="map-q" style={`--map-scale:${n.scale ?? 1}`}>?</div>
+              {:else}
+                <img class="map-icon" style={`--map-scale:${n.scale ?? 1}`}
+                     src={contentAsset(n.icon)} alt={n.title} draggable="false" />
+              {/if}
             </div>
           {/if}
         {/each}
 
         {#if hovered && byId[hovered] && visible.has(hovered)}
-          <!-- Keyed on the title so a change from one location to another swaps the
-               element, crossfading the old text out while the new fades in. -->
-          {#key byId[hovered].title}
-            <div class="map-label" in:fade|global={{ duration: 200 }} out:fade|global={{ duration: 200 }}>{byId[hovered].title}</div>
+          <!-- Keyed on the label so a change from one location to another swaps the
+               element, crossfading the old text out while the new fades in. An
+               unvisited "?" place keeps its name hidden. -->
+          {@const label = mystery(byId[hovered]) ? '?' : byId[hovered].title}
+          {#key label}
+            <div class="map-label" in:fade|global={{ duration: 200 }} out:fade|global={{ duration: 200 }}>{label}</div>
           {/key}
         {/if}
 
@@ -437,6 +455,7 @@
   /* Hover-grow the click target: in play only a reachable icon, in edit any icon
      (the nearest is the drag/long-press target). */
   .mo-node.reachable.hovered .map-icon,
+  .mo-node.reachable.hovered .map-q,
   .mo.edit .mo-node.hovered .map-icon { transform:scale(1.05); filter:drop-shadow(0 3px 6px rgba(0,0,0,.6)); }
   .mo-node.dragging { z-index:5; }
   .mo-node.drawsrc .map-icon { filter:drop-shadow(0 0 0 #c0563a) drop-shadow(0 0 7px rgba(192,86,58,.95)); }
