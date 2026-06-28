@@ -28,5 +28,5 @@ nodes:
     edges:
       - id: e-note-hall
         to: kbk-entrance-hall
-        label: Pocket the drawing and head for the broken window
+        label: Pocket the drawing and head back out to the entrance hall
         effects: {progress_points: 15, log: "The picture on the slip of paper stuck to the back of the cabinet shows the way out: a broken window beside the main entrance door."}

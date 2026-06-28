@@ -278,8 +278,8 @@ edges:
     label: Follow the sound of crying into a classroom
     effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
     sort_order: 4
-  - id: e-hall-chalk
-    from: kbk-entrance-hall
+  - id: e-classroom-chalk
+    from: kbk-classroom
     to: kbk-chalk-letters
     label: Look at the chalk letters scattered on a classroom floor
     effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
