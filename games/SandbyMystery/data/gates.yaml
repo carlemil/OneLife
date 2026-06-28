@@ -279,6 +279,7 @@ gates:
       progress_points: 35
       set_flag: calmed_marta
       story_node_next: kbk-classroom
+      whisper_name: true   # always reveal her name (Märta) — it's the chalk-puzzle answer
       log: "You calmed Märta; she whispered what she had seen."
       write_memory: {owner: marta, content: "A kind stranger calmed me and I told them what I saw in the dark.", leakable: true}
 

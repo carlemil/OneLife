@@ -101,6 +101,18 @@ async def process_message(conn, player_id, session, text: str) -> dict:
 
     if satisfied:
         on_success = spec.get("on_success", {})
+        # Guaranteed name reveal: some encounters MUST hand the player the NPC's name
+        # on success (here it's the answer to a puzzle), and that can't be left to the
+        # Actor's phrasing — name_known is derived from what the NPC actually speaks.
+        # If the reply didn't already speak the true name, append a deterministic
+        # whisper of it so it always lands. Same seq as this turn's messages, so it
+        # rolls back with them.
+        if on_success.get("whisper_name") and char:
+            true_name = _identity(char)["true_name"]
+            spoken = " ".join(m["content"] or "" for m in history if m["role"] == "agent")
+            spoken = f"{spoken} {reply}".lower()
+            if true_name and true_name.lower() not in spoken:
+                await _say(f'Then, almost too quiet to hear, a name: "{true_name}."')
         # Mark passed BEFORE applying effects so clue discovery sees gate_passed.
         seq = await next_seq(conn, session["log_id"])
         await conn.execute(
