@@ -397,8 +397,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                       "reachable": reachable, "action": action, "target": target,
                       "scale": scale})
 
-    # Roads: intra-cell edges between shown anchors + lanes between adjacent
-    # discovered cells' arrival places, keyed by location id to match the icons.
+    # Roads: edges between shown anchors, keyed by location id to match the icons.
     shown = {r["loc_id"]: r for r in rows if r["cell_id"] in discovered}
     node_to_loc = {r["node_id"]: r["loc_id"] for r in shown.values()}
     roads, seen = [], {}
@@ -420,20 +419,6 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                 seen[k] = rd; roads.append(rd)
             elif pts and not seen[k].get("points"):
                 seen[k]["points"] = pts          # a sibling edge carries the geometry
-    arrivals = {r["cell_id"]: r["loc_id"] for r in shown.values()
-                if r["node_id"] == r["arrival_node"]}
-    cells = list(shown.values())
-    for i in range(len(cells)):
-        for j in range(i + 1, len(cells)):
-            ci, cj = cells[i], cells[j]
-            if ci["cell_id"] == cj["cell_id"]:
-                continue
-            if (abs(ci["grid_x"] - cj["grid_x"]) + abs(ci["grid_y"] - cj["grid_y"]) == 1
-                    and ci["cell_id"] in arrivals and cj["cell_id"] in arrivals):
-                k = tuple(sorted((arrivals[ci["cell_id"]], arrivals[cj["cell_id"]])))
-                if k not in seen:
-                    rd = {"from": k[0], "to": k[1], "points": []}
-                    seen[k] = rd; roads.append(rd)
 
     block = {"image": MAP_BACKGROUND, "nodes": nodes, "roads": roads}
     return block, on_map
@@ -507,35 +492,10 @@ async def map_overview(conn) -> dict:
         if a == k[1]:
             pts = list(reversed(pts))
         if k not in seen:
-            # `edge: True` marks a road backed by a story edge — the editor can route
-            # and save spline points onto it. (Synthetic lanes below get edge: False.)
-            rd = {"from": k[0], "to": k[1], "points": pts, "edge": True}
+            rd = {"from": k[0], "to": k[1], "points": pts}
             seen[k] = rd; roads.append(rd)
         elif pts and not seen[k]["points"]:
             seen[k]["points"] = pts
-
-    # Inter-cell lanes between the arrival places of grid-adjacent cells — the same
-    # world-map travel links the player map draws (unified_map_block), so the editor
-    # shows every road the game does. These have no story edge to store geometry on, so
-    # they stay straight: marked edge: False so "Redraw roads" leaves them alone (else
-    # they'd bend on screen but snap straight again on save, which can't persist them).
-    crows = await conn.fetch("SELECT id, grid_x, grid_y, arrival_node FROM world_cells")
-    grid = {c["id"]: (c["grid_x"], c["grid_y"]) for c in crows}
-    arrival_node = {c["id"]: c["arrival_node"] for c in crows}
-    arrivals = {r["cell"]: r["loc_id"] for r in rows
-                if r["node_id"] == arrival_node.get(r["cell"])}
-    acells = list(arrivals)
-    for i in range(len(acells)):
-        for j in range(i + 1, len(acells)):
-            ci, cj = acells[i], acells[j]
-            gi, gj = grid.get(ci), grid.get(cj)
-            if not gi or not gj:
-                continue
-            if abs(gi[0] - gj[0]) + abs(gi[1] - gj[1]) == 1:
-                k = tuple(sorted((arrivals[ci], arrivals[cj])))
-                if k not in seen:
-                    rd = {"from": k[0], "to": k[1], "points": [], "edge": False}
-                    seen[k] = rd; roads.append(rd)
 
     # The cell a fresh player starts in (entry node's cell) — the editor's fog
     # preview shows only this cell's places.
