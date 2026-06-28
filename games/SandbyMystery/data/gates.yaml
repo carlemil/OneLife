@@ -59,6 +59,7 @@ gates:
       progress_points: 45
       set_flag: met_inga
       story_node_next: lund-library
+      announce: "She closes the book with both hands, as if shutting a small grave. \"There was a fire here, in 1998. A child was lost in it. Arne — the caretaker — never spoke of it again, not once.\" (You now know of the 1998 fire at Killebäckskolan and the child who was lost.)"
       log: "Inga told you about the 1998 fire at the school."
       write_memory: {owner: inga, content: "Told a stranger about the 1998 fire at the school and the child who was lost.", leakable: true}
   - id: lund-hannibal
@@ -86,6 +87,7 @@ gates:
       progress_points: 55
       set_flag: met_hannibal
       story_node_next: lund-cellar
+      announce: "He turns the guest list a half-inch toward you with one finger and gives you a single name, in a voice like warm wax. \"A guest from the year your school burned. They dined, and they stayed. Do with it what you will.\" (You now have a name from Hannibal's guest list, tied to the year the school burned.)"
       log: "Hannibal traded you a name off his guest list — for a piece of yourself."
       write_memory: {owner: hannibal_lacker, content: "A stranger dined with me, kept their manners, and traded me a true confidence for a name off my guest list — a guest from the year the school burned.", leakable: true}
   - id: lund-holm
@@ -113,6 +115,7 @@ gates:
       progress_points: 50
       set_flag: met_holm
       story_node_next: lund-lodgings
+      announce: "He spins to face you at last, eyes bright. \"The 1998 fire was set — arson, plainly — and the Lund disappearance was let to die by a tired detective named Vallmo, over in Malmö. They didn't fail to solve it. They declined to.\" (You now know the fire was arson and that Vallmo in Malmö buried the case.)"
       log: "Holm laid out his case: the fire was set, and the police let it die."
       write_memory: {owner: skarlok_holm, content: "A stranger brought me something worth my time, so I told them the 1998 school fire was arson and that Vallmo let the disappearance go cold.", leakable: true}
   - id: lund-orlok
@@ -140,6 +143,7 @@ gates:
       progress_points: 55
       set_flag: met_orlok
       story_node_next: lund-manor
+      announce: "The candle gutters as he inclines his head. \"I have watched this country sicken and your school burn, all from these windows. One thing more I will give you — a riddle, by this failing light. Answer it, and you will have the whole of what I know.\" (Greve Orlök has set you his candle riddle — answer it to learn the rest.)"
       log: "Greve Orlök told you what he has watched from the manor windows — and you kept every threshold closed."
       write_memory: {owner: greve_orlok, content: "A stranger came to my door, kept their distance and their thresholds, and I told them what I have watched over this region — including the night the school burned.", leakable: true}
   - id: lund-vinne
@@ -167,6 +171,7 @@ gates:
       progress_points: 50
       set_flag: met_vinne
       story_node_next: lund-botanical
+      announce: "He lays a pressed black flower before you with a flourish, slurring proudly. \"From the ash by your burnt school — a thing with no business growing in this hemisphere. Name it, genus Curiosus, and it is yours to understand.\" (Von Vinné has shown you the impossible specimen — name the plant to claim what he knows.)"
       log: "Von Vinné showed you the impossible specimen he pressed from the ashes of the school."
       write_memory: {owner: karl_von_vinne, content: "A curious stranger let me lecture, so I showed them the specimen I pressed from the ash by the burnt school — a thing that should not grow here.", leakable: true}
 
@@ -196,6 +201,7 @@ gates:
       progress_points: 50
       set_flag: met_zoltan
       story_node_next: malmo-rosengard
+      announce: "Zoltan stops the ball dead under one boot and claps a heavy hand on your shoulder. \"You've got spine. So Zoltan gives you the name on the harbour locker — and that name leads back to your Sandby.\" (You now have the name on the harbour locker, which points back toward Sandby.)"
       log: "Zoltan respected you enough to hand over the name on the harbour locker."
       write_memory: {owner: zoltan_ibrahimson, content: "A stranger came to Rosengård with spine, so Zoltan gave them the name on the harbour locker — the one that leads back to Sandby.", leakable: true}
   - id: malmo-lisbet
@@ -223,6 +229,7 @@ gates:
       progress_points: 50
       set_flag: met_lisbet
       story_node_next: malmo-server-basement
+      announce: "She turns the monitor toward you without a word, then taps one line. \"There. The 1998 fire file — someone official scrubbed a name right out of it. That's the name you want.\" (Lisbet has shown you that a name was deliberately erased from the 1998 fire file.)"
       log: "Lisbet showed you the scrubbed name in the 1998 fire file."
       write_memory: {owner: lisbet_salamander, content: "A stranger was direct enough not to annoy me, so I showed them the name someone scrubbed out of the 1998 school-fire file.", leakable: true}
   - id: malmo-vallmo
@@ -250,6 +257,7 @@ gates:
       progress_points: 50
       set_flag: met_vallmo
       story_node_next: malmo-police
+      announce: "He drags a battered evidence box from under the desk and sets it between you, its five-dial lock still shut. \"The fire file walked out of the archive and never came back. But this stayed. Never could crack the word they set on it.\" (Vallmo has given you his sealed evidence box — work its word-lock to open it.)"
       log: "Vallmo told you about the case he never closed and the fire file that vanished."
       write_memory: {owner: kurt_vallmo, content: "A stranger was straight with me, so I told them about the Lund disappearance I was made to drop and the 1998 fire file that was signed out and never returned.", leakable: true}
 
@@ -312,6 +320,7 @@ gates:
       progress_points: 50
       set_flag: met_dodblek
       story_node_next: sandby-church
+      announce: "He sets the pieces back to their start, unhurried. \"A child came to me out of the smoke the night your school burned; I remember the cold of their hand. But first — everyone owes me a game. Win it, and we are square.\" (Herr Dödblek has set you his wager — answer it to settle the game.)"
       log: "Herr Dödblek told you what he saw the night the school burned."
       write_memory: {owner: herr_dodblek, content: "A stranger sat with me in the churchyard and I told them about the child who came out of the smoke the night the school burned.", leakable: true}
   - id: sandby-norman
@@ -339,6 +348,7 @@ gates:
       progress_points: 45
       set_flag: met_norman
       story_node_next: sandby-quarry
+      announce: "He leans close, voice dropping to almost nothing, eyes flicking to the office door. \"The lake — it keeps the ones who stay too long. I tidy their rooms after. But don't say I told you. Mother's always watching.\" (You now know the lake 'keeps' guests who linger — and that Mother watches.)"
       log: "Norman let slip what the lake keeps — and that Mother is always watching."
       write_memory: {owner: norman_bats, content: "A kind guest got me talking about the lake and the ones who stay too long. Mother would not have liked it.", leakable: true}
   - id: sandby-pippa
@@ -366,5 +376,6 @@ gates:
       progress_points: 45
       set_flag: met_pippa
       story_node_next: sandby-crooked-house
+      announce: "The play goes out of her all at once. \"You kept up. So — a game for a game.\" She crouches and sets a riddle in the dust at your feet, watching you with eyes far too old for her. (Pippa has set you her riddle — answer it to learn what she saw at the school.)"
       log: "Pippa, the play gone out of her at last: the night the school burned, she saw a tall man carry something small — small as a child — out of the smoke and away into the dark, and then the lamps came back on and nobody asked."
       write_memory: {owner: pippa_langskugga, content: "A stranger played along with me and I told them about the tall man who carried something small out of the burning school.", leakable: true}

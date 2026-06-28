@@ -72,12 +72,18 @@ async def process_message(conn, player_id, session, text: str) -> dict:
             """INSERT INTO gate_messages (player_id, gate_id, role, content, seq)
                VALUES ($1,$2,'agent',$3,$4)""", player_id, gate_id, line, cur_seq)
 
+    # A concise recap of what this gate grants on success (its on_success log line) —
+    # fed to the Actor so it discloses it clearly on the reveal turn and stays
+    # consistent (it has already helped this person) on every turn after.
+    recap = spec.get("on_success", {}).get("log")
+
     # Already convinced on an earlier turn: keep chatting in character, but never
     # re-judge or re-apply effects. The player is free to keep talking, or take an
     # edge to move on — we never force them out of the conversation.
     if ga["satisfied"]:
         reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                      identity=identity, alignment=align_str)
+                                      identity=identity, alignment=align_str,
+                                      recap=recap, already_helped=True)
         await _say(reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
@@ -91,7 +97,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     satisfied = llm.success_rule_met(spec, met) or (mercy is not None and attempts >= mercy)
 
     reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                  identity=identity, reveal=satisfied, alignment=align_str)
+                                  identity=identity, reveal=satisfied, alignment=align_str,
+                                  recap=(recap if satisfied else None))
 
     await conn.execute(
         """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5

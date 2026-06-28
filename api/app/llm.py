@@ -31,13 +31,14 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       own_memories: list[str] | None = None,
                       leaked_memories: list[str] | None = None,
                       identity: dict | None = None, reveal: bool = False,
-                      alignment: str | None = None) -> str:
+                      alignment: str | None = None,
+                      recap: str | None = None, already_helped: bool = False) -> str:
     kb = spec.get("knowledge_boundary", {})
     ladder = spec.get("hint_ladder", [])
-    # On the turn the gate is passed (reveal=True) the NPC stops being coy: behave
-    # as the most-forthcoming (final) ladder rung and add the reveal instruction
-    # below, so it discloses the reason + the way forward in character.
-    eff_level = (len(ladder) - 1) if (reveal and ladder) else hint_level
+    # On the turn the gate is passed (reveal=True), AND on every turn after it
+    # (already_helped=True), the NPC stops being coy: behave as the most-forthcoming
+    # (final) ladder rung and add the reveal/already-helped instruction below.
+    eff_level = (len(ladder) - 1) if ((reveal or already_helped) and ladder) else hint_level
     hint = ladder[min(eff_level, len(ladder) - 1)] if ladder else ""
     own_memories = own_memories or []
     leaked_memories = leaked_memories or []
@@ -82,12 +83,28 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
     if reveal:
         reveal_block = (
             "\nTHIS IS THE MOMENT YOU RELENT — the stranger has just earned what they "
-            "came for. In ONE short paragraph, in character: make clear WHY you are "
-            "finally willing (the kindness, honesty, or persistence they actually showed "
-            "in this conversation), then plainly DISCLOSE the one thing from YOU KNOW that "
-            "lets them move on — the way out, the name, or what you saw — as something you "
-            "are telling them, not as an errand or a command to act this instant. Do not "
-            "be coy now; this is the turn you actually say it.")
+            "came for. The time for deflecting, testing, or staying suspicious is OVER: do "
+            "NOT stall or act wary now. In ONE short paragraph, in character: make clear WHY "
+            "you are finally willing, then plainly HAND OVER or DISCLOSE the thing that lets "
+            "them move on — name it explicitly (the way out, the item you give them, the "
+            "name, or what you saw) AND, where it matters, make clear how they use it — as "
+            "something you are giving or telling them, not as an errand to run elsewhere.")
+        if recap:
+            reveal_block += (
+                f" What you are giving or telling them right now is, in essence: {recap} — "
+                "make sure your reply actually conveys this to them.")
+
+    # Every turn AFTER the gate has been passed: the NPC has already helped this person
+    # and must not regress to a wary stranger who pretends they never spoke.
+    helped_block = ""
+    if already_helped and not reveal:
+        helped_block = (
+            "\nYOU HAVE ALREADY HELPED THIS PERSON — earlier you gave them what they came "
+            "for and you trust them now."
+            + (f" What you did for them: {recap}." if recap else "")
+            + " Do NOT treat them as a suspicious stranger again or pretend you never spoke; "
+            "stay warm and consistent, and you may refer back to what you already gave or "
+            "told them.")
 
     system = (
         "You are role-playing a character in a dark text adventure. Stay fully in "
@@ -105,7 +122,8 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
         f"{identity_block}"
         f"{memory_block}"
         f"{align_block}"
-        f"{reveal_block}\n"
+        f"{reveal_block}"
+        f"{helped_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
     )
     msgs = [{"role": "user" if m["role"] == "player" else "assistant",
