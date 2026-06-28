@@ -90,6 +90,49 @@ async def narrate(conn, log_id, *, node_id, story_time, summary, kind) -> int:
     return seq
 
 
+async def reveal_cells_around(conn, player_id, node_id, seq, log_id, story_time,
+                              *, neighbors: bool = True) -> None:
+    """Fog-of-war: discover the cell `node_id` sits in. With `neighbors=True` (the
+    default) also discover the orthogonally adjacent cells and narrate the newly
+    revealed ones as one 'travel' beat ("the map opens"). With `neighbors=False`
+    only the node's own cell is discovered, silently — used at game start so the
+    neighbours aren't pre-revealed before the player reaches a world-access node.
+    Stamps each discovery with `seq` (the beat's seq for fresh neighbours) so
+    rollback voids it. Deduped against already-discovered cells, so it's safe to
+    call on every world-access arrival — the beat fires only once."""
+    cell = await conn.fetchrow(
+        """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
+           JOIN locations l ON l.id = n.location_id
+           JOIN world_cells w ON w.id = l.cell_id
+           WHERE n.id=$1""", node_id)
+    if cell is None:
+        return
+    if not neighbors:
+        await conn.execute(
+            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
+               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, cell["id"], seq)
+        return
+    near = await conn.fetch(
+        "SELECT id, name FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
+        cell["grid_x"], cell["grid_y"])
+    have = {r["cell_id"] for r in await conn.fetch(
+        "SELECT cell_id FROM player_cells WHERE player_id=$1", player_id)}
+    fresh = [c for c in near if c["id"] not in have and c["id"] != cell["id"]]
+    beat_seq = seq
+    if fresh:
+        names = ", ".join(c["name"] for c in fresh)
+        beat_seq = await narrate(
+            conn, log_id, node_id=node_id, story_time=story_time,
+            summary=f"New paths open on your map: {names}.", kind="travel")
+    for c in near:
+        if c["id"] in have:
+            continue
+        stamp = beat_seq if c["id"] != cell["id"] else seq
+        await conn.execute(
+            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
+               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], stamp)
+
+
 # --------------------------------------------------------------------------- #
 #  Apply one action: a single log entry + its effects, all stamped with seq.
 # --------------------------------------------------------------------------- #
@@ -173,6 +216,16 @@ def alignment_label(ge: float, lc: float) -> str:
     if l == "neutral":
         return f"neutral {g}"
     return f"{l}-{g}"
+
+
+def alignment_short(ge: float, lc: float) -> str:
+    """Two-letter D&D alignment code for a coordinate, e.g. 'CE' (chaotic evil),
+    'LG' (lawful good), 'TN' (true neutral), 'NG' (neutral good). First letter is
+    the law/chaos axis (L/C/N), second the good/evil axis (G/E/N); same ±0.33
+    thresholds as alignment_label."""
+    g = "G" if ge >= 0.33 else "E" if ge <= -0.33 else "N"
+    l = "L" if lc >= 0.33 else "C" if lc <= -0.33 else "N"
+    return "TN" if g == "N" and l == "N" else f"{l}{g}"
 
 
 async def narrate_puzzle_prompt(conn, log_id, node, story_time):
@@ -574,7 +627,7 @@ async def traverse_edge(conn, sess, edge) -> int:
     must have already validated the edge is available and its conditions pass."""
     effects = json.loads(edge["effects"])
     dest = await conn.fetchrow(
-        "SELECT title, is_death FROM story_nodes WHERE id=$1", edge["to_node"])
+        "SELECT title, is_death, world_access FROM story_nodes WHERE id=$1", edge["to_node"])
     kind = "death" if (dest and dest["is_death"]) else "action"
     # Name the place when the edge has no authored line, so every move reads as a
     # beat in the flow rather than a blank step.
@@ -589,6 +642,11 @@ async def traverse_edge(conn, sess, edge) -> int:
         edge["to_node"], story_time, sess["token"])
     sess["current_node"] = edge["to_node"]
     sess["story_time"] = story_time
+    # Reaching a world-access node is the moment "the map opens" — reveal this cell's
+    # neighbours then (not pre-revealed at game start). Deduped, so revisiting is a no-op.
+    if dest and dest["world_access"]:
+        await reveal_cells_around(
+            conn, sess["player_id"], sess["current_node"], seq, sess["log_id"], story_time)
     # Arriving at a puzzle node records the riddle/prompt in the flow, so the
     # events list shows what was actually asked (deduped — see the helper).
     dest_node = await conn.fetchrow(

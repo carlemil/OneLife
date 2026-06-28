@@ -12,11 +12,14 @@ nodes:
     title: The Entrance Hall
     media: {image_theme: school-hallway-dusk, music_theme: uneasy-quiet}
     body: "The entrance hall stretches before you, lined with dented lockers. A mop bucket sits abandoned beside a heavy door marked PANNRUM. By the lockers, an old janitor works a rag over a brass plaque, pretending not to watch you."
-    # The room's description reacts to the state of the gate the janitor holds:
-    # once he has let slip how to get out, the PANNRUM door reads differently.
+    # The room's description reacts to what the player has learned. The PANNRUM door's
+    # missing handle is NOT mentioned up front — only once you've examined it, or once
+    # the janitor has handed you its handle.
     body_variants:
-      - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
-        body: "The entrance hall stretches before you, lined with dented lockers. The heavy door marked PANNRUM holds your eye now — the janitor as good as told you it's the only way out after dark. He has bent back to his brass plaque, as if the two of you had never spoken."
+      - when: {all: [{flag_set: has_boiler_handle}]}
+        body: "The entrance hall stretches before you, lined with dented lockers. The heavy door marked PANNRUM holds your eye now — the only way out after dark. The brass handle the old man pressed on you is heavy in your pocket; it will fit the bare square socket where the door's handle should be. He has bent back to his plaque, as if the two of you had never spoken."
+      - when: {all: [{flag_set: examined_pannrum}]}
+        body: "The entrance hall stretches before you, lined with dented lockers. The heavy door marked PANNRUM has no handle — just a bare square spindle-hole where one belongs; it won't open without one. By the lockers, an old janitor works a rag over a brass plaque, pretending not to watch you."
     edges:
       - id: e-hall-janitor
         to: kbk-janitor-gate
@@ -27,11 +30,16 @@ nodes:
         label: Examine the brass plaque the janitor is polishing
         conditions: {all: [{not: {flag_set: examined_plaque}}]}
         effects: {progress_points: 10, set_flag: examined_plaque, log: "You read the memorial plaque: \"IN MEMORIAM — 1998\"."}
+      - id: e-hall-examine-door
+        to: kbk-entrance-hall
+        label: Examine the heavy PANNRUM door
+        conditions: {all: [{not: {flag_set: examined_pannrum}}, {not: {flag_set: has_boiler_handle}}]}
+        effects: {progress_points: 5, set_flag: examined_pannrum, log: "Up close, the PANNRUM door has no handle at all — just a bare square spindle-hole where one should be. It won't open without a handle to fit there."}
       - id: e-hall-pannrum
         to: kbk-boiler-room
-        label: Open the PANNRUM (boiler room) door
-        conditions: {all: [{flag_set: knows_boiler_exit}]}
-        effects: {progress_points: 15, log: "You slipped through the boiler-room door."}
+        label: Fit the handle and open the PANNRUM (boiler room) door
+        conditions: {all: [{flag_set: has_boiler_handle}]}
+        effects: {progress_points: 15, log: "You fitted the janitor's handle to the door and slipped through into the boiler room."}
       - id: e-hall-dark
         to: death-school-dark
         label: Go deeper into the unlit school
@@ -41,7 +49,7 @@ nodes:
       - id: e-hall-force
         to: kbk-caught
         label: Force the PANNRUM door open
-        conditions: {all: [{not: {flag_set: knows_boiler_exit}}]}
+        conditions: {all: [{not: {flag_set: has_boiler_handle}}]}
         effects: {log: "You forced the door."}
         danger: 2
 

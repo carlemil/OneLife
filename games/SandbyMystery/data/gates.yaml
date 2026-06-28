@@ -8,29 +8,30 @@ gates:
     character: the-janitor
     intent: Get the janitor to reveal how to leave the locked school.
     criteria:
-      - {id: established_trust, desc: "Player has CLEARLY and genuinely earned the wary old man's trust — through real warmth, respect, or patience toward HIM, or sincere, vulnerable honesty — not merely a passing pleasantry. A single line whose only purpose is to extract the exit does NOT count; he must actually feel he can trust this stranger."}
+      - {id: established_trust, desc: "Over SEVERAL exchanges the player has CLEARLY and genuinely earned this wary, guarded old man's trust — through sustained real warmth, respect, or patience toward HIM, or sincere, vulnerable honesty about themselves. This is a HIGH bar. Greetings ('hi', 'hello'), small talk, name-asking, flattery, politeness, or any single line do NOT count, and neither does repetition of the same empty pleasantry. A message whose real purpose is to extract the exit does NOT count. He is suspicious by nature; he must actually, believably come to feel he can trust this particular stranger before this is met."}
       - {id: asked_about_exit, desc: "Player asks, directly or indirectly, how to get out, where a door is, or how to leave."}
     success_rule: "established_trust AND asked_about_exit"
     knowledge_boundary:
       knows:
-        - "the only way out after dark is the boiler-room (PANNRUM) door, broken since 1998 — but he reveals this ONLY once he genuinely trusts the stranger"
+        - "the only way out after dark is the boiler-room (PANNRUM) door, broken since 1998 — and that door has no handle: he took it off himself and keeps it on him. Once he genuinely trusts the stranger he tells them the door is the way out AND presses its old brass handle into their hand so they can open it."
         - "the newcomer looks like someone he saw here years ago"
       refuses:
-        - "the way out — withhold the boiler-room exit and deflect (change the subject, tell them to leave, test them) until the stranger has CLEARLY earned your trust through real warmth, patience, or honest vulnerability; a stranger who simply demands the exit gets nothing"
+        - "the way out and the handle — withhold both the boiler-room exit and the door handle, and deflect (change the subject, tell them to leave, test them) until the stranger has CLEARLY earned your trust through real warmth, patience, or honest vulnerability; a stranger who simply demands the way out gets nothing"
         - "anything about the world outside Sandby"
         - "the larger mystery of why the player is here"
       tone: "wary, guarded old man; short clipped sentences; slow to trust, but warms if treated with genuine kindness or patience"
     hint_ladder:
       - "He grumbles and keeps polishing, volunteering nothing. He does not trust you."
       - "He softens a fraction, but still won't say. \"And why should I be telling you anything?\""
-      - "Won over at last, he sighs. \"That boiler-room door's been broke since '98. Only way out after dark. Now leave me be.\""
-    mercy_after_attempts: 6
+      - "Won over at last, he sighs, digs a worn brass handle from his coat and presses it into your hand. \"That boiler-room door's been broke since '98. Took its handle off myself. Only way out after dark. Now leave me be.\""
+    mercy_after_attempts: 10
     on_success:
       progress_points: 40
-      set_flag: knows_boiler_exit
+      set_flag: has_boiler_handle
       story_node_next: kbk-entrance-hall
-      log: "The janitor let slip that the boiler-room door is the way out after dark."
-      write_memory: {owner: the-janitor, content: "Told the newcomer about the boiler-room exit.", leakable: true}
+      announce: "He works a heavy brass handle loose from his coat pocket and presses it firmly into your hand, closing your fingers around it. \"That's the PANNRUM door's. Took it off myself, years back. The boiler-room door's the only way out after dark — fit it, and go.\" The metal is cold and solid in your palm. (You now have the boiler-room door handle.)"
+      log: "The janitor gave you the PANNRUM door's brass handle — the boiler-room door is the way out after dark."
+      write_memory: {owner: the-janitor, content: "Trusted the newcomer enough to give them the boiler-room door's handle and tell them it's the way out.", leakable: true}
 
   # --- from lund ---
   - id: lund-inga
@@ -258,9 +259,10 @@ gates:
     character: marta
     intent: Calm the frightened girl enough that she will talk.
     criteria:
-      - {id: reassured, desc: "Player is gentle, kind, or reassuring — tries to calm her, or promises not to hurt her."}
-      - {id: asked_something, desc: "Player asks her a question — who she is, what she saw, what happened, or how long she has been here."}
-    success_rule: "reassured AND asked_something"
+      - {id: gentle, desc: "The player speaks gently and reassuringly throughout — soft, kind, calming words. NOT met if they are ever harsh, mocking, demanding, threatening, sarcastic, or raise their voice."}
+      - {id: earns_trust, desc: "The player actively earns this terrified girl's trust: promises not to hurt her, offers to keep her safe, is patient with her fear, or comforts her directly and more than once. A bare greeting, a lone 'it's okay', or a single line does NOT count — she trusts only slowly, so it should take real, sustained coaxing."}
+      - {id: gentle_inquiry, desc: "The player gently invites her to open up — a soft, unpressured, caring question about who she is or what she saw. NOT met by an interrogation, a blunt 'what happened', or any demand for information."}
+    success_rule: "gentle AND earns_trust AND gentle_inquiry"
     knowledge_boundary:
       knows:
         - "her name is Märta — once she trusts you she whispers it; she even chalked the letters of it on the classroom floor while she waited in the dark"
@@ -271,10 +273,11 @@ gates:
         - "the larger mystery"
       tone: "frightened teenage girl, whispers, flinches, trusts only slowly"
     hint_ladder:
-      - "She presses herself into the corner and will not speak."
-      - "She watches you, deciding whether to trust you."
+      - "She presses herself into the corner, trembling, and will not speak."
+      - "She flinches at your words. She won't say anything until she truly believes you mean her no harm."
+      - "Her eyes search yours. Speak softly, promise her she is safe, stay patient and give her a real reason to trust you — and only then gently ask what she saw."
       - "She whispers: \"I've been here since the lights died. I saw the caretaker... going down to the boiler room. In the dark.\""
-    mercy_after_attempts: 6
+    mercy_after_attempts: 8
     on_success:
       progress_points: 35
       set_flag: calmed_marta

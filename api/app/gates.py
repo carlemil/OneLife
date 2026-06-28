@@ -97,22 +97,28 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5
            WHERE player_id=$1 AND gate_id=$2""",
         player_id, gate_id, json.dumps(met), attempts, hint_level)
+
+    on_success = spec.get("on_success", {}) if satisfied else {}
+    # Guaranteed name reveal, FIRST: some encounters must hand the player the NPC's
+    # name the instant they get through (here it's the answer to a puzzle). It can't
+    # be left to the Actor's phrasing or ordering — name_known is derived from what
+    # the NPC actually says — so on the success turn we deterministically whisper the
+    # true name BEFORE the relenting reply, making it the first thing she discloses.
+    # Same seq as this turn's messages, so it rolls back with them.
+    if on_success.get("whisper_name") and char:
+        true_name = _identity(char)["true_name"]
+        if true_name:
+            await _say(f'Before anything else, almost too quiet to hear, a name: "{true_name}."')
     await _say(reply)
+    # Guaranteed success beat: a fixed, unmissable line on the turn the gate passes —
+    # used when something concrete must happen (e.g. the NPC physically hands over a key
+    # item), which can't be left to the Actor's phrasing. Appended after the relenting
+    # reply, same seq as the turn's messages so it rolls back with them.
+    announce = on_success.get("announce")
+    if announce:
+        await _say(announce)
 
     if satisfied:
-        on_success = spec.get("on_success", {})
-        # Guaranteed name reveal: some encounters MUST hand the player the NPC's name
-        # on success (here it's the answer to a puzzle), and that can't be left to the
-        # Actor's phrasing — name_known is derived from what the NPC actually speaks.
-        # If the reply didn't already speak the true name, append a deterministic
-        # whisper of it so it always lands. Same seq as this turn's messages, so it
-        # rolls back with them.
-        if on_success.get("whisper_name") and char:
-            true_name = _identity(char)["true_name"]
-            spoken = " ".join(m["content"] or "" for m in history if m["role"] == "agent")
-            spoken = f"{spoken} {reply}".lower()
-            if true_name and true_name.lower() not in spoken:
-                await _say(f'Then, almost too quiet to hear, a name: "{true_name}."')
         # Mark passed BEFORE applying effects so clue discovery sees gate_passed.
         seq = await next_seq(conn, session["log_id"])
         await conn.execute(
@@ -121,7 +127,7 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         # Apply the rewards/flags/memory, but DON'T move the player. They stay with
         # the NPC and leave through an authored edge ("the way ahead has opened")
         # when ready, so a passing line never cuts the conversation off mid-flow.
-        # (Onward routes are unlocked by the flags set here, e.g. knows_boiler_exit.)
+        # (Onward routes are unlocked by the flags set here, e.g. has_boiler_handle.)
         # A narrative outcome beat ("Pippa told you what she saw…"), NOT spoken
         # dialogue. kind="gate" marks it as a gate-unlock event — the only point a
         # regular player may cheat-death-rollback to (the UI keys off this kind).

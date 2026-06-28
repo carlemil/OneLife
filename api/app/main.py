@@ -172,38 +172,10 @@ async def _start_game(conn, sess: dict):
     sess["current_node"] = entry["id"]
     sess["log_id"] = log_id
     await engine.discover_clues(conn, pid, log_id, 0, entry["id"])
-    await _reveal_cells_around(conn, pid, entry["id"], 0, log_id, 0)
-
-
-async def _reveal_cells_around(conn, player_id, node_id, seq, log_id, story_time):
-    """Fog-of-war: discover the node's cell + orthogonally adjacent cells. Newly
-    revealed neighbours are narrated as one 'travel' beat in the story flow."""
-    cell = await conn.fetchrow(
-        """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
-           JOIN locations l ON l.id = n.location_id
-           JOIN world_cells w ON w.id = l.cell_id
-           WHERE n.id=$1""", node_id)
-    if cell is None:
-        return
-    near = await conn.fetch(
-        "SELECT id, name FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
-        cell["grid_x"], cell["grid_y"])
-    have = {r["cell_id"] for r in await conn.fetch(
-        "SELECT cell_id FROM player_cells WHERE player_id=$1", player_id)}
-    fresh = [c for c in near if c["id"] not in have and c["id"] != cell["id"]]
-    beat_seq = seq
-    if fresh:
-        names = ", ".join(c["name"] for c in fresh)
-        beat_seq = await engine.narrate(
-            conn, log_id, node_id=node_id, story_time=story_time,
-            summary=f"New paths open on your map: {names}.", kind="travel")
-    for c in near:
-        if c["id"] in have:
-            continue
-        stamp = beat_seq if c["id"] != cell["id"] else seq
-        await conn.execute(
-            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
-               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], stamp)
+    # Discover ONLY the start cell — neighbours stay hidden until the player reaches a
+    # world-access node (engine.traverse_edge reveals them then, so "the map opens"
+    # in play rather than at the very first instant).
+    await engine.reveal_cells_around(conn, pid, entry["id"], 0, log_id, 0, neighbors=False)
 
 
 # --------------------------------------------------------------------------- #
@@ -771,7 +743,7 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
             sess["story_time"] = story_time
             await engine.discover_clues(
                 conn, sess["player_id"], sess["log_id"], story_time, arrival)
-            await _reveal_cells_around(
+            await engine.reveal_cells_around(
                 conn, sess["player_id"], arrival, seq, sess["log_id"], story_time)
         return await engine.render_state(conn, sess["player_id"], sess)
 
@@ -1205,30 +1177,41 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int
            "  JOIN game_logs g ON g.id = le.log_id "
            "  WHERE NOT le.rolled_back "
            "    AND le.node_id IN (SELECT id FROM story_nodes WHERE type='ending')), "
+           # Each player's current alignment = their latest (non-rolled-back) event;
+           # rollback deletes events, so the newest row is always the live standing.
+           "align AS (SELECT DISTINCT ON (player_id) player_id, good_evil, law_chaos "
+           "  FROM player_alignment_events ORDER BY player_id, id DESC), "
            "ranked AS (SELECT l.player_id, l.display_name, l.progress, "
-           "  (d.player_id IS NOT NULL) AS completed, "
+           "  (d.player_id IS NOT NULL) AS completed, a.good_evil, a.law_chaos, "
            "  ROW_NUMBER() OVER (ORDER BY l.progress DESC, l.display_name) AS rank "
-           "  FROM leaderboard l LEFT JOIN done d ON d.player_id = l.player_id) ")
+           "  FROM leaderboard l LEFT JOIN done d ON d.player_id = l.player_id "
+           "  LEFT JOIN align a ON a.player_id = l.player_id) ")
+
+    def _align(r):
+        # No alignment events yet → treated as the origin (true neutral).
+        return engine.alignment_short(r["good_evil"] or 0.0, r["law_chaos"] or 0.0)
+
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         total = await conn.fetchval(cte + "SELECT count(*) FROM ranked")
-        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress, completed FROM ranked WHERE player_id=$1", pid)
+        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress, completed, good_evil, law_chaos FROM ranked WHERE player_id=$1", pid)
         if around > 0 and me:
             offset = max(0, me["rank"] - around - 1)
             limit = min(2 * around + 1, 100)
             q = ""
         if q.strip():
             rows = await conn.fetch(
-                cte + "SELECT player_id, rank, display_name, progress, completed FROM ranked "
+                cte + "SELECT player_id, rank, display_name, progress, completed, good_evil, law_chaos FROM ranked "
                 "WHERE display_name ILIKE '%'||$1||'%' ORDER BY rank LIMIT $2", q.strip(), limit)
         else:
             rows = await conn.fetch(
-                cte + "SELECT player_id, rank, display_name, progress, completed FROM ranked "
+                cte + "SELECT player_id, rank, display_name, progress, completed, good_evil, law_chaos FROM ranked "
                 "ORDER BY rank OFFSET $1 LIMIT $2", offset, limit)
     return {
         "total": total,
         "me": ({"rank": me["rank"], "display_name": me["display_name"], "progress": me["progress"],
-                "completed": me["completed"]} if me else None),
+                "completed": me["completed"], "alignment": _align(me)} if me else None),
         "rows": [{"rank": r["rank"], "display_name": r["display_name"], "progress": r["progress"],
-                  "completed": r["completed"], "is_me": r["player_id"] == pid} for r in rows],
+                  "completed": r["completed"], "alignment": _align(r),
+                  "is_me": r["player_id"] == pid} for r in rows],
     }

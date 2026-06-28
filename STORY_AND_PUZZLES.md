@@ -62,14 +62,14 @@ A single physical location (e.g. Killebäckskolan) typically contains **many nod
       "edge_id": "try-pannrum-door",
       "label": "Try the PANNRUM (boiler room) door",
       "target": "kbk-boiler-room",
-      "conditions": { "all": [ { "flag_set": "knows_boiler_exit" } ] },
+      "conditions": { "all": [ { "flag_set": "has_boiler_handle" } ] },
       "effects": { "progress_points": 10 }
     },
     {
       "edge_id": "force-pannrum-door",
       "label": "Force the PANNRUM door open",
       "target": "kbk-caught-by-something",
-      "conditions": { "all": [ { "not": { "flag_set": "knows_boiler_exit" } } ] },
+      "conditions": { "all": [ { "not": { "flag_set": "has_boiler_handle" } } ] },
       "effects": {},
       "danger": 2
     }
@@ -91,7 +91,7 @@ A tiny JSON expression language, evaluated in plain code (never by an LLM). Reus
 { "all": [ ... ] }                     all must hold
 { "any": [ ... ] }                     at least one
 { "not": { ... } }                     negation
-{ "flag_set": "knows_boiler_exit" }    player flag is true
+{ "flag_set": "has_boiler_handle" }    player flag is true
 { "node_visited": "kbk-janitor-gate" }
 { "gate_passed": "kbk-janitor-find-the-exit" }
 { "puzzle_solved": "boiler-cabinet-code" }
@@ -102,7 +102,7 @@ A tiny JSON expression language, evaluated in plain code (never by an LLM). Reus
 **Effects** (applied by the Applier, in code, on edge-take / gate-success / puzzle-solve):
 ```
 { "progress_points": 40 }              award progress (design §7)
-{ "set_flag": "knows_boiler_exit" }
+{ "set_flag": "has_boiler_handle" }
 { "clear_flag": "..." }
 { "write_memory": { "owner": "the-janitor", "content": "...", "leakable": true } }
 { "advance_story_time": 30 }
@@ -203,18 +203,19 @@ Arc `main`, at `killebackskolan`, reusing the janitor gate from [AI_DIALOGUE_GAT
 [kbk-entrance-hall]  location           ← §3 example above
    ├─ edge to-janitor ───────────────► [kbk-janitor-gate]  gate
    │                                       gate = kbk-janitor-find-the-exit
-   │                                       on_success: set_flag knows_boiler_exit,
+   │                                       gate = he gives you the door's HANDLE
+   │                                       on_success: set_flag has_boiler_handle,
    │                                                   +40 pts, → kbk-entrance-hall
    │                                       (also discovers clue 'janitor-said-98')
-   ├─ edge try-pannrum-door ──────────► [kbk-boiler-room]  location
-   │     (needs flag knows_boiler_exit)     puzzle here: boiler-cabinet-code
+   ├─ edge fit-handle-open-pannrum ───► [kbk-boiler-room]  location
+   │     (needs flag has_boiler_handle)     puzzle here: boiler-cabinet-code
    │                                        clues: year-1998-graffiti (hallway text),
    │                                               janitor-said-98 (gate reward),
    │                                               plaque-1998 (examine plaque)
    │                                        on_solve: +60, opened_boiler_cabinet
    │                                              └─► [kbk-the-drawing] narration → next arc
    └─ edge force-pannrum-door ────────► [kbk-caught-by-something]  death
-         (only when NOT knows_boiler_exit)     "Something in the dark was waiting."
+         (only when NOT has_boiler_handle)     "Something in the dark was waiting."
                                                → rollback (costs leaderboard, §7)
 ```
 

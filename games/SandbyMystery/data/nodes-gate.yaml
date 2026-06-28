@@ -16,7 +16,7 @@ nodes:
     # what Märta told you (her gate) colours how the janitor reads to you.
     body_variants:
       - when: {all: [{gate_passed: kbk-janitor-find-the-exit}]}
-        body: "The old man has gone back to his brass, rubbing at a name only he can read. He's told you what you needed — the boiler-room door, the only way out after dark — and won't be drawn into another word. \"Go on, then,\" he mutters, not looking up."
+        body: "The old man has gone back to his brass, rubbing at a name only he can read. He's told you what you needed — the boiler-room door, the only way out after dark — and pressed its old brass handle into your palm. He won't be drawn into another word. \"Go on, then,\" he mutters, not looking up."
       - when: {all: [{gate_passed: kbk-marta-calm}]}
         body: "The old man keeps his eyes on the brass. \"School's closed,\" he mutters. \"You shouldn't be here.\" You think of what the girl whispered — him, creeping down to the boiler room in the dark — and find it harder to hold his gaze. (Talk to him — try to find out how to get out.)"
     edges:
