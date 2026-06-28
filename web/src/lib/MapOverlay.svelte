@@ -162,7 +162,10 @@
     const segLen = (r) => Math.hypot(pos[r.to].x - pos[r.from].x, pos[r.to].y - pos[r.from].y);
     const lerp = (a, b, t) => [a.x + (b.x - a.x) * t, a.y + (b.y - a.y) * t];
     const ICON_R = 0.075, SPRING = 0.06, ROAD_R = 0.05;
-    const items = roads.filter((r) => pos[r.from] && pos[r.to] && r.from !== r.to).map((r) => {
+    // Skip synthetic inter-cell lanes (edge: false) — they have no story edge to save
+    // geometry onto, so routing them just bends them on screen until they snap straight
+    // again on the next load. Leave them straight.
+    const items = roads.filter((r) => r.edge !== false && pos[r.from] && pos[r.to] && r.from !== r.to).map((r) => {
       const m = Math.max(2, Math.min(5, Math.round(segLen(r) / 0.18)));
       const slots = Array.from({ length: m }, (_, i) => lerp(pos[r.from], pos[r.to], (i + 1) / (m + 1)));
       return { r, ends: [r.from, r.to], cps: slots.map((s) => [...s]), slots };

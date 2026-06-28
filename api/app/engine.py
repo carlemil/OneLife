@@ -507,7 +507,9 @@ async def map_overview(conn) -> dict:
         if a == k[1]:
             pts = list(reversed(pts))
         if k not in seen:
-            rd = {"from": k[0], "to": k[1], "points": pts}
+            # `edge: True` marks a road backed by a story edge — the editor can route
+            # and save spline points onto it. (Synthetic lanes below get edge: False.)
+            rd = {"from": k[0], "to": k[1], "points": pts, "edge": True}
             seen[k] = rd; roads.append(rd)
         elif pts and not seen[k]["points"]:
             seen[k]["points"] = pts
@@ -515,7 +517,8 @@ async def map_overview(conn) -> dict:
     # Inter-cell lanes between the arrival places of grid-adjacent cells — the same
     # world-map travel links the player map draws (unified_map_block), so the editor
     # shows every road the game does. These have no story edge to store geometry on, so
-    # they stay straight (Save reports them as pairs_without_edge).
+    # they stay straight: marked edge: False so "Redraw roads" leaves them alone (else
+    # they'd bend on screen but snap straight again on save, which can't persist them).
     crows = await conn.fetch("SELECT id, grid_x, grid_y, arrival_node FROM world_cells")
     grid = {c["id"]: (c["grid_x"], c["grid_y"]) for c in crows}
     arrival_node = {c["id"]: c["arrival_node"] for c in crows}
@@ -531,7 +534,7 @@ async def map_overview(conn) -> dict:
             if abs(gi[0] - gj[0]) + abs(gi[1] - gj[1]) == 1:
                 k = tuple(sorted((arrivals[ci], arrivals[cj])))
                 if k not in seen:
-                    rd = {"from": k[0], "to": k[1], "points": []}
+                    rd = {"from": k[0], "to": k[1], "points": [], "edge": False}
                     seen[k] = rd; roads.append(rd)
 
     # The cell a fresh player starts in (entry node's cell) — the editor's fog
