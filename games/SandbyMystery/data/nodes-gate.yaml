@@ -237,7 +237,7 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-rosengard-harbor
-        road: [[0.5139, 0.1963], [0.4514, 0.3249]]
+        road: [[0.4627, 0.3142], [0.4543, 0.3336]]
         to: malmo-harbor
         label: Head back down toward the harbour
         effects: {log: "You left Rosengård."}
@@ -272,7 +272,7 @@ nodes:
         danger: 0
         sort_order: 8
       - id: e-basement-harbor
-        road: [[0.5317, 0.3216], [0.478, 0.3522]]
+        road: [[0.5301, 0.3236], [0.4888, 0.355]]
         to: malmo-harbor
         label: Back up the stairs to the street
         effects: {log: "You left the basement and its screens."}
@@ -301,7 +301,7 @@ nodes:
         danger: 3
         sort_order: 7
       - id: e-police-harbor
-        road: [[0.254, 0.3266], [0.3956, 0.3597]]
+        road: [[0.2543, 0.3279], [0.3978, 0.3754]]
         to: malmo-harbor
         label: Leave the detective to his folders
         effects: {log: "You left the police house."}
@@ -335,7 +335,7 @@ nodes:
   # --- Herr Dödblek: the churchyard ---
   - id: sandby-church
     pos: {x: 2515, y: 3942}
-    map: {x: 0.7241, y: 0.8077, rx: 0.05, ry: 0.045, scale: 1.85}
+    map: {x: 0.705, y: 0.8439, rx: 0.05, ry: 0.045, scale: 2.7}
     arc: main
     type: gate
     location: sandby-church
@@ -366,7 +366,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-church-street
-        road: [[0.7332, 0.7818], [0.7406, 0.7662]]
+        road: [[0.7186, 0.799], [0.7301, 0.7668]]
         to: sandby-street
         label: Leave the churchyard
         effects: {log: "You left the church behind you."}
@@ -374,7 +374,7 @@ nodes:
   # --- Norman Båts: the gravel-pit motel ---
   - id: sandby-quarry
     pos: {x: 3863, y: 4684}
-    map: {x: 0.9023, y: 0.8464, rx: 0.05, ry: 0.045, scale: 2.3}
+    map: {x: 0.9023, y: 0.8464, rx: 0.05, ry: 0.045, scale: 2.7}
     arc: main
     type: gate
     location: sandby-quarry
@@ -413,7 +413,7 @@ nodes:
         danger: 1
         sort_order: 8
       - id: e-quarry-street
-        road: [[0.8905, 0.8218], [0.8389, 0.7845]]
+        road: [[0.8941, 0.8202], [0.8576, 0.7887]]
         to: sandby-street
         label: Get back on the road to the village
         effects: {log: "You left the lake behind you."}
@@ -454,7 +454,7 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-crooked-street
-        road: [[0.7967, 0.86], [0.7851, 0.746]]
+        road: [[0.7835, 0.7605], [0.7604, 0.7254]]
         to: sandby-street
         label: Back toward the lit streets
         effects: {log: "You walked back to where the lamps still worked."}

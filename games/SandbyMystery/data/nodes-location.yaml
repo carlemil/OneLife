@@ -87,7 +87,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-crypt-square
-        road: [[0.4835, 0.7852], [0.3956, 0.8069]]
+        road: [[0.4818, 0.7851], [0.3956, 0.8069]]
         to: lund-square
         label: Climb back up to the square
         effects: {log: "You climbed back out of the crypt."}
@@ -96,7 +96,7 @@ nodes:
   # --- from malmo ---
   - id: malmo-harbor
     pos: {x: 432, y: -141}
-    map: {x: 0.4268, y: 0.3251, rx: 0.05, ry: 0.045, scale: 1.75}
+    map: {x: 0.4314, y: 0.3393, rx: 0.05, ry: 0.045, scale: 1.75}
     arc: main
     type: location
     location: malmo-harbor
@@ -124,7 +124,7 @@ nodes:
   # --- atmosphere ---
   - id: malmo-stortorget
     pos: {x: -631, y: 1463}
-    map: {x: 0.3777, y: 0.4593, rx: 0.05, ry: 0.045, scale: 1.5}
+    map: {x: 0.3695, y: 0.4877, rx: 0.05, ry: 0.045, scale: 1.5}
     arc: main
     type: location
     location: malmo-stortorget
@@ -133,13 +133,13 @@ nodes:
     body: "The great square opens out, far too large for the few lit windows around it. A bronze king rides his bronze horse at the centre, green with age, facing nothing. Wind comes straight off the water and worries at the flags. Smaller streets lead off toward a older, tighter square."
     edges:
       - id: e-stortorget-harbor
-        road: [[0.4166, 0.4122], [0.4218, 0.3955]]
+        road: [[0.3961, 0.4543], [0.4219, 0.4092]]
         to: malmo-harbor
         label: Back toward the harbour road
         effects: {log: "You left Stortorget."}
         sort_order: 9
       - id: e-stortorget-lilla
-        road: [[0.3412, 0.4439], [0.3193, 0.4193]]
+        road: [[0.3417, 0.4592], [0.3168, 0.4275]]
         to: malmo-lilla-torg
         label: Slip into the little timbered square
         effects: {progress_points: 3, log: "You crossed to Lilla Torg."}
@@ -154,7 +154,7 @@ nodes:
     body: "Crooked timbered houses lean over a cobbled square of shuttered bars and stacked, chained chairs. Somewhere a knot of laughter rises — and stops the moment you look for it. Heat-lamps stand cold. The big square is back the way you came."
     edges:
       - id: e-lilla-stortorget
-        road: [[0.3193, 0.4193], [0.3412, 0.4439]]
+        road: [[0.3168, 0.4275], [0.3417, 0.4592]]
         to: malmo-stortorget
         label: Back out to the great square
         effects: {log: "You returned to Stortorget."}
@@ -176,7 +176,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-castle-harbor
-        road: [[0.3464, 0.2439], [0.3835, 0.3103]]
+        road: [[0.3488, 0.2536], [0.3973, 0.3235]]
         to: malmo-harbor
         label: Recross the bridge and go
         effects: {log: "You left the castle behind its moat."}
@@ -198,14 +198,14 @@ nodes:
         danger: 2
         sort_order: 7
       - id: e-torso-harbor
-        road: [[0.1809, 0.2791], [0.3569, 0.3491]]
+        road: [[0.1812, 0.2808], [0.3638, 0.3597]]
         to: malmo-harbor
         label: Turn back from the water's edge
         effects: {log: "You left the twisting tower."}
         sort_order: 9
   - id: malmo-pildamms
     pos: {x: 2521, y: -1140}
-    map: {x: 0.805, y: 0.2301, rx: 0.05, ry: 0.045, scale: 2.05}
+    map: {x: 0.8068, y: 0.24, rx: 0.05, ry: 0.045, scale: 2.05}
     arc: main
     type: location
     location: malmo-pildamms
@@ -220,13 +220,13 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-pildamms-harbor
-        road: [[0.7308, 0.2754], [0.573, 0.3437]]
+        road: [[0.6994, 0.3259], [0.5764, 0.3424]]
         to: malmo-harbor
         label: Find your way back out of the park
         effects: {log: "You left the park, eventually."}
         sort_order: 9
   - id: malmo-cemetery
-    map: {x: 0.6423, y: 0.2387, scale: 1.8}
+    map: {x: 0.6586, y: 0.2387, scale: 1.8}
     pos: {x: 2034, y: -1659}
     arc: main
     type: location
@@ -242,7 +242,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-cemetery-harbor
-        road: [[0.6164, 0.2778], [0.5159, 0.358]]
+        road: [[0.6191, 0.2811], [0.5286, 0.3616]]
         to: malmo-harbor
         label: Back through the gate to the streets
         effects: {log: "You left the old cemetery."}
@@ -264,7 +264,7 @@ nodes:
         danger: 1
         sort_order: 7
       - id: e-citytunnel-harbor
-        road: [[0.5105, 0.4025], [0.4697, 0.3895]]
+        road: [[0.5093, 0.4054], [0.4673, 0.3904]]
         to: malmo-harbor
         label: Ride the long escalator back up
         effects: {log: "You climbed back up out of the tunnel."}
@@ -292,7 +292,7 @@ nodes:
   # --- from world ---
   - id: sandby-street
     pos: {x: 3484, y: 2672}
-    map: {x: 0.7823, y: 0.7187, rx: 0.05, ry: 0.045, scale: 1.3}
+    map: {x: 0.7823, y: 0.7187, rx: 0.05, ry: 0.045, scale: 1.95}
     arc: main
     type: location
     location: sandby-street
@@ -302,7 +302,7 @@ nodes:
     body: "Sandby's main street lies dark and empty beyond the school, streetlamps buzzing against the rain. The village is silent, but roads lead away into the wider night — toward Lund, and toward Malmö and the water."
     edges:
       - id: e-street-inside
-        road: [[0.8184, 0.6929], [0.8544, 0.6671]]
+        road: [[0.8146, 0.6783], [0.8523, 0.659]]
         to: kbk-entrance-hall
         label: Climb back in through the broken window
         effects: {log: "You went back into the school."}
