@@ -35,7 +35,10 @@
 </script>
 
 <div class="ac" style={`width:${size}px`}>
-  <svg viewBox="-14 -12 128 130" role="img" aria-label="Alignment chart">
+  {#if current}
+    <p class="lbl">{current.label}</p>
+  {/if}
+  <svg viewBox="-18 -16 136 138" role="img" aria-label="Alignment chart">
     <!-- grid -->
     <rect class="frame" x="0" y="0" width="100" height="100" rx="2" />
     <line class="grid" x1={TH} y1="0" x2={TH} y2="100" />
@@ -51,10 +54,10 @@
     {/each}
 
     <!-- axis labels -->
-    <text class="axis" x="50" y="-4" text-anchor="middle">Good</text>
-    <text class="axis" x="50" y="110" text-anchor="middle">Evil</text>
-    <text class="axis" x="-6" y="50" text-anchor="middle" transform="rotate(-90 -6 50)">Chaotic</text>
-    <text class="axis" x="106" y="50" text-anchor="middle" transform="rotate(90 106 50)">Lawful</text>
+    <text class="axis" x="50" y="-6" text-anchor="middle">Good</text>
+    <text class="axis" x="50" y="113" text-anchor="middle">Evil</text>
+    <text class="axis" x="-9" y="50" text-anchor="middle" transform="rotate(-90 -9 50)">Chaotic</text>
+    <text class="axis" x="109" y="50" text-anchor="middle" transform="rotate(90 109 50)">Lawful</text>
 
     <!-- compare trail (future) -->
     {#if cmpTrail.length}
@@ -77,9 +80,6 @@
       <circle class="here" cx={px(current.law_chaos)} cy={py(current.good_evil)} r="3.6" />
     {/if}
   </svg>
-  {#if current}
-    <p class="lbl">{current.label}</p>
-  {/if}
 </div>
 
 <style>
@@ -88,12 +88,12 @@
   .frame { fill:rgba(20,22,30,.5); stroke:#3a3f52; stroke-width:.8; }
   .grid { stroke:#2f3447; stroke-width:.6; }
   .cell { fill:#5a6075; font:600 5px Georgia, serif; opacity:.5; }
-  .axis { fill:#cdbb9a; font:600 6px Georgia, serif; }
+  .axis { fill:#cdbb9a; font:600 10px Georgia, serif; }
   .trail { fill:none; stroke:#7a7ad0; stroke-width:1; opacity:.55; stroke-linejoin:round; }
   .dot { fill:#9a9ae0; }
   .here { fill:#c0563a; stroke:#fff2e8; stroke-width:1; }
   .cmpline { fill:none; stroke:#5a9a6a; stroke-width:1; opacity:.5; stroke-dasharray:2 2; }
   .cmpmark { fill:#5a9a6a; stroke:#eafaea; stroke-width:.8; }
-  .lbl { margin:.25rem 0 0; text-align:center; color:#e8e6df; font:600 .85rem Georgia, serif;
+  .lbl { margin:0 0 .35rem; text-align:center; color:#e8e6df; font:600 .9rem Georgia, serif;
     text-transform:capitalize; }
 </style>
