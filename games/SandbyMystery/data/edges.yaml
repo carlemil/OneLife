@@ -294,6 +294,16 @@ edges:
     label: Look at the chalk letters scattered on a classroom floor
     effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
     sort_order: 6
+  # Once you've got through to Märta her classroom (a finished gate) is hidden from
+  # the hall, which would otherwise strand the chalk letters reached through it — so a
+  # direct hall->chalk path opens then. It auto-hides once the puzzle is solved.
+  - id: e-hall-chalk-direct
+    from: kbk-entrance-hall
+    to: kbk-chalk-letters
+    label: Go back to the chalk letters scattered on the classroom floor
+    conditions: {all: [{gate_passed: kbk-marta-calm}]}
+    effects: {progress_points: 5, log: "You went back to the classroom, to the chalk letters on the floor."}
+    sort_order: 5
 
   # --- from sandby ---
   - id: e-street-church

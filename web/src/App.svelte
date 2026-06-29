@@ -80,6 +80,31 @@
   // Icon per beat kind; dialogue and scene lines carry none.
   const KIND_ICON = { action: '›', gate: '›', puzzle: '🧩', clue: '✦', travel: '🗺', death: '✝' };
 
+  // Prose presentation: capitalise the first letter of each sentence (LLM dialogue
+  // often comes back lowercase), and break a long paragraph into a few shorter ones
+  // so the text reads cleanly. Returns an array of paragraph strings to render as <p>s.
+  function _capSentences(s) {
+    return s.replace(
+      /(^[\s*_"'“‘([]*|[.!?…][)"'”’\]]*[\s*_]+["'“‘([]*)(\p{Ll})/gu,
+      (_m, pre, ch) => pre + ch.toUpperCase());
+  }
+  function prose(text) {
+    if (!text) return [];
+    const paras = String(text).split(/\n+/).map((p) => p.trim()).filter(Boolean);
+    const out = [];
+    for (const p of paras) {
+      if (p.length <= 240) { out.push(p); continue; }   // short enough — leave whole
+      const sentences = p.match(/[^.!?…]+[.!?…]+[)"'”’\]]*\s*|[^.!?…]+$/g) || [p];
+      let buf = '';
+      for (const s of sentences) {                       // group ~2 sentences per paragraph
+        if (buf && (buf.length + s.length) > 200) { out.push(buf.trim()); buf = s; }
+        else buf += s;
+      }
+      if (buf.trim()) out.push(buf.trim());
+    }
+    return out.map(_capSentences);
+  }
+
   // Side "Log" panel: the progress beats (no NPC dialogue), newest first, paged.
   // The main-column flow is unaffected; this is the compact progress log + rollback.
   const LOG_PAGE = 10;
@@ -752,13 +777,13 @@
             {/if}
           </div>
           <h2>{game.node.title}</h2>
-          <p class="body">{game.node.body}</p>
+          {#each prose(game.node.body) as para}<p class="body">{para}</p>{/each}
           <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
           {#if game.node.type === 'gate' && game.gate}
             <!-- The NPC's latest line sits ABOVE the input, so it reads as they speak,
                  then you reply. -->
-            {#if gateReply}<p class="gate-reply">{gateReply}</p>{/if}
+            {#if gateReply}{#each prose(gateReply) as para}<p class="gate-reply">{para}</p>{/each}{/if}
             {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
             <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
               <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
@@ -767,7 +792,7 @@
           {/if}
 
           {#if game.node.type === 'puzzle' && game.puzzle}
-            <p class="puzzle-prompt">{game.puzzle.prompt}</p>
+            {#each prose(game.puzzle.prompt) as para}<p class="puzzle-prompt">{para}</p>{/each}
             {#if puzzleHintLine}<p class="puzzle-hint">💡 {puzzleHintLine}</p>{/if}
             {#if !game.puzzle.solved}
               <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
@@ -778,7 +803,7 @@
                 <button class="link askhint" onclick={askHint} disabled={busy}>{puzzleHintLine ? 'Ask for another hint 💡' : 'Stuck? Ask for a hint 💡'}</button>
               {/if}
             {/if}
-            {#if puzzleResult}<p class="gate-reply">{puzzleResult}</p>{/if}
+            {#if puzzleResult}{#each prose(puzzleResult) as para}<p class="gate-reply">{para}</p>{/each}{/if}
           {/if}
 
           <!-- Every condition-met choice is a button here (locations to go, people to
