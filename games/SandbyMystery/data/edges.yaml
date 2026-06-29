@@ -272,11 +272,21 @@ edges:
     sort_order: 9
 
   # --- from marta ---
+  # Before the chalk puzzle is solved you hear her crying; after, the crying has
+  # stopped, so the way in is described as a return rather than "follow the crying".
   - id: e-hall-classroom
     from: kbk-entrance-hall
     to: kbk-classroom
     label: Follow the sound of crying into a classroom
+    conditions: {all: [{not: {puzzle_solved: marta-anagram}}]}
     effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
+    sort_order: 4
+  - id: e-hall-classroom-revisit
+    from: kbk-entrance-hall
+    to: kbk-classroom
+    label: Go back into the classroom Märta is hiding in
+    conditions: {all: [{puzzle_solved: marta-anagram}]}
+    effects: {log: "You went back into the classroom."}
     sort_order: 4
   - id: e-classroom-chalk
     from: kbk-classroom
