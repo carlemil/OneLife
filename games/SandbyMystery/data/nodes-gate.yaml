@@ -22,7 +22,7 @@ nodes:
     edges:
       - id: e-gate-leave
         to: kbk-entrance-hall
-        label: Step back into the hall
+        label: Step out into the hall
         effects: {log: "You stepped back from the janitor."}
         sort_order: 9
 
@@ -44,7 +44,7 @@ nodes:
       - id: e-library-square
         road: [[0.4176, 0.857], [0.3874, 0.8528]]
         to: lund-square
-        label: Back out to the square
+        label: Out to the square
         effects: {log: "You left the library."}
         sort_order: 9
   # --- Hannibal Läcker: the supper club cellar ---
@@ -89,7 +89,7 @@ nodes:
       - id: e-cellar-square
         road: [[0.3089, 0.8416], [0.3199, 0.8469]]
         to: lund-square
-        label: Make your excuses and climb back to the square
+        label: Make your excuses and climb up to the square
         effects: {log: "You left the cellar — while you still could."}
         sort_order: 9
   # --- Skärlök Holm: the lodgings ---
@@ -118,7 +118,7 @@ nodes:
       - id: e-lodgings-square
         road: [[0.3111, 0.7279], [0.3348, 0.744]]
         to: lund-square
-        label: Show yourself back out to the square
+        label: Show yourself out to the square
         effects: {log: "You left Holm to his clippings."}
         sort_order: 9
   # --- Greve Orlök: the manor ---
@@ -163,7 +163,7 @@ nodes:
       - id: e-manor-square
         road: [[0.1889, 0.6901], [0.3253, 0.7791]]
         to: lund-square
-        label: Step back across the threshold and go
+        label: Step across the threshold and go
         effects: {log: "You left the manor, and were glad the door let you."}
         sort_order: 9
   # --- Karl von Vinné: the botanical garden ---
@@ -239,7 +239,7 @@ nodes:
       - id: e-rosengard-harbor
         road: [[0.4627, 0.3142], [0.4543, 0.3336]]
         to: malmo-harbor
-        label: Head back down toward the harbour
+        label: Head down toward the harbour
         effects: {log: "You left Rosengård."}
         sort_order: 9
   # --- Lisbet Salamander: the server basement ---
@@ -274,7 +274,7 @@ nodes:
       - id: e-basement-harbor
         road: [[0.5301, 0.3236], [0.4888, 0.355]]
         to: malmo-harbor
-        label: Back up the stairs to the street
+        label: Up the stairs to the street
         effects: {log: "You left the basement and its screens."}
         sort_order: 9
   # --- Kurt Vallmo: police HQ ---
@@ -327,7 +327,7 @@ nodes:
     edges:
       - id: e-classroom-leave
         to: kbk-entrance-hall
-        label: Step back into the hall
+        label: Step out into the hall
         effects: {log: "You left the classroom."}
         sort_order: 9
 
@@ -415,7 +415,7 @@ nodes:
       - id: e-quarry-street
         road: [[0.8941, 0.8202], [0.8576, 0.7887]]
         to: sandby-street
-        label: Get back on the road to the village
+        label: Take the road to the village
         effects: {log: "You left the lake behind you."}
         sort_order: 9
   # --- Pippa Långskugga: the crooked house ---
@@ -456,6 +456,6 @@ nodes:
       - id: e-crooked-street
         road: [[0.7835, 0.7605], [0.7604, 0.7254]]
         to: sandby-street
-        label: Back toward the lit streets
+        label: Head toward the lit streets
         effects: {log: "You walked back to where the lamps still worked."}
         sort_order: 9

@@ -207,7 +207,7 @@ edges:
     road: [[0.2005, 0.2372], [0.2806, 0.2206]]
     from: malmo-turning-torso
     to: malmo-castle
-    label: Walk back along the quay to the moated castle
+    label: Walk along the quay to the moated castle
     effects: {log: "You walked back from the tower to the castle."}
     sort_order: 8
   # --- real-world shortcut: Stortorget down Södergatan to Triangeln station ---
@@ -237,7 +237,7 @@ edges:
     road: [[0.7456, 0.3196], [0.6358, 0.3704]]
     from: malmo-pildamms
     to: malmo-citytunnel
-    label: Cut back to Triangeln station
+    label: Cut across to Triangeln station
     effects: {log: "You found your way back to Triangeln station."}
     sort_order: 8
   # --- real-world shortcut: Stortorget west through the old town to Malmöhus ---
@@ -252,7 +252,7 @@ edges:
     road: [[0.3254, 0.2892], [0.3746, 0.423]]
     from: malmo-castle
     to: malmo-stortorget
-    label: Head back east into the old town and its square
+    label: Head east into the old town and its square
     effects: {log: "You walked back from the castle to Stortorget."}
     sort_order: 9
   # --- real-world shortcut: green belt between Pildammsparken and the old cemetery ---
@@ -339,7 +339,7 @@ edges:
     road: [[0.8756, 0.8644], [0.8899, 0.8647]]
     from: sandby-crooked-house
     to: sandby-quarry
-    label: Follow the dark road back toward the gravel-pit lake
+    label: Follow the dark road toward the gravel-pit lake
     effects: {log: "You walked back from the crooked house to the lake."}
     sort_order: 8
   # --- real-world shortcut: a village footpath links the church hill and the edge ---
@@ -354,7 +354,7 @@ edges:
     road: [[0.741, 0.8586], [0.7214, 0.8509]]
     from: sandby-crooked-house
     to: sandby-church
-    label: Walk back up the hill to the church
+    label: Walk up the hill to the church
     effects: {log: "You walked back up to the church."}
     sort_order: 8
 
@@ -409,7 +409,7 @@ edges:
     road: [[0.7259, 0.5905], [0.7252, 0.6541]]
     from: woods-path
     to: sandby-street
-    label: Take the path back out toward Sandby
+    label: Take the path out toward Sandby
     effects: {log: "You took the path back out toward Sandby."}
     sort_order: 6
   - id: e-lund-manor-lund-botanical

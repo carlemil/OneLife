@@ -23,7 +23,7 @@ nodes:
         effects: {progress_points: 25, log: "You opened the cabinet."}
       - id: e-boiler-leave
         to: kbk-entrance-hall
-        label: Go back to the hall
+        label: Go out to the hall
         effects: {log: "You returned to the hall."}
         sort_order: 9
 
@@ -122,7 +122,7 @@ nodes:
         effects: {progress_points: 20, log: "Inside the locker: a child's photograph you almost recognize."}
       - id: e-locker-back
         to: malmo-harbor
-        label: Step back to the quay
+        label: Step out to the quay
         effects: {log: "You stepped back to the quay."}
         sort_order: 9
   # --- puzzle: the riddle scratched into the harbour wall (fog-riddle) ---

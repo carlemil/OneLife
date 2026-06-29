@@ -74,7 +74,7 @@ nodes:
       - id: e-apothecary-square
         road: [[0.3967, 0.7223], [0.3711, 0.7712]]
         to: lund-square
-        label: Back to the cathedral square
+        label: Up to the cathedral square
         effects: {log: "You left the shuttered apothecary."}
         sort_order: 9
   # --- atmosphere: the cathedral crypt ---
@@ -97,7 +97,7 @@ nodes:
       - id: e-crypt-square
         road: [[0.4818, 0.7851], [0.3956, 0.8069]]
         to: lund-square
-        label: Climb back up to the square
+        label: Climb up to the square
         effects: {log: "You climbed back out of the crypt."}
         sort_order: 9
 
@@ -143,7 +143,7 @@ nodes:
       - id: e-stortorget-harbor
         road: [[0.3961, 0.4543], [0.4219, 0.4092]]
         to: malmo-harbor
-        label: Back toward the harbour road
+        label: Toward the harbour road
         effects: {log: "You left Stortorget."}
         sort_order: 9
       - id: e-stortorget-lilla
@@ -164,7 +164,7 @@ nodes:
       - id: e-lilla-stortorget
         road: [[0.3168, 0.4275], [0.3417, 0.4592]]
         to: malmo-stortorget
-        label: Back out to the great square
+        label: Out to the great square
         effects: {log: "You returned to Stortorget."}
         sort_order: 9
   - id: malmo-castle
@@ -208,7 +208,7 @@ nodes:
       - id: e-torso-harbor
         road: [[0.1812, 0.2808], [0.3638, 0.3597]]
         to: malmo-harbor
-        label: Turn back from the water's edge
+        label: Step away from the water's edge
         effects: {log: "You left the twisting tower."}
         sort_order: 9
   - id: malmo-pildamms
@@ -230,7 +230,7 @@ nodes:
       - id: e-pildamms-harbor
         road: [[0.6994, 0.3259], [0.5764, 0.3424]]
         to: malmo-harbor
-        label: Find your way back out of the park
+        label: Find your way out of the park
         effects: {log: "You left the park, eventually."}
         sort_order: 9
   - id: malmo-cemetery
@@ -252,7 +252,7 @@ nodes:
       - id: e-cemetery-harbor
         road: [[0.6191, 0.2811], [0.5286, 0.3616]]
         to: malmo-harbor
-        label: Back through the gate to the streets
+        label: Out through the gate to the streets
         effects: {log: "You left the old cemetery."}
         sort_order: 9
   - id: malmo-citytunnel
@@ -274,7 +274,7 @@ nodes:
       - id: e-citytunnel-harbor
         road: [[0.5093, 0.4054], [0.4673, 0.3904]]
         to: malmo-harbor
-        label: Ride the long escalator back up
+        label: Ride the long escalator up
         effects: {log: "You climbed back up out of the tunnel."}
         sort_order: 9
 
@@ -312,7 +312,7 @@ nodes:
       - id: e-street-inside
         road: [[0.8146, 0.6783], [0.8523, 0.659]]
         to: kbk-entrance-hall
-        label: Climb back in through the broken window
+        label: Climb in through the broken window
         effects: {no_alignment: true, log: "You went back into the school."}
   - id: lund-square
     pos: {x: -467, y: 4905}
@@ -352,7 +352,7 @@ nodes:
       - id: e-station-square
         road: [[0.4494, 0.7148], [0.4154, 0.7668]]
         to: lund-square
-        label: Back up to the cathedral square
+        label: Up to the cathedral square
         effects: {log: "You returned to the square."}
 
 # Standalone edge: leave the school for the village street (a world-access node).
