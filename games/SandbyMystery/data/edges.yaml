@@ -365,7 +365,7 @@ edges:
     to: sandby-street
     label: Climb out through the broken window beside the entrance
     conditions: {all: [{flag_set: knows_real_exit}]}
-    effects: {progress_points: 5, log: "You climbed out through the broken entrance window into Södra Sandby."}
+    effects: {progress_points: 5, no_alignment: true, log: "You climbed out through the broken entrance window into Södra Sandby."}
     sort_order: 5
   # --- Inter-cell links (two-way): rail lines between the station nodes, and the
   #     lane from Sandby out into the Skåne woods. These are direct shortcuts that

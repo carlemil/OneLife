@@ -56,9 +56,15 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                            verdict_a["law_chaos_delta"], verdict_a["reason"], kind="gate")
     align_str = alignment_label(*await current_alignment(conn, player_id))
 
-    attempts = ga["attempts"] + 1
+    # Count this as a real attempt only if it's substantive. A trivial one/two-word
+    # message or an exact duplicate of something already said does NOT advance the hint
+    # ladder or the mercy counter — so a player can't spam "hi" to trip the auto-pass.
+    norm = (text or "").strip().lower()
+    prior_player = [m["content"].strip().lower() for m in history[:-1] if m["role"] == "player"]
+    low_effort = (norm in prior_player) or (len(norm.split()) <= 2)
+    attempts = ga["attempts"] + (0 if low_effort else 1)
     ladder = spec.get("hint_ladder", [])
-    hint_level = min(attempts - 1, max(len(ladder) - 1, 0))
+    hint_level = min(max(attempts - 1, 0), max(len(ladder) - 1, 0))
 
     # Retrieve what this NPC remembers — own (this player) and leaked (others),
     # timeline-safe (MEMORY_AND_LEAKAGE.md §4).
@@ -93,8 +99,12 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # (indexed by failed attempts) hasn't reached its reveal rung yet.
     verdict = await llm.referee_verdict(spec, history, json.loads(ga["criteria_met"]))
     met = verdict["criteria_met"]
+    # Mercy is a soft-lock safety net, not a spam reward: it only fires after enough
+    # SUBSTANTIVE attempts AND once the player has met at least one criterion (genuine
+    # engagement). A player who never really engages can never trip it.
     mercy = spec.get("mercy_after_attempts")
-    satisfied = llm.success_rule_met(spec, met) or (mercy is not None and attempts >= mercy)
+    satisfied = llm.success_rule_met(spec, met) or (
+        mercy is not None and attempts >= mercy and len(met) >= 1)
 
     reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
                                   identity=identity, reveal=satisfied, alignment=align_str,

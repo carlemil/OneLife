@@ -157,4 +157,4 @@ puzzles:
     on_solve:
       progress_points: 35
       set_flag: solved_marta_anagram
-      log: "MÄRTA. The chalk letters seem to settle into place, and somewhere a child stops crying."
+      log: "MÄRTA. The chalk letters seem to settle into place, Märta stops crying."

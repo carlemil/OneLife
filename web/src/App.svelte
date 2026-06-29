@@ -756,12 +756,14 @@
           <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
           {#if game.node.type === 'gate' && game.gate}
+            <!-- The NPC's latest line sits ABOVE the input, so it reads as they speak,
+                 then you reply. -->
+            {#if gateReply}<p class="gate-reply">{gateReply}</p>{/if}
+            {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
             <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
               <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
               <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
             </form>
-            {#if gateReply}<p class="gate-reply">{gateReply}</p>{/if}
-            {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
           {/if}
 
           {#if game.node.type === 'puzzle' && game.puzzle}
@@ -877,7 +879,7 @@
           </h3>
           {#if panelOpen.leaderboard}
           {#if myWindow.length}
-            <ul class="lbside">{#each myWindow as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}{#if r.alignment} <span class="align" title="Alignment">({r.alignment})</span>{/if}</span><span class="score">{r.progress}</span></li>{/each}</ul>
+            <ul class="lbside">{#each myWindow as r}<li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}{#if r.alignment} <span class="align" title="Alignment">({r.alignment.toLowerCase()})</span>{/if}</span><span class="score">{r.progress}</span></li>{/each}</ul>
           {:else}
             <p class="sub">no ranking yet</p>
           {/if}
@@ -941,7 +943,7 @@
         </div>
         <ul class="lblist">
           {#each lbRows as r}
-            <li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}{#if r.alignment} <span class="align" title="Alignment">({r.alignment})</span>{/if}</span><span class="score">{r.progress}</span></li>
+            <li class:me={r.is_me}><span class="rank">#{r.rank}</span><span class="nm">{#if r.completed}<span class="done" title="Completed the game">★</span> {/if}{r.display_name}{#if r.alignment} <span class="align" title="Alignment">({r.alignment.toLowerCase()})</span>{/if}</span><span class="score">{r.progress}</span></li>
           {/each}
           {#if lbRows.length === 0}<li class="empty sub">no matches</li>{/if}
         </ul>
@@ -1222,7 +1224,7 @@
   .lblist .score, .lbside .score { text-align:right; font-weight:bold; font-variant-numeric:tabular-nums; }
   .lblist li.me, .lbside li.me { color:#cdbb9a; background:#2a3550; }
   .done { color:#e8c060; font-weight:bold; }
-  .align { color:#8a8fa3; font-variant-numeric:tabular-nums; font-size:.92em; }
+  .align { color:#8a8fa3; font-variant-numeric:tabular-nums; font-size:.92em; margin-left:.4em; }
   .lblist li.empty, .lbside li.empty { display:block; background:none; }
   .lbnav { align-items:center; justify-content:space-between; }
   .admin-sec { border-top:1px solid #2a2e3e; padding:.8rem 0; }

@@ -24,7 +24,7 @@ gates:
       - "He grumbles and keeps polishing, volunteering nothing. He does not trust you."
       - "He softens a fraction, but still won't say. \"And why should I be telling you anything?\""
       - "Won over at last, he sighs, digs a worn brass handle from his coat and presses it into your hand. \"That boiler-room door's been broke since '98. Took its handle off myself. Only way out after dark. Now leave me be.\""
-    mercy_after_attempts: 10
+    mercy_after_attempts: 4
     on_success:
       progress_points: 40
       set_flag: has_boiler_handle

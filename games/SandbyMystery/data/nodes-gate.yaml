@@ -392,7 +392,7 @@ nodes:
         to: death-motel-room
         label: Take a room for the night
         effects: {log: "You took a room at the motel by the lake."}
-        danger: 0
+        danger: 2
         sort_order: 6
       - id: e-quarry-mother
         to: death-motel-mother
@@ -445,7 +445,7 @@ nodes:
         to: death-crooked-game
         label: Keep playing her game
         effects: {log: "You kept playing Pippa's games."}
-        danger: 0
+        danger: 2
         sort_order: 6
       - id: e-crooked-gold
         to: death-crooked-gold

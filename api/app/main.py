@@ -458,9 +458,12 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
                 raise HTTPException(400, "edge conditions not met")
             move_seq = await engine.traverse_edge(conn, sess, edge)
             # An explicit story choice shifts alignment (navigation via /api/walk and
-            # /api/travel does not). Judge the authored label, memoized per edge.
+            # /api/travel does not). Judge the authored label, memoized per edge — unless
+            # the edge is marked `no_alignment` (a morally-neutral action, e.g. climbing
+            # in/out the broken window), in which case it never moves the player's standing.
+            edge_effects = json.loads(edge["effects"]) if edge["effects"] else {}
             label = (edge["label"] or "").strip()
-            if label:
+            if label and not edge_effects.get("no_alignment"):
                 v = await _edge_alignment(conn, edge["id"], label)
                 await engine.record_alignment(
                     conn, sess["player_id"], move_seq, v["good_evil_delta"],

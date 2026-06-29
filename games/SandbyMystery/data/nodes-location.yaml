@@ -69,7 +69,7 @@ nodes:
         to: death-apothecary-tincture
         label: Force the grille and taste a tincture
         effects: {log: "You broke into the apothecary and tasted a jar."}
-        danger: 0
+        danger: 2
         sort_order: 7
       - id: e-apothecary-square
         road: [[0.3967, 0.7223], [0.3711, 0.7712]]
@@ -313,7 +313,7 @@ nodes:
         road: [[0.8146, 0.6783], [0.8523, 0.659]]
         to: kbk-entrance-hall
         label: Climb back in through the broken window
-        effects: {log: "You went back into the school."}
+        effects: {no_alignment: true, log: "You went back into the school."}
   - id: lund-square
     pos: {x: -467, y: 4905}
     map: {x: 0.3559, y: 0.8361, scale: 3.0}
@@ -345,9 +345,9 @@ nodes:
     edges:
       - id: e-station-lasttrain
         to: death-station-lasttrain
-        label: Board the last train
+        label: Step aboard the silent, empty last train you never heard arrive
         effects: {log: "You stepped aboard the last train."}
-        danger: 0
+        danger: 2
         sort_order: 7
       - id: e-station-square
         road: [[0.4494, 0.7148], [0.4154, 0.7668]]
