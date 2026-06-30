@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-boiler-room
-    pos: {x: 2933, y: 3015}
+    pos: {x: 2720, y: 338}
     arc: main
     type: puzzle
     location: killebackskolan
@@ -30,7 +30,7 @@ nodes:
   # --- from lund ---
   # --- puzzle: the stuck departures board at Lund station (last-train-time) ---
   - id: lund-station-board
-    pos: {x: 1526, y: 2079}
+    pos: {x: 2957, y: 2562}
     arc: main
     type: puzzle
     location: lund-station
@@ -54,7 +54,7 @@ nodes:
         sort_order: 9
   # --- puzzle: Orlök's candle riddle (candle-riddle), once you've met him ---
   - id: lund-orlok-candle
-    pos: {x: 40, y: 2439}
+    pos: {x: 4033, y: 4215}
     arc: main
     type: puzzle
     location: lund-manor
@@ -78,7 +78,7 @@ nodes:
         sort_order: 8
   # --- puzzle: von Vinné's specimen (elder-specimen), once you've met him ---
   - id: lund-vinne-specimen
-    pos: {x: 167, y: 2745}
+    pos: {x: 4434, y: 3917}
     arc: main
     type: puzzle
     location: lund-botanical
@@ -103,7 +103,7 @@ nodes:
 
   # --- from malmo ---
   - id: malmo-locker
-    pos: {x: 1520, y: 563}
+    pos: {x: 944, y: 3203}
     arc: main
     type: puzzle
     location: malmo-locker
@@ -127,7 +127,7 @@ nodes:
         sort_order: 9
   # --- puzzle: the riddle scratched into the harbour wall (fog-riddle) ---
   - id: malmo-harbor-fog
-    pos: {x: 1604, y: 684}
+    pos: {x: 1000, y: 2993}
     arc: main
     type: puzzle
     location: malmo-harbor
@@ -151,7 +151,7 @@ nodes:
         sort_order: 9
   # --- puzzle: the blank gravestone (gravestone-sum) ---
   - id: malmo-cemetery-stones
-    pos: {x: 1013, y: 1111}
+    pos: {x: 1334, y: 3786}
     arc: main
     type: puzzle
     location: malmo-cemetery
@@ -175,7 +175,7 @@ nodes:
         sort_order: 9
   # --- puzzle: Vallmo's evidence-box word-lock (ystad-wordlock), once you've met him ---
   - id: malmo-vallmo-lock
-    pos: {x: 1679, y: 40}
+    pos: {x: 667, y: 2538}
     arc: main
     type: puzzle
     location: malmo-police
@@ -201,7 +201,7 @@ nodes:
   # --- from marta ---
   # --- puzzle: the chalk letters on the classroom floor (marta-anagram) ---
   - id: kbk-chalk-letters
-    pos: {x: 2811, y: 2894}
+    pos: {x: 2593, y: 829}
     arc: main
     type: puzzle
     location: killebackskolan
@@ -212,14 +212,16 @@ nodes:
     body_variants:
       - when: {all: [{puzzle_solved: marta-anagram}]}
         body: "Just inside the empty classroom, the five chalk letters have been pushed into their order on the floor — MÄRTA — and the cold that hung in the corridor has eased, as if a name spoken aloud had been enough."
+    # The chalk letters connect only to the classroom they lie in — both ways out lead
+    # back to Märta, never straight to the hall.
     edges:
       - id: e-chalk-solved
-        to: kbk-entrance-hall
+        to: kbk-classroom
         label: Say the name aloud
         conditions: {all: [{puzzle_solved: marta-anagram}]}
         effects: {progress_points: 20, log: "You spoke the name, and the cold in the corridor eased a little."}
       - id: e-chalk-back
-        to: kbk-entrance-hall
+        to: kbk-classroom
         label: Leave the letters where they lie
         effects: {log: "You left the chalk letters on the floor."}
         sort_order: 9
@@ -229,7 +231,7 @@ nodes:
   # --- from sandby ---
   # --- puzzle: the riddle cut over the lych-gate (church-bell-riddle) ---
   - id: sandby-church-bell
-    pos: {x: 1871, y: 3456}
+    pos: {x: 3564, y: 411}
     arc: main
     type: puzzle
     location: sandby-church
@@ -253,7 +255,7 @@ nodes:
         sort_order: 8
   # --- puzzle: Dödblek's wager (dodblek-games), offered once you've met him ---
   - id: sandby-dodblek-count
-    pos: {x: 1701, y: 3359}
+    pos: {x: 3785, y: 421}
     arc: main
     type: puzzle
     location: sandby-church
@@ -277,7 +279,7 @@ nodes:
         sort_order: 7
   # --- puzzle: Pippa's riddle-game (shadow-riddle), offered once you've met her ---
   - id: sandby-pippa-shadow
-    pos: {x: 2136, y: 3301}
+    pos: {x: 4067, y: 703}
     arc: main
     type: puzzle
     location: sandby-crooked-house

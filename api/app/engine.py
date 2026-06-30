@@ -829,7 +829,7 @@ async def rollback(conn, player_id, session, to_seq: int) -> dict:
         "SELECT node_id, story_time FROM log_entries WHERE log_id=$1 AND seq=$2",
         log_id, to_seq)
     if target is None:
-        raise ValueError("no such log step")
+        raise ValueError("That point in your history is no longer available to go back to.")
 
     await conn.execute(
         "UPDATE log_entries SET rolled_back=TRUE WHERE log_id=$1 AND seq>$2",

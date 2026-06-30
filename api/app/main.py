@@ -7,8 +7,10 @@ transaction so a failed action leaves no partial state.
 import os
 import json
 import uuid
+import traceback
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 
@@ -35,6 +37,18 @@ app.add_middleware(
 app.mount("/content-static",
           StaticFiles(directory=os.environ.get("CONTENT_DIR", "/content"), check_dir=False),
           name="content-static")
+
+
+@app.exception_handler(Exception)
+async def _unhandled_error(request: Request, exc: Exception):
+    """Any unexpected (non-HTTPException) error becomes a clear, generic message
+    instead of a bare 'Internal Server Error' / 'HTTP 500' the user can't act on.
+    The real traceback is logged server-side for debugging."""
+    traceback.print_exception(type(exc), exc, exc.__traceback__)
+    return JSONResponse(
+        status_code=500,
+        content={"detail": "Something went wrong on our end. Please try again in a moment."},
+    )
 
 
 @app.middleware("http")
@@ -111,12 +125,12 @@ async def _shutdown():
 
 async def _session(authorization: str | None):
     if not authorization or not authorization.lower().startswith("bearer "):
-        raise HTTPException(401, "missing bearer token")
+        raise HTTPException(401, "You're not signed in. Please log in to continue.")
     token = authorization.split(" ", 1)[1].strip()
     try:
         uuid.UUID(token)  # malformed token → 401, not a 500 from the UUID column
     except ValueError:
-        raise HTTPException(401, "invalid token")
+        raise HTTPException(401, "Your session is invalid. Please log in again.")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
@@ -126,13 +140,13 @@ async def _session(authorization: str | None):
                WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
             token)
     if row is None:
-        raise HTTPException(401, "invalid or expired token")
+        raise HTTPException(401, "Your session has expired. Please log in again.")
     return dict(row)
 
 
 def _require_onboarded(sess: dict):
     if not sess.get("onboarded"):
-        raise HTTPException(403, "onboarding required")
+        raise HTTPException(403, "Please finish onboarding before you start playing.")
 
 
 def _is_admin(sess: dict) -> bool:
@@ -150,7 +164,7 @@ def _game_name() -> str:
 
 def _require_admin(sess: dict):
     if not _is_admin(sess):
-        raise HTTPException(403, "admin only")
+        raise HTTPException(403, "This area is for administrators only.")
 
 
 async def _start_game(conn, sess: dict):
@@ -269,15 +283,15 @@ async def health():
 @app.post("/api/auth/register")
 async def register(body: RegisterBody, request: Request):
     if not security.allow(f"register:{_client_ip(request)}", 10, 3600):
-        raise HTTPException(429, "too many registrations — try again later")
+        raise HTTPException(429, "Too many sign-up attempts from your network. Please try again later.")
     email = body.email.strip().lower()
     name = body.display_name.strip()
     if "@" not in email:
-        raise HTTPException(400, "valid email required")
+        raise HTTPException(400, "Please enter a valid email address.")
     if len(body.password) < 8:
-        raise HTTPException(400, "password must be at least 8 characters")
+        raise HTTPException(400, "Your password must be at least 8 characters long.")
     if not name:
-        raise HTTPException(400, "display_name required")
+        raise HTTPException(400, "Please enter a character name.")
     want_2fa = bool(body.two_factor)
     secret = auth.new_totp_secret() if want_2fa else None
     enc_secret = security.encrypt(secret) if want_2fa else None
@@ -296,10 +310,10 @@ async def register(body: RegisterBody, request: Request):
             reclaimable = existing is not None \
                 and existing["totp_secret"] is not None and not existing["totp_enabled"]
             if existing is not None and not reclaimable:
-                raise HTTPException(409, "email already registered — log in instead")
+                raise HTTPException(409, "That email is already registered. Try logging in instead.")
             if await conn.fetchval(
                     "SELECT 1 FROM players WHERE display_name=$1 AND email<>$2", name, email):
-                raise HTTPException(409, "display name taken")
+                raise HTTPException(409, "That character name is already taken. Please choose another.")
             if reclaimable:
                 await conn.execute(
                     "DELETE FROM recovery_codes WHERE player_id=$1", existing["id"])
@@ -325,16 +339,16 @@ async def register(body: RegisterBody, request: Request):
 @app.post("/api/auth/totp/enable")
 async def totp_enable(body: TotpBody, request: Request):
     if not security.allow(f"totp:{_client_ip(request)}", 20, 3600):
-        raise HTTPException(429, "too many attempts — try again later")
+        raise HTTPException(429, "Too many attempts. Please try again later.")
     email = body.email.strip().lower()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         p = await conn.fetchrow(
             "SELECT id, password_hash, totp_secret FROM players WHERE email=$1", email)
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
-            raise HTTPException(401, "invalid email or password")
+            raise HTTPException(401, "Incorrect email or password.")
         if not auth.verify_totp(security.decrypt(p["totp_secret"]), body.code):
-            raise HTTPException(400, "invalid authenticator code")
+            raise HTTPException(400, "That authenticator code isn't right. Please try again.")
         # Issue one-time recovery codes (shown once, stored hashed).
         codes = auth.generate_recovery_codes()
         async with conn.transaction():
@@ -363,9 +377,9 @@ async def login(body: LoginBody, request: Request):
     ip = _client_ip(request)
     email = body.email.strip().lower()
     if not security.allow(f"login:{ip}", 30, 60):
-        raise HTTPException(429, "too many requests — slow down")
+        raise HTTPException(429, "Too many requests. Please slow down and try again.")
     if security.locked(f"loginfail:{email}", 5, 300):
-        raise HTTPException(429, "too many failed attempts — wait 5 minutes")
+        raise HTTPException(429, "Too many failed login attempts. Please wait 5 minutes and try again.")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         p = await conn.fetchrow(
@@ -373,18 +387,18 @@ async def login(body: LoginBody, request: Request):
                FROM players WHERE email=$1""", email)
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
             security.record_fail(f"loginfail:{email}")
-            raise HTTPException(401, "invalid email or password")
+            raise HTTPException(401, "Incorrect email or password.")
         if p["totp_secret"] is None:
             pass  # password-only account (2FA opted out) — password is enough
         elif not p["totp_enabled"]:
-            raise HTTPException(403, "two-factor setup not complete")
+            raise HTTPException(403, "Your two-factor setup isn't finished yet. Please register again to complete it.")
         else:
             code = auth.normalize_code(body.code)
             ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
                 or await _check_recovery(conn, p["id"], code)
             if not ok:
                 security.record_fail(f"loginfail:{email}")
-                raise HTTPException(401, "invalid authenticator or recovery code")
+                raise HTTPException(401, "That authenticator or recovery code isn't right. Please try again.")
         security.clear_fails(f"loginfail:{email}")
         # One session per player: rotate the token + TTL, preserve game state.
         token = await conn.fetchval(
@@ -426,6 +440,12 @@ async def state(authorization: str | None = Header(default=None)):
     _require_onboarded(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
+        # An onboarded player should always have a game in progress. If they don't
+        # (e.g. their progress was reset), bootstrap one instead of rendering a
+        # NULL current_node and crashing. _start_game is idempotent.
+        if not sess.get("current_node") or not sess.get("log_id"):
+            async with conn.transaction():
+                await _start_game(conn, sess)
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
@@ -452,10 +472,10 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
         async with conn.transaction():
             edge = await conn.fetchrow("SELECT * FROM story_edges WHERE id=$1", body.edge_id)
             if edge is None or edge["from_node"] != sess["current_node"]:
-                raise HTTPException(400, "edge not available from current node")
+                raise HTTPException(400, "That option isn't available from where you are right now.")
             ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
             if not evaluate(json.loads(edge["conditions"]), ctx):
-                raise HTTPException(400, "edge conditions not met")
+                raise HTTPException(400, "You can't take that path yet.")
             move_seq = await engine.traverse_edge(conn, sess, edge)
             # An explicit story choice shifts alignment (navigation via /api/walk and
             # /api/travel does not). Judge the authored label, memoized per edge — unless
@@ -505,15 +525,15 @@ async def walk(body: WalkBody, authorization: str | None = Header(default=None))
                 conn, sess["player_id"], node, sess["story_time"])
             path = paths.get(body.node_id)
             if not path:
-                raise HTTPException(400, "can't walk there from here")
+                raise HTTPException(400, "You can't walk there from where you are.")
             for eid in path:
                 edge = await conn.fetchrow("SELECT * FROM story_edges WHERE id=$1", eid)
                 if edge is None or edge["from_node"] != sess["current_node"]:
-                    raise HTTPException(400, "walk path is no longer open")
+                    raise HTTPException(400, "That path is no longer open.")
                 ctx = await engine.load_context(
                     conn, sess["player_id"], sess["story_time"])
                 if not evaluate(json.loads(edge["conditions"]), ctx):
-                    raise HTTPException(400, "the way is blocked")
+                    raise HTTPException(400, "The way there is blocked.")
                 await engine.traverse_edge(conn, sess, edge)
         return await engine.render_state(conn, sess["player_id"], sess)
 
@@ -720,20 +740,20 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
             node = await conn.fetchrow(
                 "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
             if not node or not node["world_access"]:
-                raise HTTPException(400, "you can't travel from here")
+                raise HTTPException(400, "You can't travel from here. Find a spot that opens the map first.")
             cur = await _current_cell(conn, sess["current_node"])
             dest = await conn.fetchrow(
                 "SELECT id, grid_x, grid_y, name, arrival_node FROM world_cells WHERE id=$1",
                 body.cell_id)
             if dest is None or not dest["arrival_node"]:
-                raise HTTPException(404, "no such destination")
+                raise HTTPException(404, "There's no such place to travel to.")
             discovered = await conn.fetchval(
                 "SELECT 1 FROM player_cells WHERE player_id=$1 AND cell_id=$2",
                 sess["player_id"], dest["id"])
             if not discovered:
-                raise HTTPException(400, "you don't know the way there yet")
+                raise HTTPException(400, "You don't know the way there yet.")
             if cur is None or not _adjacent(cur, dest):
-                raise HTTPException(400, "that's too far to travel in one step")
+                raise HTTPException(400, "That's too far to travel in a single step.")
             arrival = dest["arrival_node"]
             seq, story_time = await engine.apply_action(
                 conn, sess["player_id"], sess["log_id"], node_id=arrival,

@@ -87,7 +87,7 @@
   svg { width:100%; height:auto; display:block; overflow:visible; }
   .frame { fill:rgba(20,22,30,.5); stroke:#3a3f52; stroke-width:.8; }
   .grid { stroke:#2f3447; stroke-width:.6; }
-  .cell { fill:#5a6075; font:600 5px Georgia, serif; opacity:.5; }
+  .cell { fill:#aab0cc; font:400 6px Georgia, serif; opacity:.85; }
   .axis { fill:#cdbb9a; font:600 10px Georgia, serif; }
   .trail { fill:none; stroke:#7a7ad0; stroke-width:1; opacity:.55; stroke-linejoin:round; }
   .dot { fill:#9a9ae0; }

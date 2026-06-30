@@ -11,7 +11,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-caught
-    pos: {x: 3090, y: 3275}
+    pos: {x: 2614, y: 137}
     arc: main
     type: death
     location: killebackskolan
@@ -20,6 +20,7 @@ nodes:
     body: "You throw your shoulder against the PANNRUM door. It gives with a shriek of metal — into pure black. Something in that dark had been waiting a very long time. It does not hesitate. ▒ You have died. ▒"
 
   - id: death-school-dark
+    pos: {x: 2772, y: 40}
     arc: main
     type: death
     location: killebackskolan
@@ -29,6 +30,7 @@ nodes:
 
   # --- Hannibal Läcker: the supper club cellar (lund-cellar) ---
   - id: death-cellar-meal
+    pos: {x: 4840, y: 3131}
     arc: main
     type: death
     location: lund-cellar
@@ -37,6 +39,7 @@ nodes:
     body: "You clean your plate; it would be rude not to. He watches you eat with the soft delight of a man watching a circle close. \"You're wondering about the meat,\" he says, refilling your glass. \"You knew a moment ago. You've decided not to.\" He is right, and that is the trap — you decided not to know, and so you stayed, and so you are exactly where the last guest sat. The cardamom hides a great deal. By the time the room tilts you understand you are not the diner. ▒ You have died. ▒"
 
   - id: death-cellar-curious
+    pos: {x: 4950, y: 3254}
     arc: main
     type: death
     location: lund-cellar
@@ -45,6 +48,7 @@ nodes:
     body: "\"What is the meat,\" you ask, and the candlelight goes very still. He sets down his fork with infinite care. \"How disappointing,\" he murmurs, almost tenderly. \"I had hoped you were a guest.\" He rises, and he is faster than a courteous man in a pressed grey suit has any right to be, and the cellar door has no handle on the inside. He does so hate to waste a cut. ▒ You have died. ▒"
 
   - id: death-cellar-rude
+    pos: {x: 4980, y: 3411}
     arc: main
     type: death
     location: lund-cellar
@@ -53,6 +57,7 @@ nodes:
     body: "\"People will be looking for me,\" you tell him. \"I'll see this place shut down.\" The threat lands in the warm air and dies there. He smiles, genuinely pained. \"Whenever I'm about to be bored,\" he says, \"someone is rude. It's almost a kindness — it makes the rest so easy.\" He is still smiling when he reaches you. He is the sort of man who finds free-range manners the most distasteful thing of all. ▒ You have died. ▒"
 
   - id: death-cellar-kitchen
+    pos: {x: 4873, y: 3529}
     arc: main
     type: death
     location: lund-cellar
@@ -62,6 +67,7 @@ nodes:
 
   # --- Greve Orlök: the manor outside Lund (lund-manor) ---
   - id: death-manor-invite
+    pos: {x: 4201, y: 4503}
     arc: main
     type: death
     location: lund-manor
@@ -70,6 +76,7 @@ nodes:
     body: "\"You should come and see me,\" you say, meaning the town, meaning nothing — \"any time.\" The candles all lean the same way at once. \"Any time,\" he repeats, and the words have a weight you cannot take back, because a threshold only matters until it is offered, and you have just offered yours. He does not need to cross the manor's door now. He needs only to be where you will be. He smiles, and it is the patience of something that has all the time there is. ▒ You have died. ▒"
 
   - id: death-manor-cup
+    pos: {x: 4296, y: 4392}
     arc: main
     type: death
     location: lund-manor
@@ -78,6 +85,7 @@ nodes:
     body: "He offers a dark cup in his twig-thin fingers and it would be discourteous to refuse a host so old. It is warm. It is not wine. By the time the manor swims you are already sitting, already still, already growing cold from the inside as he watches with his head tilted, unhurried, the way the village downwind grows sick a house at a time. He has fed slowly for centuries. He is in no rush with you. ▒ You have died. ▒"
 
   - id: death-manor-linger
+    pos: {x: 3980, y: 4530}
     arc: main
     type: death
     location: lund-manor
@@ -86,6 +94,7 @@ nodes:
     body: "You stay too long; the conversation is interesting and the last light leaves the windows. When full dark settles the count changes — not his shape, but the room's relation to him, everything tilting his way as if down a drain. The rats go quiet. \"Now,\" he says softly, \"we needn't be formal.\" The door you came in by is very far across a floor that has begun, gently, to slope. ▒ You have died. ▒"
 
   - id: death-manor-eyes
+    pos: {x: 3838, y: 4433}
     arc: main
     type: death
     location: lund-manor
@@ -95,6 +104,7 @@ nodes:
 
   # --- Herr Dödblek: the churchyard (sandby-church) ---
   - id: death-church-lose
+    pos: {x: 3594, y: 120}
     arc: main
     type: death
     location: sandby-church
@@ -103,6 +113,7 @@ nodes:
     body: "You sit, and you wager the only thing he plays for, and for a while you even believe you are winning. Then his pale hand moves a piece you did not guard and the shape of the whole board changes and you see, too late, that you were always going to be here. \"A good game,\" he says, and he means it; he is courteous, and he never hurries, and he has lost exactly once and this is not that time. He turns over your king with one finger. The churchyard is very cold. ▒ You have died. ▒"
 
   - id: death-church-upend
+    pos: {x: 3815, y: 90}
     arc: main
     type: death
     location: sandby-church
@@ -111,6 +122,7 @@ nodes:
     body: "You sweep the pieces off the table. They scatter among the leaning stones and the pale figure watches them fall without the smallest change in his mild, flat face. \"People think the game is the bargain,\" he says, gathering the pieces back with terrible patience. \"The game was the mercy.\" He sets the board between you again, but he is no longer offering to play. There was never a version of this where you simply walked away. ▒ You have died. ▒"
 
   - id: death-church-when
+    pos: {x: 3942, y: 187}
     arc: main
     type: death
     location: sandby-church
@@ -120,6 +132,7 @@ nodes:
 
   # --- Norman Båts: the gravel-pit motel (sandby-quarry) ---
   - id: death-motel-room
+    pos: {x: 4584, y: 1097}
     arc: main
     type: death
     location: sandby-quarry
@@ -128,6 +141,7 @@ nodes:
     body: "You take a room. He is so pleased he nearly drops the key. The water runs warm and the bed is soft and you are almost asleep when the bathroom light throws a long shape across the curtain — too tall, in a dress that went out of fashion forty years ago, and behind it Norman's voice, very small, saying \"I told her not to, I told her—\". The curtain rings shriek along the rail. Some guests check in and stay in the lake. ▒ You have died. ▒"
 
   - id: death-motel-mother
+    pos: {x: 4434, y: 1000}
     arc: main
     type: death
     location: sandby-quarry
@@ -136,6 +150,7 @@ nodes:
     body: "\"I'd like to meet your mother,\" you say, and all the boyish fluster drains out of him at once, leaving something flat and cold behind the eyes. \"She'd like that,\" he says, in a voice that isn't quite his. \"She's been wanting to meet you.\" He opens the door to the house above the office. She has been waiting at the top of the stairs in the dark for a very long time, and she does not like questions, and she is not, in any sense that matters, alive. ▒ You have died. ▒"
 
   - id: death-motel-boathouse
+    pos: {x: 4537, y: 871}
     arc: main
     type: death
     location: sandby-quarry
@@ -144,6 +159,7 @@ nodes:
     body: "The boathouse door is unlocked. Inside, in the green underwater light, are the things the lake gave back and Norman could not bear to let go — the cases, the coats, the little inventory of everyone who only stayed the one night. You are still counting them when the boards creak behind you and Mother's shadow fills the doorway, and you understand you have walked into the part of the lake that is kept indoors. ▒ You have died. ▒"
 
   - id: death-quarry-swim
+    pos: {x: 4459, y: 1250}
     arc: main
     type: death
     location: sandby-quarry
@@ -153,6 +169,7 @@ nodes:
 
   # --- Karl von Vinné: the glasshouse (lund-botanical) ---
   - id: death-glasshouse-pin
+    pos: {x: 4719, y: 3933}
     arc: main
     type: death
     location: lund-botanical
@@ -161,6 +178,7 @@ nodes:
     body: "You stand still and let him bring the glass to your face, because it seems a harmless vanity to be admired. \"Remarkable,\" he breathes, circling. \"Quite unrecorded.\" He has named and pinned every living thing in Skåne, and he has never once been able to stop at naming. The needle is longer than you expected and he handles it with a lover's care. He is already lettering the label as the board comes up to meet you. He gets the Latin right. ▒ You have died. ▒"
 
   - id: death-glasshouse-flask
+    pos: {x: 4680, y: 4101}
     arc: main
     type: death
     location: lund-botanical
@@ -169,6 +187,7 @@ nodes:
     body: "He pours you a measure from the dark bottle at his elbow and toasts your new species-name. It is not wine. It is what he keeps the specimens in, and it works on you the way it works on them — slowly, thoroughly, from the inside out, fixing you mid-gesture for the board. \"Hold that expression,\" he says, delighted, reaching for a fresh pin. \"It's perfect.\" ▒ You have died. ▒"
 
   - id: death-glasshouse-third
+    pos: {x: 4551, y: 4205}
     arc: main
     type: death
     location: lund-botanical
@@ -178,6 +197,7 @@ nodes:
 
   # --- Pippa Långskugga: the crooked house (sandby-crooked-house) ---
   - id: death-crooked-armwrestle
+    pos: {x: 4155, y: 391}
     arc: main
     type: death
     location: sandby-crooked-house
@@ -186,6 +206,7 @@ nodes:
     body: "\"Arm-wrestle you?\" She lights up like a struck match. \"Nobody ever wants to play!\" She sets her elbow on the rail and takes your hand in hers, and she is grinning, and she means no harm at all — that is the whole trouble. She has bent a horseshoe straight in those fingers without noticing. She does not know her own strength because nothing has ever taught her its edges, and your hand is not a horseshoe. The crack carries out across the dark fields. She is still apologising as it goes dark. ▒ You have died. ▒"
 
   - id: death-crooked-game
+    pos: {x: 4314, y: 488}
     arc: main
     type: death
     location: sandby-crooked-house
@@ -194,6 +215,7 @@ nodes:
     body: "You keep playing, because she laughs when you do and there is something unbearable about the loneliness underneath the laughing. The games get rougher the way a child's do — tag, then catch, then a swinging game where she takes your hands and spins — and she is so strong, and so happy, and she forgets, the way she forgets everything sad, that you are only made of the ordinary stuff. The crooked house wheels past. Then the sky. Then nothing. ▒ You have died. ▒"
 
   - id: death-crooked-gold
+    pos: {x: 4352, y: 622}
     arc: main
     type: death
     location: sandby-crooked-house
@@ -203,6 +225,7 @@ nodes:
 
   # --- Lisbet Salamander: the server basement (malmo-server-basement) ---
   - id: death-basement-grab
+    pos: {x: 40, y: 3205}
     arc: main
     type: death
     location: malmo-server-basement
@@ -211,6 +234,7 @@ nodes:
     body: "You grab the laptop and run for the stairs. You make it three steps. She does not shout — people who watch the exits never need to — and the taser drops you twitching between the humming racks. She stands over you unhurried, salamander tattoo lit green by the screens, and what she does next she does because someone, long ago, taught her that mercy was a thing other people got. She is very good at not being found out. ▒ You have died. ▒"
 
   - id: death-basement-betray
+    pos: {x: 40, y: 3010}
     arc: main
     type: death
     location: malmo-server-basement
@@ -220,6 +244,7 @@ nodes:
 
   # --- Kurt Vallmo: police HQ (malmo-police) ---
   - id: death-police-lunge
+    pos: {x: 422, y: 2468}
     arc: main
     type: death
     location: malmo-police
@@ -229,6 +254,7 @@ nodes:
 
   # --- Skärlök Holm: the lodgings (lund-lodgings) ---
   - id: death-lodgings-beaker
+    pos: {x: 3634, y: 4085}
     arc: main
     type: death
     location: lund-lodgings
@@ -238,6 +264,7 @@ nodes:
 
   # --- Zoltan Ibrahimson: Rosengård (malmo-rosengard) ---
   - id: death-rosengard-mock
+    pos: {x: 242, y: 3799}
     arc: main
     type: death
     location: malmo-rosengard
@@ -246,6 +273,7 @@ nodes:
     body: "\"Rosengård,\" you sneer. \"Explains a lot.\" The ball stops dead under his boot. The grin stays but everything behind it goes to iron, because the chip he carries from these estates is the realest thing about him and you have just flicked it. He does not raise his voice. He doesn't have to; he knows everyone within these towers and not one of them owes you a thing. The floodlights are very bright and there are a great many quiet ways out of a cage pitch after midnight. ▒ You have died. ▒"
 
   - id: death-rosengard-swing
+    pos: {x: 140, y: 3634}
     arc: main
     type: death
     location: malmo-rosengard
@@ -256,6 +284,7 @@ nodes:
   # --- lethal places ---
 
   - id: death-crypt-dark
+    pos: {x: 3774, y: 2629}
     arc: main
     type: death
     location: lund-crypt
@@ -264,6 +293,7 @@ nodes:
     body: "You feel your way past the squat pillars, deeper than the carved giant Finn, into a dark the cathedral has kept down here longer than there has been a cathedral. The ticking water stops. The floor is no longer level. When you put out a hand the stone is warm, and it moves, and the whole patient weight the giant has been straining against for a thousand years chooses this moment, with you beneath it, to come down. ▒ You have died. ▒"
 
   - id: death-apothecary-tincture
+    pos: {x: 3850, y: 2904}
     arc: main
     type: death
     location: lund-apothecary
@@ -272,6 +302,7 @@ nodes:
     body: "You work the grille loose and slip in among the clouded jars. One is still half-full, labelled in a careful nineteenth-century hand, and you wet a finger and taste it the way you would test a thing in a dream. Bitter almonds — the smell that was in the back room all along. Old poison keeps better than old medicine. You barely reach the counter before the jar's careful label has the last word. ▒ You have died. ▒"
 
   - id: death-harbor-water
+    pos: {x: 713, y: 2980}
     arc: main
     type: death
     location: malmo-harbor
@@ -280,6 +311,7 @@ nodes:
     body: "An iron ladder goes down the quay wall into the black slap of the Öresund, and you climb down to see what the cranes are looking at. The bottom rungs are slick with weed and the cold takes your hands first. You miss your grip. The harbour water is colder than thought and deeper than the cranes are tall, and the tide that runs through these old docks has carried better swimmers out past the breakwater and not brought them back. ▒ You have died. ▒"
 
   - id: death-torso-ledge
+    pos: {x: 657, y: 3900}
     arc: main
     type: death
     location: malmo-turning-torso
@@ -288,6 +320,7 @@ nodes:
     body: "You find the one lift that still runs and ride it up through the tower's slow stone twist to the single lit window, where the light moved and went still. The window is open. The ledge beyond it is barely a ledge, and the wind off the sound comes round the building's turning the wrong way, the way it has all night, and shoulders you off almost gently. The Western Harbour wheels up to meet you, each storey wrung a little further than the last. ▒ You have died. ▒"
 
   - id: death-triangeln-tracks
+    pos: {x: 2148, y: 3150}
     arc: main
     type: death
     location: malmo-citytunnel
@@ -296,6 +329,7 @@ nodes:
     body: "The board has held the same train at one minute out since you came down. You step off the tiled edge onto the track to see why it never arrives — and the warm air pushes harder out of the tunnel mouth, that long exhalation, and far down the dark the single light you have been waiting for finally, finally begins to move. The minute the train never reached arrives all at once. There is no time to climb back up. ▒ You have died. ▒"
 
   - id: death-station-lasttrain
+    pos: {x: 2989, y: 2274}
     arc: main
     type: death
     location: lund-station
@@ -304,6 +338,7 @@ nodes:
     body: "A train you did not hear arrive stands at the empty platform, lit warm and yellow, doors open, not a soul aboard. It is very late and you are very tired and you step on. The doors sigh shut. It pulls out smooth and silent through a Skåne that goes dark at the glass and stays dark, and somewhere past the third station that isn't on any map you understand the last train does not run to where the living get off. The doors do not open again for you. ▒ You have died. ▒"
 
   - id: death-castle-moat
+    pos: {x: 955, y: 3789}
     arc: main
     type: death
     location: malmo-castle
@@ -312,6 +347,7 @@ nodes:
     body: "Rather than the footbridge you try the moat itself, skinned over grey and still. The ice holds for four steps — long enough to be sure of it — and gives on the fifth without a crack, just a sudden silent opening, and the black water under the red-brick fortress closes over the hole as neatly as a mouth. The walls were built to keep people in. The moat has always done its share of the work. ▒ You have died. ▒"
 
   - id: death-cemetery-grave
+    pos: {x: 1256, y: 4030}
     arc: main
     type: death
     location: malmo-cemetery
@@ -320,6 +356,7 @@ nodes:
     body: "A light moves between the leaning stones — a lantern, you think, someone tending late — and you follow it down the rows of limes into the fog. It leads you to a grave dug open and waiting, the earth fresh, the hole the exact length of a person your height. The light goes out. The fog closes the way a hand closes. You were right that someone tended these plots; you were wrong about who, and for whom. ▒ You have died. ▒"
 
   - id: death-woods-offpath
+    pos: {x: 3964, y: 1524}
     arc: main
     type: death
     location: skane-woods
@@ -328,6 +365,7 @@ nodes:
     body: "There are lights between the pines, low and warm, and you leave the track to go to them the way you have wanted to since you came under the trees. The path is gone the moment you can no longer see it. The lights stay always the same distance ahead, patient, drawing you deeper into a dark that was old before the road was cut, and the forest closes its long green silence behind you. The Skåne woods do not give you back. ▒ You have died. ▒"
 
   - id: death-pildamms-water
+    pos: {x: 1722, y: 3600}
     arc: main
     type: death
     location: malmo-pildamms

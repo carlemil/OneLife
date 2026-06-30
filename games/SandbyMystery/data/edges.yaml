@@ -272,38 +272,40 @@ edges:
     sort_order: 9
 
   # --- from marta ---
-  # Before the chalk puzzle is solved you hear her crying; after, the crying has
-  # stopped, so the way in is described as a return rather than "follow the crying".
+  # The classroom is the ONLY way in to the chalk letters, and the chalk letters loop
+  # back to the classroom — never straight to the hall. The hall's way in reflects how
+  # the girl is now: still crying (neither calmed nor her name spelled out on the
+  # floor), or quiet (either the gate is passed or the anagram is solved).
   - id: e-hall-classroom
     from: kbk-entrance-hall
     to: kbk-classroom
     label: Follow the sound of crying into a classroom
-    conditions: {all: [{not: {puzzle_solved: marta-anagram}}]}
+    conditions: {all: [{not: {any: [{gate_passed: kbk-marta-calm}, {puzzle_solved: marta-anagram}]}}]}
     effects: {progress_points: 5, log: "You found a frightened girl hiding in a classroom."}
     sort_order: 4
   - id: e-hall-classroom-revisit
     from: kbk-entrance-hall
     to: kbk-classroom
-    label: Go back into the classroom Märta is hiding in
-    conditions: {all: [{puzzle_solved: marta-anagram}]}
+    label: Go back into the quiet classroom
+    conditions: {all: [{any: [{gate_passed: kbk-marta-calm}, {puzzle_solved: marta-anagram}]}]}
     effects: {log: "You went back into the classroom."}
     sort_order: 4
+  # The chalk letters are reached only through the classroom; the choice's wording
+  # tracks whether they still lie scattered or have been settled into her name.
   - id: e-classroom-chalk
     from: kbk-classroom
     to: kbk-chalk-letters
-    label: Look at the chalk letters scattered on a classroom floor
-    effects: {progress_points: 5, log: "You noticed five chalk letters scattered on a classroom floor."}
+    label: Look at the chalk letters scattered across the classroom floor
+    conditions: {all: [{not: {puzzle_solved: marta-anagram}}]}
+    effects: {progress_points: 5, log: "You crossed to the chalk letters scattered on the classroom floor."}
     sort_order: 6
-  # Once you've got through to Märta her classroom (a finished gate) is hidden from
-  # the hall, which would otherwise strand the chalk letters reached through it — so a
-  # direct hall->chalk path opens then. It auto-hides once the puzzle is solved.
-  - id: e-hall-chalk-direct
-    from: kbk-entrance-hall
+  - id: e-classroom-chalk-solved
+    from: kbk-classroom
     to: kbk-chalk-letters
-    label: Go back to the chalk letters scattered on the classroom floor
-    conditions: {all: [{gate_passed: kbk-marta-calm}]}
-    effects: {progress_points: 5, log: "You went back to the classroom, to the chalk letters on the floor."}
-    sort_order: 5
+    label: Look again at the name chalked on the floor
+    conditions: {all: [{puzzle_solved: marta-anagram}]}
+    effects: {log: "You looked again at the name chalked on the floor."}
+    sort_order: 6
 
   # --- from sandby ---
   - id: e-street-church

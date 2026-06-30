@@ -703,7 +703,7 @@
       <input type="email" bind:value={email} placeholder="Email" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       <input type="password" bind:value={password} placeholder="Password (min 8 chars)" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       {#if authMode==='register'}
-        <input bind:value={displayName} placeholder="Display name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
+        <input bind:value={displayName} placeholder="Character name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
         <label class="opt toggle"><input type="checkbox" bind:checked={twoFactor} /> Protect this account with two-factor auth (recommended)</label>
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
         <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>

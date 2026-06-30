@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-wake
-    pos: {x: 2901, y: 3461}
+    pos: {x: 2993, y: 45}
     arc: main
     type: narration
     location: killebackskolan
@@ -18,7 +18,7 @@ nodes:
         label: Get your bearings
         effects: {progress_points: 5, log: "You got to your feet in the entrance hall."}
   - id: kbk-cabinet-note
-    pos: {x: 3154, y: 2996}
+    pos: {x: 2499, y: 327}
     arc: main
     type: narration
     location: killebackskolan

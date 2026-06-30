@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-entrance-hall
-    pos: {x: 3775, y: 476}
+    pos: {x: 2962, y: 574}
     map: {x: 0.8905, y: 0.6413, rx: 0.05, ry: 0.045, scale: 3.0}
     arc: main
     type: location
@@ -56,7 +56,7 @@ nodes:
   # --- from lund ---
   # --- atmosphere: the old apothecary ---
   - id: lund-apothecary
-    pos: {x: 274, y: 3795}
+    pos: {x: 3511, y: 2929}
     map: {x: 0.405, y: 0.6568, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: location
@@ -79,7 +79,7 @@ nodes:
         sort_order: 9
   # --- atmosphere: the cathedral crypt ---
   - id: lund-crypt
-    pos: {x: 743, y: 4695}
+    pos: {x: 3504, y: 2818}
     map: {x: 0.5368, y: 0.8064, rx: 0.05, ry: 0.045, scale: 1.75}
     arc: main
     type: location
@@ -103,7 +103,7 @@ nodes:
 
   # --- from malmo ---
   - id: malmo-harbor
-    pos: {x: 432, y: -141}
+    pos: {x: 1165, y: 3154}
     map: {x: 0.4314, y: 0.3393, rx: 0.05, ry: 0.045, scale: 1.75}
     arc: main
     type: location
@@ -131,7 +131,7 @@ nodes:
         sort_order: 7
   # --- atmosphere ---
   - id: malmo-stortorget
-    pos: {x: -631, y: 1463}
+    pos: {x: 1465, y: 3023}
     map: {x: 0.3695, y: 0.4877, rx: 0.05, ry: 0.045, scale: 1.5}
     arc: main
     type: location
@@ -152,7 +152,7 @@ nodes:
         label: Slip into the little timbered square
         effects: {progress_points: 3, log: "You crossed to Lilla Torg."}
   - id: malmo-lilla-torg
-    pos: {x: -1188, y: 982}
+    pos: {x: 1182, y: 2787}
     map: {x: 0.2905, y: 0.3974, rx: 0.05, ry: 0.045, scale: 1.55}
     arc: main
     type: location
@@ -168,7 +168,7 @@ nodes:
         effects: {log: "You returned to Stortorget."}
         sort_order: 9
   - id: malmo-castle
-    pos: {x: -848, y: -3158}
+    pos: {x: 1190, y: 3345}
     map: {x: 0.3625, y: 0.2, rx: 0.05, ry: 0.045, scale: 3.0}
     arc: main
     type: location
@@ -190,7 +190,7 @@ nodes:
         effects: {log: "You left the castle behind its moat."}
         sort_order: 9
   - id: malmo-turning-torso
-    pos: {x: -2598, y: -281}
+    pos: {x: 963, y: 3499}
     map: {x: 0.1168, y: 0.2619, rx: 0.05, ry: 0.045, scale: 2.25}
     arc: main
     type: location
@@ -212,7 +212,7 @@ nodes:
         effects: {log: "You left the twisting tower."}
         sort_order: 9
   - id: malmo-pildamms
-    pos: {x: 2521, y: -1140}
+    pos: {x: 1590, y: 3233}
     map: {x: 0.8068, y: 0.24, rx: 0.05, ry: 0.045, scale: 2.05}
     arc: main
     type: location
@@ -235,7 +235,7 @@ nodes:
         sort_order: 9
   - id: malmo-cemetery
     map: {x: 0.6586, y: 0.2387, scale: 1.8}
-    pos: {x: 2034, y: -1659}
+    pos: {x: 1343, y: 3521}
     arc: main
     type: location
     location: malmo-cemetery
@@ -256,7 +256,7 @@ nodes:
         effects: {log: "You left the old cemetery."}
         sort_order: 9
   - id: malmo-citytunnel
-    pos: {x: 1179, y: 241}
+    pos: {x: 2029, y: 2914}
     map: {x: 0.5508, y: 0.4326, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: location
@@ -281,7 +281,7 @@ nodes:
   # --- from skane-woods ---
   - id: woods-path
     map: {x: 0.765, y: 0.5471}
-    pos: {x: 2945, y: 1278}
+    pos: {x: 3682, y: 1406}
     arc: main
     type: location
     location: skane-woods
@@ -299,7 +299,7 @@ nodes:
 
   # --- from world ---
   - id: sandby-street
-    pos: {x: 3484, y: 2672}
+    pos: {x: 3457, y: 1305}
     map: {x: 0.7823, y: 0.7187, rx: 0.05, ry: 0.045, scale: 1.95}
     arc: main
     type: location
@@ -315,7 +315,7 @@ nodes:
         label: Climb in through the broken window
         effects: {no_alignment: true, log: "You went back into the school."}
   - id: lund-square
-    pos: {x: -467, y: 4905}
+    pos: {x: 3806, y: 3284}
     map: {x: 0.3559, y: 0.8361, scale: 3.0}
     arc: main
     type: location
@@ -331,7 +331,7 @@ nodes:
         label: Walk down to the station
         effects: {progress_points: 5, log: "You walked to Lund station."}
   - id: lund-station
-    pos: {x: 1344, y: 3721}
+    pos: {x: 3178, y: 2525}
     map: {x: 0.4986, y: 0.6555, rx: 0.05, ry: 0.045, scale: 1.65}
     arc: main
     type: location

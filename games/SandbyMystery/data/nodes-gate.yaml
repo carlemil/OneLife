@@ -4,7 +4,7 @@ nodes:
 
   # --- from killebackskolan ---
   - id: kbk-janitor-gate
-    pos: {x: 2692, y: 3325}
+    pos: {x: 2981, y: 283}
     arc: main
     type: gate
     location: killebackskolan
@@ -28,7 +28,7 @@ nodes:
 
   # --- from lund ---
   - id: lund-library
-    pos: {x: 268, y: 5460}
+    pos: {x: 3678, y: 3154}
     map: {x: 0.4523, y: 0.8658, rx: 0.05, ry: 0.045, scale: 1.4}
     arc: main
     type: gate
@@ -49,7 +49,7 @@ nodes:
         sort_order: 9
   # --- Hannibal Läcker: the supper club cellar ---
   - id: lund-cellar
-    pos: {x: -1125, y: 5608}
+    pos: {x: 4484, y: 3315}
     map: {x: 0.2686, y: 0.8387, rx: 0.05, ry: 0.045, scale: 1.6}
     arc: main
     type: gate
@@ -94,7 +94,7 @@ nodes:
         sort_order: 9
   # --- Skärlök Holm: the lodgings ---
   - id: lund-lodgings
-    pos: {x: -637, y: 3400}
+    pos: {x: 3828, y: 3735}
     map: {x: 0.2805, y: 0.674, rx: 0.05, ry: 0.045, scale: 1.8}
     arc: main
     type: gate
@@ -123,7 +123,7 @@ nodes:
         sort_order: 9
   # --- Greve Orlök: the manor ---
   - id: lund-manor
-    pos: {x: -1751, y: 2981}
+    pos: {x: 3999, y: 3979}
     map: {x: 0.1623, y: 0.6671, rx: 0.05, ry: 0.045, scale: 2.2}
     arc: main
     type: gate
@@ -168,7 +168,7 @@ nodes:
         sort_order: 9
   # --- Karl von Vinné: the botanical garden ---
   - id: lund-botanical
-    pos: {x: -1568, y: 4539}
+    pos: {x: 4263, y: 3794}
     map: {x: 0.1295, y: 0.8155, rx: 0.05, ry: 0.045, scale: 2.6}
     arc: main
     type: gate
@@ -211,7 +211,7 @@ nodes:
   # --- from malmo ---
   # --- Zoltan Ibrahimson: Rosengård ---
   - id: malmo-rosengard
-    pos: {x: 464, y: -1177}
+    pos: {x: 620, y: 3467}
     map: {x: 0.4732, y: 0.1987, rx: 0.05, ry: 0.045, scale: 2.4}
     arc: main
     type: gate
@@ -244,7 +244,7 @@ nodes:
         sort_order: 9
   # --- Lisbet Salamander: the server basement ---
   - id: malmo-server-basement
-    pos: {x: 1072, y: -1795}
+    pos: {x: 532, y: 3126}
     map: {x: 0.5305, y: 0.2735, rx: 0.05, ry: 0.045, scale: 1.35}
     arc: main
     type: gate
@@ -279,7 +279,7 @@ nodes:
         sort_order: 9
   # --- Kurt Vallmo: police HQ ---
   - id: malmo-police
-    pos: {x: -1492, y: 254}
+    pos: {x: 852, y: 2734}
     map: {x: 0.2332, y: 0.3432, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate
@@ -309,7 +309,7 @@ nodes:
 
   # --- from marta ---
   - id: kbk-classroom
-    pos: {x: 2863, y: 3209}
+    pos: {x: 2494, y: 539}
     map: {x: 0.2777, y: 0.705, rx: 0.05, ry: 0.045, scale: 1.0}
     arc: main
     type: gate
@@ -317,13 +317,22 @@ nodes:
     title: The Classroom
     gate: kbk-marta-calm
     media: {image_theme: dark-classroom, music_theme: fragile-quiet}
-    body: "You follow a thin sound of crying into a darkened classroom. A girl is wedged between two desks, knees drawn to her chest. She freezes when she sees you, eyes wide. (Try to calm her enough to talk.)"
+    # The room's state is the combination of the gate (have you calmed Märta?) and the
+    # chalk-letters puzzle (have her scattered letters been settled into MÄRTA?). The
+    # four body variants below — and the navigation to the chalk letters in edges.yaml —
+    # are kept in step with both. Calming her always whispers her name, so any
+    # gate-passed state can use "Märta".
+    body: "You follow a thin sound of crying into a darkened classroom. A girl is wedged between two desks, knees drawn to her chest. She freezes when she sees you, eyes wide. On the floor near her, five chalk letters lie scattered as if dropped mid-word. (Try to calm her enough to talk.)"
     body_variants:
-      # Once you know her name, the narration uses it; until then she's "the girl".
-      - when: {all: [{gate_passed: kbk-marta-calm}, {name_known: marta}]}
-        body: "The classroom is quiet now. Märta sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
-      - when: {all: [{gate_passed: kbk-marta-calm}]}
-        body: "The classroom is quiet now. The girl sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. She watches you the way you watch a door you're not certain is locked."
+      # Calmed AND the chalk name solved — nothing left unresolved here.
+      - when: {all: [{gate_passed: kbk-marta-calm}, {puzzle_solved: marta-anagram}]}
+        body: "The classroom is quiet now. Märta sits where she was, knees drawn up, the fear gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. On the floor the chalk letters she scattered have settled into her name: MÄRTA."
+      # Calmed, but the chalk letters still lie scattered.
+      - when: {all: [{gate_passed: kbk-marta-calm}, {not: {puzzle_solved: marta-anagram}}]}
+        body: "The classroom is quiet now. Märta sits where she was, knees drawn up, but the wildness has gone out of her eyes — she has told you what she saw, the caretaker creeping down to the boiler room in the dark. On the floor near her, five chalk letters still lie scattered, waiting to be a name."
+      # The chalk name solved (her crying has stopped), but she has not yet trusted you enough to talk.
+      - when: {all: [{not: {gate_passed: kbk-marta-calm}}, {puzzle_solved: marta-anagram}]}
+        body: "The crying has stopped. The girl is still wedged between the desks, knees drawn up, watching you warily — but the wildness has eased. On the floor the five chalk letters have been pushed into their order: MÄRTA. She has not yet said a word to you. (Try to calm her enough to talk.)"
     edges:
       - id: e-classroom-leave
         to: kbk-entrance-hall
@@ -334,7 +343,7 @@ nodes:
   # --- from sandby ---
   # --- Herr Dödblek: the churchyard ---
   - id: sandby-church
-    pos: {x: 2515, y: 3942}
+    pos: {x: 3676, y: 618}
     map: {x: 0.705, y: 0.8439, rx: 0.05, ry: 0.045, scale: 2.7}
     arc: main
     type: gate
@@ -373,7 +382,7 @@ nodes:
         sort_order: 9
   # --- Norman Båts: the gravel-pit motel ---
   - id: sandby-quarry
-    pos: {x: 3863, y: 4684}
+    pos: {x: 4072, y: 1103}
     map: {x: 0.9023, y: 0.8464, rx: 0.05, ry: 0.045, scale: 2.7}
     arc: main
     type: gate
@@ -420,7 +429,7 @@ nodes:
         sort_order: 9
   # --- Pippa Långskugga: the crooked house ---
   - id: sandby-crooked-house
-    pos: {x: 3028, y: 4831}
+    pos: {x: 3921, y: 835}
     map: {x: 0.8195, y: 0.8606, rx: 0.05, ry: 0.045, scale: 1.25}
     arc: main
     type: gate

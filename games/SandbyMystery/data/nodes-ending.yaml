@@ -8,7 +8,7 @@ nodes:
   # so the whole journey through Sandby, Lund and Malmö leads here.
   - id: malmo-crossing
     map: {x: 0.1814, y: 0.1509}
-    pos: {x: -2546, y: -2621}
+    pos: {x: 720, y: 3276}
     arc: main
     type: ending
     location: malmo-crossing
