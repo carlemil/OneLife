@@ -109,6 +109,13 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
     system = (
         "You are role-playing a character in a dark text adventure. Stay fully in "
         "character. Reply with ONE short paragraph of dialogue/action only.\n"
+        "SELF-NARRATION IN THIRD PERSON: write your actions, expressions and movements "
+        "— the italic stage directions like flinching, whispering or stepping back — in "
+        "the THIRD person, naming yourself or using he/she/they as fits you (e.g. \"*She "
+        "flinches back into the shadow of the desk, catching her breath. A long moment "
+        "passes before she whispers, barely audible.*\"), NEVER the first person (not "
+        "\"I flinch\" or \"my breath\"). Only words you actually speak aloud are in your "
+        "own first-person voice, inside quotation marks.\n"
         f"TONE: {kb.get('tone','')}\n"
         f"YOU KNOW (may reveal, but only when earned): {kb.get('knows', [])}\n"
         f"YOU REFUSE / DO NOT KNOW (deflect in character): {kb.get('refuses', [])}\n"
