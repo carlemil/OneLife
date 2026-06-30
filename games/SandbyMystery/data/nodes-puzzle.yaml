@@ -215,11 +215,13 @@ nodes:
     # The chalk letters connect only to the classroom they lie in — both ways out lead
     # back to Märta, never straight to the hall.
     edges:
+      # Speaking the name is a ONE-TIME beat: the flag retires this choice afterwards so
+      # the +20 can't be farmed by bouncing back to the letters and saying it again.
       - id: e-chalk-solved
         to: kbk-classroom
         label: Say the name aloud
-        conditions: {all: [{puzzle_solved: marta-anagram}]}
-        effects: {progress_points: 20, log: "You spoke the name, and the cold in the corridor eased a little."}
+        conditions: {all: [{puzzle_solved: marta-anagram}, {not: {flag_set: spoke_marta_name}}]}
+        effects: {progress_points: 20, set_flag: spoke_marta_name, log: "You spoke the name, and the cold in the corridor eased a little."}
       - id: e-chalk-back
         to: kbk-classroom
         label: Leave the letters where they lie

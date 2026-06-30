@@ -82,6 +82,10 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # fed to the Actor so it discloses it clearly on the reveal turn and stays
     # consistent (it has already helped this person) on every turn after.
     recap = spec.get("on_success", {}).get("log")
+    # When the gate discloses the NPC's name on success (whisper_name), that name is a
+    # reward — the Actor must withhold it until the player gets through, not introduce
+    # itself early.
+    name_earned = bool(spec.get("on_success", {}).get("whisper_name"))
 
     # Already convinced on an earlier turn: keep chatting in character, but never
     # re-judge or re-apply effects. The player is free to keep talking, or take an
@@ -89,7 +93,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     if ga["satisfied"]:
         reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
                                       identity=identity, alignment=align_str,
-                                      recap=recap, already_helped=True)
+                                      recap=recap, already_helped=True,
+                                      name_earned=name_earned)
         await _say(reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
@@ -108,7 +113,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
 
     reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
                                   identity=identity, reveal=satisfied, alignment=align_str,
-                                  recap=(recap if satisfied else None))
+                                  recap=(recap if satisfied else None),
+                                  name_earned=name_earned)
 
     await conn.execute(
         """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5

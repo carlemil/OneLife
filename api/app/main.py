@@ -284,14 +284,17 @@ async def health():
 async def register(body: RegisterBody, request: Request):
     if not security.allow(f"register:{_client_ip(request)}", 10, 3600):
         raise HTTPException(429, "Too many sign-up attempts from your network. Please try again later.")
-    email = body.email.strip().lower()
     name = body.display_name.strip()
-    if "@" not in email:
-        raise HTTPException(400, "Please enter a valid email address.")
     if len(body.password) < 8:
         raise HTTPException(400, "Your password must be at least 8 characters long.")
     if not name:
         raise HTTPException(400, "Please enter a character name.")
+    # The login identifier (stored in the email column) can be a real email, a plain
+    # username, or — if the field is left blank — the character name itself. There is no
+    # email-specific behaviour anywhere, so we don't require an "@"; it's just a unique
+    # handle the player logs in with.
+    login_name = body.email.strip() or name
+    email = login_name.lower()
     want_2fa = bool(body.two_factor)
     secret = auth.new_totp_secret() if want_2fa else None
     enc_secret = security.encrypt(secret) if want_2fa else None
@@ -330,10 +333,11 @@ async def register(body: RegisterBody, request: Request):
                     email, pwd, name, enc_secret)
     if not want_2fa:
         # Password-only account — ready to log in immediately.
-        return {"two_factor": False}
+        return {"two_factor": False, "login_name": login_name}
     uri = auth.totp_uri(secret, email)
     # 2FA must be set up before login; hand back the QR.
-    return {"two_factor": True, "otpauth_uri": uri, "secret": secret, "qr_svg": auth.qr_svg(uri)}
+    return {"two_factor": True, "otpauth_uri": uri, "secret": secret,
+            "qr_svg": auth.qr_svg(uri), "login_name": login_name}
 
 
 @app.post("/api/auth/totp/enable")

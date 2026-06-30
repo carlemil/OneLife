@@ -737,8 +737,13 @@ async def render_state(conn, player_id, session) -> dict:
     for e in edges:
         if not evaluate(json.loads(e["conditions"]), ctx):
             continue
+        eff = json.loads(e["effects"]) if e["effects"] else {}
         t = tinfo.get(e["to_node"])
-        finished = t is not None and (
+        # `keep_when_finished` opts an edge out of the declutter-hiding below: use it for
+        # a hub gate that still has sub-content reached through it (e.g. the classroom,
+        # a passed gate, is the only way back to the chalk letters), so passing the gate
+        # never strands what lies beyond it.
+        finished = (not eff.get("keep_when_finished")) and t is not None and (
             (t["type"] == "gate" and t["gate_id"] in ctx.passed_gates)
             or (t["type"] == "puzzle" and t["puzzle_id"] in ctx.solved_puzzles))
         passing.append((e, finished))

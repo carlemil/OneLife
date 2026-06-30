@@ -288,7 +288,9 @@ edges:
     to: kbk-classroom
     label: Go back into the quiet classroom
     conditions: {all: [{any: [{gate_passed: kbk-marta-calm}, {puzzle_solved: marta-anagram}]}]}
-    effects: {log: "You went back into the classroom."}
+    # kbk-classroom is a passed gate; without keep_when_finished the engine would hide
+    # this edge and strand the classroom (and the chalk letters reached through it).
+    effects: {log: "You went back into the classroom.", keep_when_finished: true}
     sort_order: 4
   # The chalk letters are reached only through the classroom; the choice's wording
   # tracks whether they still lie scattered or have been settled into her name.
@@ -304,7 +306,9 @@ edges:
     to: kbk-chalk-letters
     label: Look again at the name chalked on the floor
     conditions: {all: [{puzzle_solved: marta-anagram}]}
-    effects: {log: "You looked again at the name chalked on the floor."}
+    # The chalk letters are a solved puzzle now; keep the look-again choice visible so
+    # the classroom hub never hides its own sub-node.
+    effects: {log: "You looked again at the name chalked on the floor.", keep_when_finished: true}
     sort_order: 6
 
   # --- from sandby ---

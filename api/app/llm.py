@@ -32,7 +32,8 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       leaked_memories: list[str] | None = None,
                       identity: dict | None = None, reveal: bool = False,
                       alignment: str | None = None,
-                      recap: str | None = None, already_helped: bool = False) -> str:
+                      recap: str | None = None, already_helped: bool = False,
+                      name_earned: bool = False) -> str:
     kb = spec.get("knowledge_boundary", {})
     ladder = spec.get("hint_ladder", [])
     # On the turn the gate is passed (reveal=True), AND on every turn after it
@@ -54,6 +55,14 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                 f"reason to conceal your true name (\"{identity['true_name']}\") — do NOT "
                 "volunteer it and deflect if asked, until the player has genuinely earned "
                 "your trust; only then might you give your real name.")
+        elif name_earned and not (reveal or already_helped):
+            # Your name is something the player must EARN — it is disclosed only when this
+            # gate is passed. Until then, withhold it, so the player can't learn what to
+            # call you before they've actually got through to you.
+            identity_block = (
+                f"\nIDENTITY: your name is \"{identity['name']}\", but you do NOT give it to "
+                "a frightening stranger. Do NOT volunteer your name, introduce yourself, or "
+                "let it slip — only once you genuinely trust this person will you whisper it.")
         else:
             identity_block = (
                 f"\nIDENTITY: your name is \"{identity['name']}\". If you have not already "

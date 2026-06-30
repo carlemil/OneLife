@@ -282,14 +282,20 @@
     error = ''; busy = true;
     try {
       const r = await api.register(email.trim(), password, displayName.trim(), twoFactor);
+      // The server resolves the login name (the email/username typed, or the character
+      // name if left blank). Prefill the field with it so the follow-up login/2FA calls
+      // use it, and tell the player what to log in with next time.
+      const loginName = r.login_name || email.trim();
+      email = loginName;
+      const loginMsg = `Your login name is "${loginName}" — use it with your password to log in next time.`;
       if (r.two_factor) {
         qrSvg = r.qr_svg; secret = r.secret;
         phase = 'twofa';
-        notice = 'Scan the QR with an authenticator app, then enter a code to finish setup.';
+        notice = `${loginMsg} Scan the QR with an authenticator app, then enter a code to finish setup.`;
       } else {
         // Password-only account: log straight in, no code needed.
-        notice = '';
-        const lr = await api.login(email.trim(), password, '');
+        notice = loginMsg;
+        const lr = await api.login(loginName, password, '');
         if (lr.onboarded) await loadGame(); else await loadOnboarding();
       }
     } catch (e) { error = e.message; }
@@ -700,10 +706,11 @@
   {:else if phase === 'auth'}
     <div class="panel narrow">
       <h2>{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
-      <input type="email" bind:value={email} placeholder="Email" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
+      <input type="text" bind:value={email} placeholder="Email or username" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       <input type="password" bind:value={password} placeholder="Password (min 8 chars)" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       {#if authMode==='register'}
         <input bind:value={displayName} placeholder="Character name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
+        <p class="sub authhint">No email needed — leave the first field blank and your character name becomes your login name.</p>
         <label class="opt toggle"><input type="checkbox" bind:checked={twoFactor} /> Protect this account with two-factor auth (recommended)</label>
         <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
         <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>
@@ -1185,6 +1192,7 @@
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
   .maphint { margin:.4rem 0 0; text-align:center; }
+  .authhint { margin:-.15rem 0 .35rem; line-height:1.4; }
   .modal-card.worldmap { width:min(960px,94vw); max-height:92vh; overflow:auto; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
   .notes { margin-top:1.5rem; }
