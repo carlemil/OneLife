@@ -12,7 +12,7 @@ live /api/atmosphere endpoint serves.
 import asyncio
 import sys
 
-from . import content, db, atmosphere, imagegen
+from . import content, db, atmosphere, imagegen, gamestate
 
 
 def _theme_to_scene(data: dict) -> dict:
@@ -41,6 +41,7 @@ async def run(force: bool) -> int:
               "(set IMAGE_PROVIDER=pollinations or IMAGE_API_KEY). Nothing to do.")
         return 0
 
+    game_id = gamestate.active_game()
     data, _ = content.load_dir()
     cells = {c["id"]: c for c in data["cells"]}
     scenes = _theme_to_scene(data)
@@ -55,13 +56,14 @@ async def run(force: bool) -> int:
     async with pool.acquire() as conn:
         if force:
             await conn.execute(
-                "DELETE FROM generated_images WHERE theme = ANY($1::text[])", list(scenes))
+                "DELETE FROM generated_images WHERE game_id=$1 AND theme = ANY($2::text[])",
+                game_id, list(scenes))
         for theme, s in sorted(scenes.items()):
             loc = s["loc"]
             setting = atmosphere.setting_for(loc, cells.get(loc.get("cell")))
             ref = s["reference"] if imagegen.I2I_ENABLED else None
             url = await atmosphere.image_for(
-                conn, theme, loc, setting,
+                conn, game_id, theme, loc, setting,
                 real_place=s["real_place"], reference=ref, scene_text=s["scene_text"])
             if url:
                 made += 1

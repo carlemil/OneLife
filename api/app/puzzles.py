@@ -58,24 +58,26 @@ def _check(solution: dict, answer: str, ctx) -> bool:
 
 
 async def submit(conn, player_id, session, answer: str) -> dict:
-    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE id=$1",
-                               session["current_node"])
-    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE id=$1", node["puzzle_id"])
+    gid = session["game_id"]
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
+                               gid, session["current_node"])
+    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE game_id=$1 AND id=$2",
+                             gid, node["puzzle_id"])
 
     pp = await conn.fetchrow(
-        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
-        player_id, pz["id"])
+        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"])
     if pp is None:
         await conn.execute(
-            "INSERT INTO puzzle_progress (player_id, puzzle_id) VALUES ($1,$2)",
-            player_id, pz["id"])
+            "INSERT INTO puzzle_progress (player_id, game_id, puzzle_id) VALUES ($1,$2,$3)",
+            player_id, gid, pz["id"])
         pp = await conn.fetchrow(
-            "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
-            player_id, pz["id"])
+            "SELECT * FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+            player_id, gid, pz["id"])
     if pp["solved"]:
         return {"solved": True, "message": "Already open."}
 
-    ctx = await load_context(conn, player_id, session["story_time"])
+    ctx = await load_context(conn, player_id, gid, session["story_time"])
     ok = _check(json.loads(pz["solution"]), answer, ctx)
 
     attempts = pp["attempts"] + 1
@@ -85,58 +87,61 @@ async def submit(conn, player_id, session, answer: str) -> dict:
     # not just the terse outcome line. The prompt is recorded once (deduped; also
     # shown on arrival at the node); every submitted answer is recorded. Both are
     # seq-stamped beats, so they roll back with the rest of the run.
-    await narrate_puzzle_prompt(conn, session["log_id"], node, session["story_time"])
-    await narrate(conn, session["log_id"], node_id=node["id"],
+    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"])
+    await narrate(conn, session["log_id"], gid, node_id=node["id"],
                   story_time=session["story_time"],
                   summary=f'You answer: "{answer.strip()}"', kind="puzzle")
 
     if ok:
         on_solve = json.loads(pz["on_solve"])
         seq, story_time = await apply_action(
-            conn, player_id, session["log_id"], node_id=node["id"],
+            conn, player_id, gid, session["log_id"], node_id=node["id"],
             effects=on_solve, story_time=session["story_time"], kind="puzzle")
         await conn.execute(
-            """UPDATE puzzle_progress SET solved=TRUE, solved_at_seq=$3, attempts=$4
-               WHERE player_id=$1 AND puzzle_id=$2""",
-            player_id, pz["id"], seq, attempts)
+            """UPDATE puzzle_progress SET solved=TRUE, solved_at_seq=$4, attempts=$5
+               WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3""",
+            player_id, gid, pz["id"], seq, attempts)
         await conn.execute(
-            "UPDATE player_sessions SET story_time=$1 WHERE token=$2",
-            story_time, session["token"])
+            """UPDATE player_games SET story_time=$1, last_played_at=now()
+               WHERE player_id=$2 AND game_id=$3""",
+            story_time, player_id, gid)
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, session["log_id"], story_time, node["id"])
+        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
         return {"solved": True, "message": on_solve.get("log", "It opens.")}
 
     # No auto-hint: only count the attempt. Hints are revealed solely when the
     # player asks (request_hint), and only after they've tried at least once.
     await conn.execute(
-        "UPDATE puzzle_progress SET attempts=$3 WHERE player_id=$1 AND puzzle_id=$2",
-        player_id, pz["id"], attempts)
+        "UPDATE puzzle_progress SET attempts=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"], attempts)
     return {"solved": False, "message": "Nothing happens."}
 
 
 async def request_hint(conn, player_id, session) -> dict:
     """Reveal the next hint for the puzzle the player is on — but only after they
     have actually tried and failed. Each ask climbs one rung of the hint ladder."""
-    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE id=$1",
-                               session["current_node"])
+    gid = session["game_id"]
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
+                               gid, session["current_node"])
     if not node or not node["puzzle_id"]:
         return {"hint": None}
-    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE id=$1", node["puzzle_id"])
+    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE game_id=$1 AND id=$2",
+                             gid, node["puzzle_id"])
     ladder = json.loads(pz["hint_ladder"]) if pz else []
     pp = await conn.fetchrow(
-        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
-        player_id, pz["id"])
+        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"])
     if not ladder or pp is None or pp["solved"]:
         return {"hint": None}
     if pp["attempts"] == 0:
         return {"hint": None, "message": "Try an answer first."}
     new_level = min(pp["hint_level"] + 1, len(ladder))
     await conn.execute(
-        "UPDATE puzzle_progress SET hint_level=$3 WHERE player_id=$1 AND puzzle_id=$2",
-        player_id, pz["id"], new_level)
+        "UPDATE puzzle_progress SET hint_level=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"], new_level)
     # Voice the hint as whoever posed the riddle, and record it in the flow like the
     # rest of the conversation (so it persists and can be re-read).
     spoken = await llm.hint_in_character(pz["prompt"], ladder[new_level - 1])
-    await narrate(conn, session["log_id"], node_id=node["id"],
+    await narrate(conn, session["log_id"], gid, node_id=node["id"],
                   story_time=session["story_time"], summary=spoken, kind="puzzle")
     return {"hint": spoken}

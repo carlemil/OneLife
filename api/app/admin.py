@@ -8,26 +8,29 @@ to ::vector by json_populate_recordset's type coercion.
 """
 import json
 
-# Full dependency order: parents before children (FK-safe for insert).
+# Full dependency order: parents before children (FK-safe for insert). `games` is
+# the new root every content/runtime row hangs off; player_games is the save slot.
 ALL_TABLES = [
+    "games",
     "story_arcs", "world_cells", "characters", "locations", "puzzles",
     "story_nodes", "dialogue_gates", "story_edges", "puzzle_clues", "generated_images",
-    "players", "recovery_codes", "game_logs", "player_sessions", "log_entries",
+    "players", "recovery_codes", "player_games", "game_logs", "log_entries",
     "progress_events", "player_flags", "player_clues", "player_cells",
     "puzzle_progress", "gate_attempts", "gate_messages", "agent_memories",
 ]
 
-# Per-player runtime tables, in FK-safe insert order.
+# Per-player runtime tables, in FK-safe insert order (save slot first).
 PLAYER_TABLES = [
-    "game_logs", "log_entries", "progress_events", "player_flags", "player_clues",
-    "player_cells", "puzzle_progress", "gate_attempts", "gate_messages", "agent_memories",
+    "player_games", "game_logs", "log_entries", "progress_events", "player_flags",
+    "player_clues", "player_cells", "puzzle_progress", "gate_attempts",
+    "gate_messages", "agent_memories",
 ]
 
 
 async def _dump(conn, table: str, where: str = "", *args) -> list:
     """json_agg a table (optionally filtered). agent_memories.embedding → text."""
     if table == "agent_memories":
-        cols = ("id, character_id, content, embedding::text AS embedding, location_id, "
+        cols = ("id, game_id, character_id, content, embedding::text AS embedding, location_id, "
                 "story_time, source, origin_player_id, created_seq, voided, created_at")
         sql = f"SELECT coalesce(json_agg(r), '[]') FROM (SELECT {cols} FROM agent_memories t {where}) r"
     else:
@@ -62,17 +65,15 @@ async def import_all(conn, data: dict):
 #  Single player save
 # --------------------------------------------------------------------------- #
 async def export_player(conn, player_id: str) -> dict:
-    sess = await conn.fetchrow(
-        """SELECT p.id, p.display_name, p.onboarded,
-                  s.current_node, s.story_time, s.log_id
-           FROM players p LEFT JOIN player_sessions s ON s.player_id = p.id
-           WHERE p.id=$1""", player_id)
-    if sess is None:
+    """A player's whole account: every per-game save slot + all runtime, across all
+    games they've played."""
+    p = await conn.fetchrow(
+        "SELECT id, display_name, onboarded, active_game_id FROM players WHERE id=$1", player_id)
+    if p is None:
         return {}
-    save = {"player": {"id": str(sess["id"]), "display_name": sess["display_name"],
-                       "onboarded": sess["onboarded"], "current_node": sess["current_node"],
-                       "story_time": sess["story_time"],
-                       "log_id": str(sess["log_id"]) if sess["log_id"] else None}}
+    save = {"player": {"id": str(p["id"]), "display_name": p["display_name"],
+                       "onboarded": p["onboarded"], "active_game_id": p["active_game_id"]}}
+    save["player_games"] = await _dump(conn, "player_games", "WHERE t.player_id=$1", player_id)
     save["game_logs"] = await _dump(conn, "game_logs", "WHERE t.player_id=$1", player_id)
     save["log_entries"] = await _dump(
         conn, "log_entries", "WHERE t.log_id IN (SELECT id FROM game_logs WHERE player_id=$1)", player_id)
@@ -84,7 +85,7 @@ async def export_player(conn, player_id: str) -> dict:
 
 
 async def import_player(conn, data: dict):
-    """Destructive for THIS player only: replace their runtime state. The
+    """Destructive for THIS player only: replace all their save slots + runtime. The
     player_id must already exist (no cross-account remapping). One transaction."""
     p = data.get("player") or {}
     pid = p.get("id")
@@ -93,7 +94,7 @@ async def import_player(conn, data: dict):
     async with conn.transaction():
         if not await conn.fetchval("SELECT 1 FROM players WHERE id=$1", pid):
             raise ValueError("player not found on this server")
-        # wipe existing runtime for this player
+        # wipe existing runtime for this player (all games)
         await conn.execute("DELETE FROM agent_memories WHERE origin_player_id=$1", pid)
         for t in ["gate_messages", "gate_attempts", "puzzle_progress", "player_cells",
                   "player_clues", "player_flags", "progress_events"]:
@@ -101,18 +102,47 @@ async def import_player(conn, data: dict):
         await conn.execute(
             "DELETE FROM log_entries WHERE log_id IN (SELECT id FROM game_logs WHERE player_id=$1)", pid)
         await conn.execute("DELETE FROM game_logs WHERE player_id=$1", pid)
+        await conn.execute("DELETE FROM player_games WHERE player_id=$1", pid)
         # restore
         for t in PLAYER_TABLES:
             await _restore(conn, t, data.get(t) or [])
-        await conn.execute("UPDATE players SET onboarded=$2 WHERE id=$1", pid, bool(p.get("onboarded", True)))
-        await conn.execute(
-            """INSERT INTO player_sessions (player_id, current_node, story_time, log_id)
-               VALUES ($1,$2,$3,$4)
-               ON CONFLICT (player_id) DO UPDATE SET current_node=EXCLUDED.current_node,
-                 story_time=EXCLUDED.story_time, log_id=EXCLUDED.log_id""",
-            pid, p.get("current_node"), int(p.get("story_time") or 0), p.get("log_id"))
+        await conn.execute("UPDATE players SET onboarded=$2, active_game_id=$3 WHERE id=$1",
+                           pid, bool(p.get("onboarded", True)), p.get("active_game_id"))
 
 
 async def list_players(conn) -> list:
     rows = await conn.fetch("SELECT id, display_name FROM players ORDER BY display_name")
     return [{"id": str(r["id"]), "display_name": r["display_name"]} for r in rows]
+
+
+# --------------------------------------------------------------------------- #
+#  Restart ONE game for ONE player (the lobby's "New game" on an existing save)
+# --------------------------------------------------------------------------- #
+# Runtime tables in FK-safe DELETE order, all scoped to (player_id, game_id) so a
+# restart never touches the player's other games or other players.
+_RESET_TABLES = [
+    "gate_messages", "gate_attempts", "puzzle_progress", "player_cells",
+    "player_clues", "player_flags", "progress_events", "player_alignment_events",
+    "agent_memories",
+]
+
+
+async def reset_player_game(conn, player_id, game_id):
+    """Wipe one player's progress in ONE game so they can start it over. Other games
+    and other players are untouched; the player_games slot is blanked so _start_game
+    re-bootstraps it. Runs in one transaction. agent_memories filters on
+    origin_player_id (whose-memory), not player_id."""
+    async with conn.transaction():
+        for t in _RESET_TABLES:
+            col = "origin_player_id" if t == "agent_memories" else "player_id"
+            await conn.execute(
+                f"DELETE FROM {t} WHERE {col}=$1 AND game_id=$2", player_id, game_id)
+        await conn.execute(
+            """DELETE FROM log_entries
+               WHERE log_id IN (SELECT id FROM game_logs WHERE player_id=$1 AND game_id=$2)""",
+            player_id, game_id)
+        await conn.execute(
+            "DELETE FROM game_logs WHERE player_id=$1 AND game_id=$2", player_id, game_id)
+        await conn.execute(
+            """UPDATE player_games SET current_node=NULL, log_id=NULL, story_time=0
+               WHERE player_id=$1 AND game_id=$2""", player_id, game_id)

@@ -37,6 +37,12 @@ async function req(path, { method = 'GET', body, auth = true } = {}) {
     err.forbidden = true;
     throw err;
   }
+  // 409 on an authed request = no game selected yet → send the player to the lobby.
+  if (res.status === 409 && auth) {
+    const err = new Error(data.detail || 'pick a game');
+    err.needGame = true;
+    throw err;
+  }
   if (!res.ok) throw new Error(data.detail || `HTTP ${res.status}`);
   return data;
 }
@@ -59,6 +65,12 @@ export const api = {
   // onboarding
   onboarding: () => req('/api/onboarding'),
   submitOnboarding: (answers) => req('/api/onboarding/submit', { method: 'POST', body: { answers } }),
+
+  // lobby (pick which game to play; independent save per game)
+  games: () => req('/api/games'),
+  selectGame: (game_id, mode = 'continue') =>
+    req('/api/games/select', { method: 'POST', body: { game_id, mode } }),
+  leaveGame: () => req('/api/games/leave', { method: 'POST' }),
 
   // world & maps
   travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),
@@ -94,6 +106,8 @@ export const api = {
 
   // admin (export/import) — all require an allowlisted account
   adminMe: () => req('/api/admin/me'),
+  adminGames: () => req('/api/admin/games'),
+  switchGame: (game) => req('/api/admin/games/switch', { method: 'POST', body: { game } }),
   exportContent: () => req('/api/admin/content/export'),
   exportDb: () => req('/api/admin/db/export'),
   importDb: (data, confirm) => req('/api/admin/db/import', { method: 'POST', body: { data, confirm } }),

@@ -64,6 +64,22 @@ or change content, edit YAML in the data repo and `make seed`; never hand-write 
 (world-access nodes reach every cell's arrival node) and optimistic (ignores edge conditions).
 See `AUTHORING.md`.
 
+### Concurrent multi-game (`gamestate.py`, `migrations.py`)
+The server hosts **several games at once** — every folder under `games/<id>/data` is its
+own game, seeded into the DB at startup (`gamestate.all_games_with_data()`). Every authored
+content row and every per-player runtime row carries a **`game_id`**; content tables use a
+**composite primary key `(game_id, id)`** so two games can reuse the same slug, and
+inter-content FKs carry `game_id`. A player has an **independent, resumable save per game**
+(`player_games`, keyed `(player_id, game_id)`); `players.active_game_id` is the selected one
+(NULL = in the lobby). The login token lives on `player_sessions` (auth only). Players pick a
+game in the **in-app lobby** (`/api/games`, `/api/games/select`, `/api/games/leave`);
+leaderboards and NPC memory are per-game. The rollback seq-stamp invariant is scoped per
+`(player, game)` — `seq` is per-log, so every void/delete in `engine.rollback` filters
+`game_id`. `migrations.ensure_multigame` brings an existing single-game volume up to this
+shape **in place** (additive backfill, no data loss); `db/01_schema.sql` is the fresh-volume
+source of truth — keep them in sync. The admin "switch game" control now only changes which
+dataset the **authoring** editors act on, independent of what players play.
+
 ### Story engine + the rollback invariant (`engine.py`, `dsl.py`)
 The game is a directed graph: `story_nodes` joined by `story_edges`, navigated through a
 small shared **condition/effect DSL** (`dsl.py`) evaluated in plain code. Player progress

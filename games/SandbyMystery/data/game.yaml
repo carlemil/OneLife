@@ -1,0 +1,6 @@
+# Game-level metadata shown in the lobby (the game picker) and used for the first
+# scene line. Optional; one such `game:` block per dataset (merged across files).
+game:
+  title: "The Sandby Mystery"
+  subtitle: "A dark folk-mystery in 1992 Skåne."
+  first_summary: "You woke at Killebäckskolan."

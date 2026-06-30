@@ -20,33 +20,39 @@ def _name_tokens(full_name: str) -> list[str]:
 # --------------------------------------------------------------------------- #
 #  Context snapshot
 # --------------------------------------------------------------------------- #
-async def load_context(conn, player_id, story_time: int = 0) -> PlayerContext:
-    flags = await conn.fetch("SELECT flag FROM player_flags WHERE player_id=$1", player_id)
+async def load_context(conn, player_id, game_id, story_time: int = 0) -> PlayerContext:
+    flags = await conn.fetch(
+        "SELECT flag FROM player_flags WHERE player_id=$1 AND game_id=$2", player_id, game_id)
     visited = await conn.fetch(
         """SELECT DISTINCT le.node_id FROM log_entries le
            JOIN game_logs g ON g.id = le.log_id
-           WHERE g.player_id=$1 AND NOT le.rolled_back AND le.node_id IS NOT NULL""",
-        player_id)
+           WHERE g.player_id=$1 AND g.game_id=$2 AND NOT le.rolled_back
+             AND le.node_id IS NOT NULL""",
+        player_id, game_id)
     gates = await conn.fetch(
-        "SELECT gate_id FROM gate_attempts WHERE player_id=$1 AND satisfied", player_id)
+        "SELECT gate_id FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND satisfied",
+        player_id, game_id)
     puzzles = await conn.fetch(
-        "SELECT puzzle_id FROM puzzle_progress WHERE player_id=$1 AND solved", player_id)
-    clues = await conn.fetch("SELECT clue_id FROM player_clues WHERE player_id=$1", player_id)
+        "SELECT puzzle_id FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND solved",
+        player_id, game_id)
+    clues = await conn.fetch(
+        "SELECT clue_id FROM player_clues WHERE player_id=$1 AND game_id=$2", player_id, game_id)
     # A character's name is "known" once an NPC has actually spoken it to this
     # player — in that character's own gate, or another's (leaked memories surface
     # as dialogue). The player typing a name doesn't count (role='agent' only).
     # Match on any distinctive name token (first name OR surname), so e.g. "I'm
     # Vallmo" reveals "Kurt Vallmo".
-    chars = await conn.fetch("SELECT id, name, reveal_name FROM characters")
+    chars = await conn.fetch("SELECT id, name, reveal_name FROM characters WHERE game_id=$1", game_id)
     said = await conn.fetch(
-        "SELECT content FROM gate_messages WHERE player_id=$1 AND role='agent'", player_id)
+        "SELECT content FROM gate_messages WHERE player_id=$1 AND game_id=$2 AND role='agent'",
+        player_id, game_id)
     spoken = "\n".join((r["content"] or "") for r in said).lower()
     known_names = set()
     for c in chars:
         toks = _name_tokens(c["reveal_name"] or c["name"])  # true name (reveal if withholding)
         if toks and any(re.search(r"\b" + re.escape(t) + r"\b", spoken) for t in toks):
             known_names.add(c["id"])
-    ge, lc = await current_alignment(conn, player_id)
+    ge, lc = await current_alignment(conn, player_id, game_id)
     return PlayerContext(
         flags={r["flag"] for r in flags},
         visited_nodes={r["node_id"] for r in visited},
@@ -78,19 +84,19 @@ _FALLBACK_SUMMARY = {
 }
 
 
-async def narrate(conn, log_id, *, node_id, story_time, summary, kind) -> int:
+async def narrate(conn, log_id, game_id, *, node_id, story_time, summary, kind) -> int:
     """Append a standalone narration beat to the flow (a log entry with no side
     effects). Used for world changes that aren't actions in their own right —
     discovering a clue, the map opening up — so they show in the running story."""
     seq = await next_seq(conn, log_id)
     await conn.execute(
-        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
-           VALUES ($1,$2,$3,$4,$5,$6)""",
-        log_id, seq, story_time, node_id, summary, kind)
+        """INSERT INTO log_entries (log_id, game_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)""",
+        log_id, game_id, seq, story_time, node_id, summary, kind)
     return seq
 
 
-async def reveal_cells_around(conn, player_id, node_id, seq, log_id, story_time,
+async def reveal_cells_around(conn, player_id, game_id, node_id, seq, log_id, story_time,
                               *, neighbors: bool = True) -> None:
     """Fog-of-war: discover the cell `node_id` sits in. With `neighbors=True` (the
     default) also discover the orthogonally adjacent cells and narrate the newly
@@ -102,41 +108,44 @@ async def reveal_cells_around(conn, player_id, node_id, seq, log_id, story_time,
     call on every world-access arrival — the beat fires only once."""
     cell = await conn.fetchrow(
         """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
-           JOIN locations l ON l.id = n.location_id
-           JOIN world_cells w ON w.id = l.cell_id
-           WHERE n.id=$1""", node_id)
+           JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+           JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+           WHERE n.game_id=$1 AND n.id=$2""", game_id, node_id)
     if cell is None:
         return
     if not neighbors:
         await conn.execute(
-            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
-               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, cell["id"], seq)
+            """INSERT INTO player_cells (player_id, game_id, cell_id, found_at_seq)
+               VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
+            player_id, game_id, cell["id"], seq)
         return
     near = await conn.fetch(
-        "SELECT id, name FROM world_cells WHERE abs(grid_x-$1)+abs(grid_y-$2) <= 1",
-        cell["grid_x"], cell["grid_y"])
+        """SELECT id, name FROM world_cells
+           WHERE game_id=$1 AND abs(grid_x-$2)+abs(grid_y-$3) <= 1""",
+        game_id, cell["grid_x"], cell["grid_y"])
     have = {r["cell_id"] for r in await conn.fetch(
-        "SELECT cell_id FROM player_cells WHERE player_id=$1", player_id)}
+        "SELECT cell_id FROM player_cells WHERE player_id=$1 AND game_id=$2", player_id, game_id)}
     fresh = [c for c in near if c["id"] not in have and c["id"] != cell["id"]]
     beat_seq = seq
     if fresh:
         names = ", ".join(c["name"] for c in fresh)
         beat_seq = await narrate(
-            conn, log_id, node_id=node_id, story_time=story_time,
+            conn, log_id, game_id, node_id=node_id, story_time=story_time,
             summary=f"New paths open on your map: {names}.", kind="travel")
     for c in near:
         if c["id"] in have:
             continue
         stamp = beat_seq if c["id"] != cell["id"] else seq
         await conn.execute(
-            """INSERT INTO player_cells (player_id, cell_id, found_at_seq)
-               VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""", player_id, c["id"], stamp)
+            """INSERT INTO player_cells (player_id, game_id, cell_id, found_at_seq)
+               VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
+            player_id, game_id, c["id"], stamp)
 
 
 # --------------------------------------------------------------------------- #
 #  Apply one action: a single log entry + its effects, all stamped with seq.
 # --------------------------------------------------------------------------- #
-async def apply_action(conn, player_id, log_id, *, node_id: str | None,
+async def apply_action(conn, player_id, game_id, log_id, *, node_id: str | None,
                        effects: dict, story_time: int,
                        kind: str = "action", summary_override: str | None = None):
     seq = await next_seq(conn, log_id)
@@ -145,24 +154,25 @@ async def apply_action(conn, player_id, log_id, *, node_id: str | None,
         or _FALLBACK_SUMMARY.get(kind, "Something shifts.")
 
     await conn.execute(
-        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
-           VALUES ($1,$2,$3,$4,$5,$6)""",
-        log_id, seq, story_time, node_id, summary, kind)
+        """INSERT INTO log_entries (log_id, game_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,$2,$3,$4,$5,$6,$7)""",
+        log_id, game_id, seq, story_time, node_id, summary, kind)
 
     pts = int(effects.get("progress_points", 0))
     if pts:
         await conn.execute(
-            """INSERT INTO progress_events (player_id, seq, kind, points)
-               VALUES ($1,$2,$3,$4)""", player_id, seq, kind, pts)
+            """INSERT INTO progress_events (player_id, game_id, seq, kind, points)
+               VALUES ($1,$2,$3,$4,$5)""", player_id, game_id, seq, kind, pts)
 
     if "set_flag" in effects:
         await conn.execute(
-            """INSERT INTO player_flags (player_id, flag, set_at_seq)
-               VALUES ($1,$2,$3) ON CONFLICT (player_id, flag) DO NOTHING""",
-            player_id, effects["set_flag"], seq)
+            """INSERT INTO player_flags (player_id, game_id, flag, set_at_seq)
+               VALUES ($1,$2,$3,$4) ON CONFLICT (player_id, game_id, flag) DO NOTHING""",
+            player_id, game_id, effects["set_flag"], seq)
     if "clear_flag" in effects:
-        await conn.execute("DELETE FROM player_flags WHERE player_id=$1 AND flag=$2",
-                           player_id, effects["clear_flag"])
+        await conn.execute(
+            "DELETE FROM player_flags WHERE player_id=$1 AND game_id=$2 AND flag=$3",
+            player_id, game_id, effects["clear_flag"])
 
     # write_memory is recorded in the log summary for the slice; the full
     # agent_memories/pgvector path is deferred (see DATA_MODEL.md).
@@ -177,16 +187,16 @@ def _clamp_unit(v: float) -> float:
     return -1.0 if v < -1.0 else 1.0 if v > 1.0 else v
 
 
-async def current_alignment(conn, player_id) -> tuple[float, float]:
-    """The player's latest surviving (good_evil, law_chaos); (0.0, 0.0) if none.
-    Rollback deletes events, so the newest remaining row is always current."""
+async def current_alignment(conn, player_id, game_id) -> tuple[float, float]:
+    """The player's latest surviving (good_evil, law_chaos) in this game; (0.0, 0.0)
+    if none. Rollback deletes events, so the newest remaining row is always current."""
     row = await conn.fetchrow(
         """SELECT good_evil, law_chaos FROM player_alignment_events
-           WHERE player_id=$1 ORDER BY id DESC LIMIT 1""", player_id)
+           WHERE player_id=$1 AND game_id=$2 ORDER BY id DESC LIMIT 1""", player_id, game_id)
     return (float(row["good_evil"]), float(row["law_chaos"])) if row else (0.0, 0.0)
 
 
-async def record_alignment(conn, player_id, seq: int, ge_delta: float,
+async def record_alignment(conn, player_id, game_id, seq: int, ge_delta: float,
                            lc_delta: float, reason: str, kind: str) -> None:
     """Append one judged shift, stamped with the log `seq` it happened at so it
     rolls back with that beat. The stored coordinate is cumulative + clamped to
@@ -194,14 +204,14 @@ async def record_alignment(conn, player_id, seq: int, ge_delta: float,
     don't clutter the trail). Must run inside the caller's transaction."""
     if abs(ge_delta) < 1e-6 and abs(lc_delta) < 1e-6:
         return
-    ge0, lc0 = await current_alignment(conn, player_id)
+    ge0, lc0 = await current_alignment(conn, player_id, game_id)
     ge, lc = _clamp_unit(ge0 + ge_delta), _clamp_unit(lc0 + lc_delta)
     await conn.execute(
         """INSERT INTO player_alignment_events
-           (player_id, created_seq, good_evil_delta, law_chaos_delta,
+           (player_id, game_id, created_seq, good_evil_delta, law_chaos_delta,
             good_evil, law_chaos, reason, kind)
-           VALUES ($1,$2,$3,$4,$5,$6,$7,$8)""",
-        player_id, seq, ge_delta, lc_delta, ge, lc, reason or "", kind)
+           VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9)""",
+        player_id, game_id, seq, ge_delta, lc_delta, ge, lc, reason or "", kind)
 
 
 def alignment_label(ge: float, lc: float) -> str:
@@ -228,15 +238,15 @@ def alignment_short(ge: float, lc: float) -> str:
     return "TN" if g == "N" and l == "N" else f"{l}{g}"
 
 
-async def narrate_puzzle_prompt(conn, log_id, node, story_time):
+async def narrate_puzzle_prompt(conn, log_id, game_id, node, story_time):
     """Record a puzzle's prompt as a beat the first time the player reaches it, so
     the events flow shows what was actually asked — not just that a riddle happened.
     Deduped by the prompt text (re-entering the node won't repeat it); rolls back
     with the rest since it's a seq-stamped beat."""
     if not node["puzzle_id"]:
         return
-    prompt = await conn.fetchval("SELECT prompt FROM puzzles WHERE id=$1",
-                                 node["puzzle_id"])
+    prompt = await conn.fetchval("SELECT prompt FROM puzzles WHERE game_id=$1 AND id=$2",
+                                 game_id, node["puzzle_id"])
     if not prompt:
         return
     exists = await conn.fetchval(
@@ -244,28 +254,28 @@ async def narrate_puzzle_prompt(conn, log_id, node, story_time):
            WHERE log_id=$1 AND node_id=$2 AND summary=$3 AND NOT rolled_back""",
         log_id, node["id"], prompt)
     if not exists:
-        await narrate(conn, log_id, node_id=node["id"], story_time=story_time,
+        await narrate(conn, log_id, game_id, node_id=node["id"], story_time=story_time,
                       summary=prompt, kind="puzzle")
 
 
-async def discover_clues(conn, player_id, log_id, story_time, node_id=None):
+async def discover_clues(conn, player_id, game_id, log_id, story_time, node_id=None):
     """After a state change, discover any clues whose conditions now hold. Each
     newly found clue writes its own 'clue' beat into the narration flow, and the
     clue is stamped with that beat's seq so the two roll back together."""
-    ctx = await load_context(conn, player_id, story_time)
+    ctx = await load_context(conn, player_id, game_id, story_time)
     rows = await conn.fetch(
-        "SELECT id, reveal_text, discover_conditions FROM puzzle_clues")
+        "SELECT id, reveal_text, discover_conditions FROM puzzle_clues WHERE game_id=$1", game_id)
     for r in rows:
         if r["id"] in ctx.found_clues:
             continue
         if evaluate(json.loads(r["discover_conditions"]), ctx):
             seq = await narrate(
-                conn, log_id, node_id=node_id, story_time=story_time,
+                conn, log_id, game_id, node_id=node_id, story_time=story_time,
                 summary=f"You notice: {r['reveal_text']}", kind="clue")
             await conn.execute(
-                """INSERT INTO player_clues (player_id, clue_id, found_at_seq)
-                   VALUES ($1,$2,$3) ON CONFLICT DO NOTHING""",
-                player_id, r["id"], seq)
+                """INSERT INTO player_clues (player_id, game_id, clue_id, found_at_seq)
+                   VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
+                player_id, game_id, r["id"], seq)
             # Let a clue unlocked this pass satisfy another clue's condition.
             ctx.found_clues.add(r["id"])
 
@@ -345,14 +355,17 @@ async def map_block(conn, node) -> tuple[dict | None, set]:
     world-exit hotspot. Returns (block, mapped_node_ids)."""
     if not node["location_id"]:
         return None, set()
+    gid = node["game_id"]
     cell = await conn.fetchrow(
         """SELECT w.id, w.map_image, w.world_exit FROM locations l
-           JOIN world_cells w ON w.id = l.cell_id WHERE l.id=$1""", node["location_id"])
+           JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+           WHERE l.game_id=$1 AND l.id=$2""", gid, node["location_id"])
     if cell is None:
         return None, set()
     rows = await conn.fetch(
         """SELECT n.id, n.title, n.type, n.map FROM story_nodes n
-           JOIN locations l ON l.id = n.location_id WHERE l.cell_id=$1""", cell["id"])
+           JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+           WHERE n.game_id=$1 AND l.cell_id=$2""", gid, cell["id"])
     mapped, explicit, auto_ids = {}, {}, []
     for r in rows:
         if r["type"] == "death":
@@ -374,7 +387,8 @@ async def map_block(conn, node) -> tuple[dict | None, set]:
         ids = list(mapped)
         erows = await conn.fetch(
             """SELECT from_node, to_node FROM story_edges
-               WHERE from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""", ids)
+               WHERE game_id=$2 AND from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""",
+            ids, gid)
         seen = set()
         for e in erows:
             if e["from_node"] == e["to_node"]:
@@ -438,6 +452,7 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
     when the current node is world-access). Returns (block, on_map_node_ids) — the
     second value is the set of current-cell anchor nodes the map now handles, so the
     caller can drop their edges from the text choices (they become map clicks)."""
+    gid = node["game_id"]
     # One anchor node per location: the `location`-typed node when a place has one
     # (a hub like the school), else its sole gate/ending place node.
     rows = await conn.fetch(
@@ -445,11 +460,11 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
                   l.id AS loc_id, l.cell_id, n.id AS node_id, n.title, n.type, n.map AS nmap,
                   w.arrival_node, w.grid_x, w.grid_y, np.x AS px, np.y AS py
            FROM story_nodes n
-           JOIN locations l ON l.id = n.location_id
-           JOIN world_cells w ON w.id = l.cell_id
-           LEFT JOIN node_positions np ON np.node_id = n.id
-           WHERE n.type IN ('location', 'gate', 'ending')
-           ORDER BY l.id, (n.type = 'location') DESC, n.id""")
+           JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+           JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+           LEFT JOIN node_positions np ON np.node_id = n.id AND np.game_id = n.game_id
+           WHERE n.game_id = $1 AND n.type IN ('location', 'gate', 'ending')
+           ORDER BY l.id, (n.type = 'location') DESC, n.id""", gid)
 
     # Normalize every place's position together (stable layout), filling any place
     # missing an editor position with a deterministic grid slot so it still shows.
@@ -461,13 +476,14 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
         norm[nid] = (auto["x"], auto["y"])
 
     discovered = {r["cell_id"] for r in await conn.fetch(
-        "SELECT cell_id FROM player_cells WHERE player_id=$1", player_id)}
+        "SELECT cell_id FROM player_cells WHERE player_id=$1 AND game_id=$2", player_id, gid)}
     cur_cell = await conn.fetchrow(
         """SELECT w.id, w.grid_x, w.grid_y FROM locations l
-           JOIN world_cells w ON w.id = l.cell_id WHERE l.id=$1""",
-        node["location_id"]) if node["location_id"] else None
+           JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+           WHERE l.game_id=$1 AND l.id=$2""",
+        gid, node["location_id"]) if node["location_id"] else None
     walk_paths = await cell_walk_paths(conn, player_id, node, story_time)
-    ctx = await load_context(conn, player_id, story_time)
+    ctx = await load_context(conn, player_id, gid, story_time)
 
     nodes, on_map = [], set()
     for r in rows:
@@ -511,8 +527,8 @@ async def unified_map_block(conn, player_id, node, story_time: int) -> tuple[dic
     if node_to_loc:
         erows = await conn.fetch(
             """SELECT from_node, to_node, road FROM story_edges
-               WHERE from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""",
-            list(node_to_loc))
+               WHERE game_id=$2 AND from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""",
+            list(node_to_loc), gid)
         for e in erows:
             a, b = node_to_loc.get(e["from_node"]), node_to_loc.get(e["to_node"])
             if not a or not b or a == b:
@@ -536,10 +552,10 @@ _ANCHOR_QUERY = """
            l.id AS loc_id, l.cell_id AS cell, n.id AS node_id, n.title,
            n.map AS nmap, np.x AS px, np.y AS py
     FROM story_nodes n
-    JOIN locations l ON l.id = n.location_id
-    JOIN world_cells w ON w.id = l.cell_id
-    LEFT JOIN node_positions np ON np.node_id = n.id
-    WHERE n.type IN ('location', 'gate', 'ending')
+    JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+    JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+    LEFT JOIN node_positions np ON np.node_id = n.id AND np.game_id = n.game_id
+    WHERE n.game_id = $1 AND n.type IN ('location', 'gate', 'ending')
     ORDER BY l.id, (n.type = 'location') DESC, n.id"""
 
 
@@ -547,12 +563,12 @@ def _edge_points(road) -> list:
     return road if isinstance(road, list) else json.loads(road or "[]")
 
 
-async def map_overview(conn) -> dict:
+async def map_overview(conn, game_id) -> dict:
     """The whole overview map for the admin road editor: every location's icon at its
     normalized position (no fog, no reachability) + every road with its saved spline
     points. Same layout/normalization the player map uses, so routes computed here
     line up there."""
-    rows = await conn.fetch(_ANCHOR_QUERY)
+    rows = await conn.fetch(_ANCHOR_QUERY, game_id)
     placed = {r["loc_id"]: (float(r["px"]), float(r["py"]))
               for r in rows if r["px"] is not None}
     norm = _normalize_positions(placed)
@@ -588,8 +604,8 @@ async def map_overview(conn) -> dict:
     roads, seen = [], {}
     erows = await conn.fetch(
         """SELECT from_node, to_node, road FROM story_edges
-           WHERE from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""",
-        list(node_to_loc))
+           WHERE game_id=$2 AND from_node = ANY($1::text[]) AND to_node = ANY($1::text[])""",
+        list(node_to_loc), game_id)
     for e in erows:
         a, b = node_to_loc.get(e["from_node"]), node_to_loc.get(e["to_node"])
         if not a or not b or a == b:
@@ -607,15 +623,16 @@ async def map_overview(conn) -> dict:
     # The cell a fresh player starts in (entry node's cell) — the editor's fog
     # preview shows only this cell's places.
     start_cell = await conn.fetchval(
-        """SELECT l.cell_id FROM story_nodes n JOIN locations l ON l.id = n.location_id
-           WHERE n.is_entry LIMIT 1""")
+        """SELECT l.cell_id FROM story_nodes n
+           JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+           WHERE n.game_id=$1 AND n.is_entry LIMIT 1""", game_id)
     return {"image": MAP_BACKGROUND, "nodes": nodes, "roads": roads,
             "bounds": bounds, "start_cell": start_cell}
 
 
-async def map_road_anchors(conn) -> dict:
+async def map_road_anchors(conn, game_id) -> dict:
     """loc_id -> its anchor node id (the node a road between two places connects)."""
-    rows = await conn.fetch(_ANCHOR_QUERY)
+    rows = await conn.fetch(_ANCHOR_QUERY, game_id)
     return {r["loc_id"]: r["node_id"] for r in rows}
 
 
@@ -625,35 +642,38 @@ async def traverse_edge(conn, sess, edge) -> int:
     Mutates `sess` (current_node/story_time) in place. Returns the move's log seq
     (so the /api/edge handler can stamp an alignment event onto it). The caller
     must have already validated the edge is available and its conditions pass."""
+    gid = sess["game_id"]
     effects = json.loads(edge["effects"])
     dest = await conn.fetchrow(
-        "SELECT title, is_death, world_access FROM story_nodes WHERE id=$1", edge["to_node"])
+        "SELECT title, is_death, world_access FROM story_nodes WHERE game_id=$1 AND id=$2",
+        gid, edge["to_node"])
     kind = "death" if (dest and dest["is_death"]) else "action"
     # Name the place when the edge has no authored line, so every move reads as a
     # beat in the flow rather than a blank step.
     override = None if effects.get("log") else (
         f"You go to {dest['title']}." if dest else None)
     seq, story_time = await apply_action(
-        conn, sess["player_id"], sess["log_id"], node_id=edge["to_node"],
+        conn, sess["player_id"], gid, sess["log_id"], node_id=edge["to_node"],
         effects=effects, story_time=sess["story_time"], kind=kind,
         summary_override=override)
     await conn.execute(
-        "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
-        edge["to_node"], story_time, sess["token"])
+        """UPDATE player_games SET current_node=$1, story_time=$2, last_played_at=now()
+           WHERE player_id=$3 AND game_id=$4""",
+        edge["to_node"], story_time, sess["player_id"], gid)
     sess["current_node"] = edge["to_node"]
     sess["story_time"] = story_time
     # Reaching a world-access node is the moment "the map opens" — reveal this cell's
     # neighbours then (not pre-revealed at game start). Deduped, so revisiting is a no-op.
     if dest and dest["world_access"]:
         await reveal_cells_around(
-            conn, sess["player_id"], sess["current_node"], seq, sess["log_id"], story_time)
+            conn, sess["player_id"], gid, sess["current_node"], seq, sess["log_id"], story_time)
     # Arriving at a puzzle node records the riddle/prompt in the flow, so the
     # events list shows what was actually asked (deduped — see the helper).
     dest_node = await conn.fetchrow(
-        "SELECT id, puzzle_id FROM story_nodes WHERE id=$1", sess["current_node"])
-    await narrate_puzzle_prompt(conn, sess["log_id"], dest_node, story_time)
+        "SELECT id, puzzle_id FROM story_nodes WHERE game_id=$1 AND id=$2", gid, sess["current_node"])
+    await narrate_puzzle_prompt(conn, sess["log_id"], gid, dest_node, story_time)
     await discover_clues(
-        conn, sess["player_id"], sess["log_id"], story_time, sess["current_node"])
+        conn, sess["player_id"], gid, sess["log_id"], story_time, sess["current_node"])
     return seq
 
 
@@ -671,20 +691,22 @@ async def cell_walk_paths(conn, player_id, node, story_time: int) -> dict:
     place reachable via the square hub is clickable even without a direct edge."""
     if not node["location_id"]:
         return {}
+    gid = node["game_id"]
     cell = await conn.fetchrow(
-        "SELECT cell_id FROM locations WHERE id=$1", node["location_id"])
+        "SELECT cell_id FROM locations WHERE game_id=$1 AND id=$2", gid, node["location_id"])
     if cell is None:
         return {}
     rows = await conn.fetch(
-        """SELECT n.id, n.type FROM story_nodes n JOIN locations l ON l.id=n.location_id
-           WHERE l.cell_id=$1""", cell["cell_id"])
+        """SELECT n.id, n.type FROM story_nodes n
+           JOIN locations l ON l.id=n.location_id AND l.game_id=n.game_id
+           WHERE n.game_id=$1 AND l.cell_id=$2""", gid, cell["cell_id"])
     types = {r["id"]: r["type"] for r in rows}
     cell_ids = list(types)
     erows = await conn.fetch(
         """SELECT id, from_node, to_node, conditions FROM story_edges
-           WHERE from_node = ANY($1::text[]) AND to_node = ANY($1::text[])
-           ORDER BY sort_order""", cell_ids)
-    ctx = await load_context(conn, player_id, story_time)
+           WHERE game_id=$2 AND from_node = ANY($1::text[]) AND to_node = ANY($1::text[])
+           ORDER BY sort_order""", cell_ids, gid)
+    ctx = await load_context(conn, player_id, gid, story_time)
     adj: dict = {}
     for e in erows:
         if not evaluate(json.loads(e["conditions"]), ctx):
@@ -717,19 +739,22 @@ async def cell_walk_paths(conn, player_id, node, story_time: int) -> dict:
 
 
 async def render_state(conn, player_id, session) -> dict:
+    gid = session["game_id"]
     node = await conn.fetchrow(
-        "SELECT * FROM story_nodes WHERE id=$1", session["current_node"])
-    ctx = await load_context(conn, player_id, session["story_time"])
+        "SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2", gid, session["current_node"])
+    ctx = await load_context(conn, player_id, gid, session["story_time"])
 
     edges = await conn.fetch(
-        "SELECT * FROM story_edges WHERE from_node=$1 ORDER BY sort_order", node["id"])
+        "SELECT * FROM story_edges WHERE game_id=$1 AND from_node=$2 ORDER BY sort_order",
+        gid, node["id"])
     # Look up each choice's destination so we can hide alternatives already completed.
     targets = {e["to_node"] for e in edges}
     tinfo = {}
     if targets:
         trows = await conn.fetch(
-            "SELECT id, type, gate_id, puzzle_id FROM story_nodes WHERE id = ANY($1::text[])",
-            list(targets))
+            """SELECT id, type, gate_id, puzzle_id FROM story_nodes
+               WHERE game_id=$2 AND id = ANY($1::text[])""",
+            list(targets), gid)
         tinfo = {r["id"]: r for r in trows}
     # Edges whose conditions hold, tagged with whether they lead into an
     # already-finished interaction (a passed gate or a solved puzzle).
@@ -764,8 +789,8 @@ async def render_state(conn, player_id, session) -> dict:
 
     found = await conn.fetch(
         """SELECT pc.reveal_text FROM player_clues p
-           JOIN puzzle_clues pc ON pc.id = p.clue_id
-           WHERE p.player_id=$1 ORDER BY p.found_at_seq""", player_id)
+           JOIN puzzle_clues pc ON pc.id = p.clue_id AND pc.game_id = p.game_id
+           WHERE p.player_id=$1 AND p.game_id=$2 ORDER BY p.found_at_seq""", player_id, gid)
 
     clipboard = await conn.fetchval("SELECT clipboard FROM players WHERE id=$1", player_id)
     state = {
@@ -787,16 +812,17 @@ async def render_state(conn, player_id, session) -> dict:
 
     if node["type"] == "gate":
         ga = await conn.fetchrow(
-            "SELECT * FROM gate_attempts WHERE player_id=$1 AND gate_id=$2",
-            player_id, node["gate_id"])
+            "SELECT * FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND gate_id=$3",
+            player_id, gid, node["gate_id"])
         msgs = await conn.fetch(
             """SELECT role, content FROM gate_messages
-               WHERE player_id=$1 AND gate_id=$2 ORDER BY seq, created_at""",
-            player_id, node["gate_id"])
+               WHERE player_id=$1 AND game_id=$2 AND gate_id=$3 ORDER BY seq, created_at""",
+            player_id, gid, node["gate_id"])
         char = await conn.fetchrow(
             """SELECT c.id, c.name, c.reveal_name FROM dialogue_gates g
-               JOIN characters c ON c.id = g.character_id WHERE g.id=$1""",
-            node["gate_id"])
+               JOIN characters c ON c.id = g.character_id AND c.game_id = g.game_id
+               WHERE g.game_id=$1 AND g.id=$2""",
+            gid, node["gate_id"])
         known = bool(char and char["id"] in ctx.known_names)
         display_name, true_name, name_known = _resolve_name(char, known)
         state["gate"] = {
@@ -810,10 +836,11 @@ async def render_state(conn, player_id, session) -> dict:
         }
 
     if node["type"] == "puzzle":
-        pz = await conn.fetchrow("SELECT * FROM puzzles WHERE id=$1", node["puzzle_id"])
+        pz = await conn.fetchrow("SELECT * FROM puzzles WHERE game_id=$1 AND id=$2",
+                                 gid, node["puzzle_id"])
         pp = await conn.fetchrow(
-            "SELECT * FROM puzzle_progress WHERE player_id=$1 AND puzzle_id=$2",
-            player_id, node["puzzle_id"])
+            "SELECT * FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+            player_id, gid, node["puzzle_id"])
         # Hints are never auto-revealed: they're delivered in-character only when the
         # player asks (POST /api/puzzle/hint), as a spoken beat in the flow.
         state["puzzle"] = {
@@ -830,41 +857,49 @@ async def render_state(conn, player_id, session) -> dict:
 # --------------------------------------------------------------------------- #
 async def rollback(conn, player_id, session, to_seq: int) -> dict:
     log_id = session["log_id"]
+    gid = session["game_id"]
     target = await conn.fetchrow(
         "SELECT node_id, story_time FROM log_entries WHERE log_id=$1 AND seq=$2",
         log_id, to_seq)
     if target is None:
         raise ValueError("That point in your history is no longer available to go back to.")
 
+    # seq is per-log, so every void/delete below is scoped to THIS (player, game) —
+    # rolling back one save must never touch the player's other games.
     await conn.execute(
         "UPDATE log_entries SET rolled_back=TRUE WHERE log_id=$1 AND seq>$2",
         log_id, to_seq)
     await conn.execute(
-        "UPDATE progress_events SET voided=TRUE WHERE player_id=$1 AND seq>$2",
-        player_id, to_seq)
+        "UPDATE progress_events SET voided=TRUE WHERE player_id=$1 AND game_id=$2 AND seq>$3",
+        player_id, gid, to_seq)
     await conn.execute(
-        "DELETE FROM player_flags WHERE player_id=$1 AND set_at_seq>$2", player_id, to_seq)
+        "DELETE FROM player_flags WHERE player_id=$1 AND game_id=$2 AND set_at_seq>$3",
+        player_id, gid, to_seq)
     await conn.execute(
-        "DELETE FROM player_clues WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
+        "DELETE FROM player_clues WHERE player_id=$1 AND game_id=$2 AND found_at_seq>$3",
+        player_id, gid, to_seq)
     await conn.execute(
-        "DELETE FROM player_cells WHERE player_id=$1 AND found_at_seq>$2", player_id, to_seq)
+        "DELETE FROM player_cells WHERE player_id=$1 AND game_id=$2 AND found_at_seq>$3",
+        player_id, gid, to_seq)
     await conn.execute(
-        "DELETE FROM player_alignment_events WHERE player_id=$1 AND created_seq>$2",
-        player_id, to_seq)
+        "DELETE FROM player_alignment_events WHERE player_id=$1 AND game_id=$2 AND created_seq>$3",
+        player_id, gid, to_seq)
     await conn.execute(
         """UPDATE puzzle_progress SET solved=FALSE, solved_at_seq=NULL
-           WHERE player_id=$1 AND solved_at_seq>$2""", player_id, to_seq)
+           WHERE player_id=$1 AND game_id=$2 AND solved_at_seq>$3""", player_id, gid, to_seq)
     await conn.execute(
         """UPDATE gate_attempts SET satisfied=FALSE, passed_at_seq=NULL,
-           criteria_met='[]'::jsonb WHERE player_id=$1 AND passed_at_seq>$2""",
-        player_id, to_seq)
+           criteria_met='[]'::jsonb WHERE player_id=$1 AND game_id=$2 AND passed_at_seq>$3""",
+        player_id, gid, to_seq)
     await conn.execute(
-        "DELETE FROM gate_messages WHERE player_id=$1 AND seq>$2", player_id, to_seq)
-    await memory.void_after(conn, player_id, to_seq)
+        "DELETE FROM gate_messages WHERE player_id=$1 AND game_id=$2 AND seq>$3",
+        player_id, gid, to_seq)
+    await memory.void_after(conn, player_id, gid, to_seq)
 
     await conn.execute(
-        "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
-        target["node_id"], target["story_time"], session["token"])
+        """UPDATE player_games SET current_node=$1, story_time=$2, last_played_at=now()
+           WHERE player_id=$3 AND game_id=$4""",
+        target["node_id"], target["story_time"], player_id, gid)
     session = dict(session)
     session["current_node"] = target["node_id"]
     session["story_time"] = target["story_time"]

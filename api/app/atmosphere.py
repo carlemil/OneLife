@@ -78,7 +78,7 @@ IMAGE_STYLE = (
 )
 
 
-async def image_for(conn, theme, loc, setting,
+async def image_for(conn, game_id, theme, loc, setting,
                     real_place=None, reference=None, scene_text=None) -> str | None:
     """A real generated image for this theme (cached), or None to use the SVG.
 
@@ -89,7 +89,8 @@ async def image_for(conn, theme, loc, setting,
     via image-to-image; otherwise it is text-to-image of the named place."""
     if not imagegen.CONFIGURED or loc is None:
         return None
-    row = await conn.fetchrow("SELECT image_url FROM generated_images WHERE theme=$1", theme)
+    row = await conn.fetchrow(
+        "SELECT image_url FROM generated_images WHERE game_id=$1 AND theme=$2", game_id, theme)
     if row:
         return row["image_url"]
     place = real_place or loc["name"]
@@ -101,9 +102,9 @@ async def image_for(conn, theme, loc, setting,
     url = await imagegen.generate(prompt, reference=reference)
     if url:
         await conn.execute(
-            """INSERT INTO generated_images (theme, image_url) VALUES ($1,$2)
-               ON CONFLICT (theme) DO UPDATE SET image_url=EXCLUDED.image_url""",
-            theme, url)
+            """INSERT INTO generated_images (game_id, theme, image_url) VALUES ($1,$2,$3)
+               ON CONFLICT (game_id, theme) DO UPDATE SET image_url=EXCLUDED.image_url""",
+            game_id, theme, url)
     return url
 
 

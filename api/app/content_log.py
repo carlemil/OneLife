@@ -56,11 +56,12 @@ async def ensure_tables(conn):
         await conn.execute(stmt)
 
 
-async def current(conn) -> dict:
-    """The full authored set plus node positions — for the read-only graph view."""
-    data = await content.export_content(conn)
+async def current(conn, game_id: str) -> dict:
+    """One game's full authored set plus node positions — for the read-only graph view."""
+    data = await content.export_content(conn, game_id)
     data["positions"] = {
         r["node_id"]: {"x": r["x"], "y": r["y"]}
-        for r in await conn.fetch("SELECT node_id,x,y FROM node_positions")
+        for r in await conn.fetch(
+            "SELECT node_id,x,y FROM node_positions WHERE game_id=$1", game_id)
     }
     return data

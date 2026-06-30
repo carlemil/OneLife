@@ -7,57 +7,60 @@ second NPC exists.
 from . import embeddings, llm
 
 
-async def write_memory(conn, *, character_id, content, location_id, story_time,
+async def write_memory(conn, *, game_id, character_id, content, location_id, story_time,
                        origin_player_id, seq, source="told"):
     emb = embeddings.to_pgvector(embeddings.embed(content))
     await conn.execute(
         """INSERT INTO agent_memories
-             (character_id, content, embedding, location_id, story_time,
+             (game_id, character_id, content, embedding, location_id, story_time,
               source, origin_player_id, created_seq)
-           VALUES ($1,$2,$3::vector,$4,$5,$6,$7,$8)""",
-        character_id, content, emb, location_id, story_time, source,
+           VALUES ($1,$2,$3,$4::vector,$5,$6,$7,$8,$9)""",
+        game_id, character_id, content, emb, location_id, story_time, source,
         origin_player_id, seq)
     await propagate_to_other_characters(
-        conn, source_character_id=character_id, content=content,
+        conn, game_id=game_id, source_character_id=character_id, content=content,
         location_id=location_id, story_time=story_time,
         origin_player_id=origin_player_id, seq=seq)
 
 
-async def retrieve(conn, *, character_id, query_text, player_id, story_time, k=4):
-    """Return (own, leaked) memory contents for this character, timeline-safe."""
+async def retrieve(conn, *, game_id, character_id, query_text, player_id, story_time, k=4):
+    """Return (own, leaked) memory contents for this character, timeline-safe and
+    scoped to this game (an NPC never recalls another game's world)."""
     emb = embeddings.to_pgvector(embeddings.embed(query_text))
     rows = await conn.fetch(
         """SELECT content, origin_player_id
            FROM agent_memories
-           WHERE character_id=$1 AND NOT voided AND story_time <= $3
-           ORDER BY embedding <=> $2::vector
-           LIMIT $4""",
-        character_id, emb, story_time, k)
+           WHERE game_id=$1 AND character_id=$2 AND NOT voided AND story_time <= $4
+           ORDER BY embedding <=> $3::vector
+           LIMIT $5""",
+        game_id, character_id, emb, story_time, k)
     own, leaked = [], []
     for r in rows:
         (own if r["origin_player_id"] == player_id else leaked).append(r["content"])
     return own, leaked
 
 
-async def propagate_to_other_characters(conn, *, source_character_id, content,
+async def propagate_to_other_characters(conn, *, game_id, source_character_id, content,
                                         location_id, story_time,
                                         origin_player_id, seq):
-    """Share a memory to OTHER characters with a believable in-world explanation
-    of how they came to know it. Dormant until a second NPC exists."""
+    """Share a memory to OTHER characters IN THE SAME GAME with a believable in-world
+    explanation of how they came to know it. Dormant until a second NPC exists."""
     others = await conn.fetch(
-        "SELECT id, name FROM characters WHERE id <> $1", source_character_id)
+        "SELECT id, name FROM characters WHERE game_id=$1 AND id <> $2",
+        game_id, source_character_id)
     if not others:
         return
-    src = await conn.fetchrow("SELECT name FROM characters WHERE id=$1", source_character_id)
+    src = await conn.fetchrow(
+        "SELECT name FROM characters WHERE game_id=$1 AND id=$2", game_id, source_character_id)
     for other in others:
         # Dedupe: skip if this character already knows the fact (a still-live
         # memory whose content starts with the same base fact). Checked before
         # the explanation LLM call so duplicates cost nothing.
         already = await conn.fetchval(
             """SELECT 1 FROM agent_memories
-               WHERE character_id=$1 AND NOT voided AND starts_with(content, $2)
+               WHERE game_id=$1 AND character_id=$2 AND NOT voided AND starts_with(content, $3)
                LIMIT 1""",
-            other["id"], content)
+            game_id, other["id"], content)
         if already:
             continue
         explanation = await llm.generate_share_explanation(
@@ -67,18 +70,19 @@ async def propagate_to_other_characters(conn, *, source_character_id, content,
         emb = embeddings.to_pgvector(embeddings.embed(leaked))
         await conn.execute(
             """INSERT INTO agent_memories
-                 (character_id, content, embedding, location_id, story_time,
+                 (game_id, character_id, content, embedding, location_id, story_time,
                   source, origin_player_id, created_seq)
-               VALUES ($1,$2,$3::vector,$4,$5,'leaked',$6,$7)""",
-            other["id"], leaked, emb, location_id, story_time,
+               VALUES ($1,$2,$3,$4::vector,$5,$6,'leaked',$7,$8)""",
+            game_id, other["id"], leaked, emb, location_id, story_time,
             origin_player_id, seq)
 
 
-async def void_after(conn, player_id, seq):
-    """Rollback: a player's memories created after `seq` un-happen."""
+async def void_after(conn, player_id, game_id, seq):
+    """Rollback: a player's memories in this game created after `seq` un-happen."""
     await conn.execute(
-        "UPDATE agent_memories SET voided=TRUE WHERE origin_player_id=$1 AND created_seq>$2",
-        player_id, seq)
+        """UPDATE agent_memories SET voided=TRUE
+           WHERE origin_player_id=$1 AND game_id=$2 AND created_seq>$3""",
+        player_id, game_id, seq)
 
 
 async def dedupe_existing(conn) -> int:
@@ -91,7 +95,7 @@ async def dedupe_existing(conn) -> int:
         """WITH ranked AS (
                SELECT id,
                       row_number() OVER (
-                          PARTITION BY character_id, split_part(content, ' (', 1)
+                          PARTITION BY game_id, character_id, split_part(content, ' (', 1)
                           ORDER BY created_at, id
                       ) AS rn
                FROM agent_memories

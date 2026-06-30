@@ -17,44 +17,46 @@ def _identity(char) -> dict:
 
 
 async def process_message(conn, player_id, session, text: str) -> dict:
-    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE id=$1",
-                               session["current_node"])
+    gid = session["game_id"]
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
+                               gid, session["current_node"])
     gate_id = node["gate_id"]
-    gate = await conn.fetchrow("SELECT * FROM dialogue_gates WHERE id=$1", gate_id)
+    gate = await conn.fetchrow("SELECT * FROM dialogue_gates WHERE game_id=$1 AND id=$2",
+                               gid, gate_id)
     spec = json.loads(gate["spec"])
     char = await conn.fetchrow(
-        "SELECT name, reveal_name FROM characters WHERE id=$1",
-        gate["character_id"])
+        "SELECT name, reveal_name FROM characters WHERE game_id=$1 AND id=$2",
+        gid, gate["character_id"])
 
     ga = await conn.fetchrow(
-        "SELECT * FROM gate_attempts WHERE player_id=$1 AND gate_id=$2",
-        player_id, gate_id)
+        "SELECT * FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND gate_id=$3",
+        player_id, gid, gate_id)
     if ga is None:
         await conn.execute(
-            "INSERT INTO gate_attempts (player_id, gate_id) VALUES ($1,$2)",
-            player_id, gate_id)
+            "INSERT INTO gate_attempts (player_id, game_id, gate_id) VALUES ($1,$2,$3)",
+            player_id, gid, gate_id)
         ga = await conn.fetchrow(
-            "SELECT * FROM gate_attempts WHERE player_id=$1 AND gate_id=$2",
-            player_id, gate_id)
+            "SELECT * FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND gate_id=$3",
+            player_id, gid, gate_id)
     cur_seq = max(await next_seq(conn, session["log_id"]) - 1, 0)
 
     # Record the player's message and rebuild the running transcript.
     await conn.execute(
-        """INSERT INTO gate_messages (player_id, gate_id, role, content, seq)
-           VALUES ($1,$2,'player',$3,$4)""", player_id, gate_id, text, cur_seq)
+        """INSERT INTO gate_messages (player_id, game_id, gate_id, role, content, seq)
+           VALUES ($1,$2,$3,'player',$4,$5)""", player_id, gid, gate_id, text, cur_seq)
     history = [{"role": r["role"], "content": r["content"]} for r in await conn.fetch(
         """SELECT role, content FROM gate_messages
-           WHERE player_id=$1 AND gate_id=$2 ORDER BY seq, created_at""",
-        player_id, gate_id)]
+           WHERE player_id=$1 AND game_id=$2 AND gate_id=$3 ORDER BY seq, created_at""",
+        player_id, gid, gate_id)]
 
     # Alignment: every thing the player SAYS shifts their alignment (whether or not
     # it passes the gate). Stamp with cur_seq, the same seq the message rolls back
     # with. Then read the (possibly shifted) standing so the NPC's tone reacts to it.
     verdict_a = await llm.judge_alignment(
         text, context=f"Talking to {char['name'] if char else 'someone'}.")
-    await record_alignment(conn, player_id, cur_seq, verdict_a["good_evil_delta"],
+    await record_alignment(conn, player_id, gid, cur_seq, verdict_a["good_evil_delta"],
                            verdict_a["law_chaos_delta"], verdict_a["reason"], kind="gate")
-    align_str = alignment_label(*await current_alignment(conn, player_id))
+    align_str = alignment_label(*await current_alignment(conn, player_id, gid))
 
     # Count this as a real attempt only if it's substantive. A trivial one/two-word
     # message or an exact duplicate of something already said does NOT advance the hint
@@ -69,14 +71,14 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # Retrieve what this NPC remembers — own (this player) and leaked (others),
     # timeline-safe (MEMORY_AND_LEAKAGE.md §4).
     own_mem, leaked_mem = await memory.retrieve(
-        conn, character_id=gate["character_id"], query_text=text,
+        conn, game_id=gid, character_id=gate["character_id"], query_text=text,
         player_id=player_id, story_time=session["story_time"])
     identity = _identity(char) if char else None
 
     async def _say(line: str):
         await conn.execute(
-            """INSERT INTO gate_messages (player_id, gate_id, role, content, seq)
-               VALUES ($1,$2,'agent',$3,$4)""", player_id, gate_id, line, cur_seq)
+            """INSERT INTO gate_messages (player_id, game_id, gate_id, role, content, seq)
+               VALUES ($1,$2,$3,'agent',$4,$5)""", player_id, gid, gate_id, line, cur_seq)
 
     # A concise recap of what this gate grants on success (its on_success log line) —
     # fed to the Actor so it discloses it clearly on the reveal turn and stays
@@ -117,9 +119,9 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                                   name_earned=name_earned)
 
     await conn.execute(
-        """UPDATE gate_attempts SET criteria_met=$3::jsonb, attempts=$4, hint_level=$5
-           WHERE player_id=$1 AND gate_id=$2""",
-        player_id, gate_id, json.dumps(met), attempts, hint_level)
+        """UPDATE gate_attempts SET criteria_met=$4::jsonb, attempts=$5, hint_level=$6
+           WHERE player_id=$1 AND game_id=$2 AND gate_id=$3""",
+        player_id, gid, gate_id, json.dumps(met), attempts, hint_level)
 
     on_success = spec.get("on_success", {}) if satisfied else {}
     # Guaranteed name reveal, FIRST: some encounters must hand the player the NPC's
@@ -145,8 +147,9 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         # Mark passed BEFORE applying effects so clue discovery sees gate_passed.
         seq = await next_seq(conn, session["log_id"])
         await conn.execute(
-            """UPDATE gate_attempts SET satisfied=TRUE, passed_at_seq=$3
-               WHERE player_id=$1 AND gate_id=$2""", player_id, gate_id, seq)
+            """UPDATE gate_attempts SET satisfied=TRUE, passed_at_seq=$4
+               WHERE player_id=$1 AND game_id=$2 AND gate_id=$3""",
+            player_id, gid, gate_id, seq)
         # Apply the rewards/flags/memory, but DON'T move the player. They stay with
         # the NPC and leave through an authored edge ("the way ahead has opened")
         # when ready, so a passing line never cuts the conversation off mid-flow.
@@ -155,19 +158,20 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         # dialogue. kind="gate" marks it as a gate-unlock event — the only point a
         # regular player may cheat-death-rollback to (the UI keys off this kind).
         seq, story_time = await apply_action(
-            conn, player_id, session["log_id"], node_id=node["id"],
+            conn, player_id, gid, session["log_id"], node_id=node["id"],
             effects=on_success, story_time=session["story_time"], kind="gate")
         await conn.execute(
-            "UPDATE player_sessions SET story_time=$1 WHERE token=$2",
-            story_time, session["token"])
+            """UPDATE player_games SET story_time=$1, last_played_at=now()
+               WHERE player_id=$2 AND game_id=$3""",
+            story_time, player_id, gid)
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, session["log_id"], story_time, node["id"])
+        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
 
         # Write the NPC's memory of this interaction — becomes leakable to others.
         wm = on_success.get("write_memory")
         if wm:
             await memory.write_memory(
-                conn, character_id=wm["owner"], content=wm["content"],
+                conn, game_id=gid, character_id=wm["owner"], content=wm["content"],
                 location_id=gate["location_id"], story_time=story_time,
                 origin_player_id=player_id, seq=seq, source="told")
 

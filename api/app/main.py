@@ -10,11 +10,10 @@ import uuid
 import traceback
 from fastapi import FastAPI, Header, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
-from fastapi.staticfiles import StaticFiles
+from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write
+from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations
 from .dsl import evaluate
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
@@ -31,12 +30,19 @@ app.add_middleware(
     CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"],
 )
 
-# Serve the content repo's static assets (the hand-drawn map background images live
-# at <content>/images/maps/*.png). Mounted read-through so the web app can <img>
-# them directly. check_dir=False so the app still boots if the dir is missing.
-app.mount("/content-static",
-          StaticFiles(directory=os.environ.get("CONTENT_DIR", "/content"), check_dir=False),
-          name="content-static")
+# Serve the active game's static assets (the hand-drawn map background images live
+# at <content>/images/maps/*.png). Served dynamically from the currently-active
+# game's data dir so switching games (admin) swaps the images live, no restart.
+@app.get("/content-static/{path:path}")
+async def content_static(path: str):
+    base = os.path.realpath(gamestate.active_dir())
+    full = os.path.realpath(os.path.join(base, path))
+    # Path-traversal guard: the resolved file must stay inside the game dir.
+    if full != base and not full.startswith(base + os.sep):
+        raise HTTPException(404, "Not found")
+    if not os.path.isfile(full):
+        raise HTTPException(404, "Not found")
+    return FileResponse(full)
 
 
 @app.exception_handler(Exception)
@@ -70,6 +76,13 @@ async def _startup():
         print("[security] WARNING: ONELIFE_SECRET_KEY unset — using an insecure dev "
               "key for TOTP encryption. Set ONELIFE_SECRET_KEY for production.")
     pool = await db.get_pool()
+    # FIRST: bring an already-provisioned single-game volume up to the multi-game
+    # schema (composite game_id keys, games/player_games, session split). Idempotent
+    # and transactional — see migrations.py. Fail-fast so a botched migration surfaces
+    # immediately instead of serving errors against a half-migrated schema.
+    async with pool.acquire() as conn:
+        if await migrations.ensure_multigame(conn):
+            print("[migrate] applied multi-game schema migration")
     # Lightweight, idempotent schema migrations for already-provisioned volumes
     # (the db/*.sql init scripts only run on a fresh volume).
     async with pool.acquire() as conn:
@@ -89,24 +102,37 @@ async def _startup():
         # The player's free-form clipboard (saved with their profile; never auto-edited).
         await conn.execute(
             "ALTER TABLE players ADD COLUMN IF NOT EXISTS clipboard TEXT NOT NULL DEFAULT ''")
-    # Load authored content from YAML (idempotent upsert) so `docker compose up`
-    # yields a playable game. Validate first; skip seeding on errors rather than
-    # crash, leaving whatever content is already in the DB.
-    try:
-        data, _ = content.load_dir()
-        errors, warnings = content.validate(data)
-        for w in warnings:
-            print(f"[content] WARN {w}")
-        if errors:
-            for e in errors:
-                print(f"[content] ERROR {e}")
-            print("[content] validation failed — skipping seed")
-        else:
+        # Small key/value store for runtime app settings (e.g. the active game).
+        await conn.execute(
+            "CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
+        # Restore the admin-selected AUTHORING game (the map/graph editors and
+        # /content-static act on this dataset; it's independent of each player's
+        # active_game_id).
+        chosen = await conn.fetchval("SELECT value FROM app_settings WHERE key='active_game'")
+        if chosen and gamestate.is_valid_game(chosen):
+            gamestate.set_active_game(chosen)
+        print(f"[content] authoring game: {gamestate.active_game()}")
+    # Seed EVERY game under games/*/data into its own game_id (idempotent upsert), so
+    # `docker compose up` yields all playable games. Validate each first; a game that
+    # fails validation is skipped (its prior content, if any, stays) without aborting
+    # the others.
+    for i, (game_id, data_dir) in enumerate(gamestate.all_games_with_data()):
+        try:
+            data, _ = content.load_dir(data_dir)
+            errors, warnings = content.validate(data)
+            for w in warnings:
+                print(f"[content:{game_id}] WARN {w}")
+            if errors:
+                for e in errors:
+                    print(f"[content:{game_id}] ERROR {e}")
+                print(f"[content:{game_id}] validation failed — skipping seed")
+                continue
             async with pool.acquire() as conn:
-                await content.seed_content(conn, data)
-            print(f"[content] seeded {len(data['nodes'])} nodes from {data and 'YAML'}")
-    except Exception as e:  # noqa: BLE001
-        print(f"[content] seed skipped: {e}")
+                await content.register_game(conn, game_id, data.get("game", {}), sort_order=i)
+                await content.seed_content(conn, data, game_id)
+            print(f"[content:{game_id}] seeded {len(data['nodes'])} nodes")
+        except Exception as e:  # noqa: BLE001
+            print(f"[content:{game_id}] seed skipped: {e}")
     # Node positions: ensure the table exists (and drop the retired event-log tables).
     async with pool.acquire() as conn:
         try:
@@ -134,9 +160,13 @@ async def _session(authorization: str | None):
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """SELECT s.token, s.player_id, s.current_node, s.story_time, s.log_id,
+            """SELECT s.token, s.player_id, p.active_game_id AS game_id,
+                      pg.current_node, COALESCE(pg.story_time, 0) AS story_time, pg.log_id,
                       p.display_name, p.onboarded, p.email
-               FROM player_sessions s JOIN players p ON p.id = s.player_id
+               FROM player_sessions s
+               JOIN players p ON p.id = s.player_id
+               LEFT JOIN player_games pg
+                      ON pg.player_id = p.id AND pg.game_id = p.active_game_id
                WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
             token)
     if row is None:
@@ -149,17 +179,20 @@ def _require_onboarded(sess: dict):
         raise HTTPException(403, "Please finish onboarding before you start playing.")
 
 
+def _require_in_game(sess: dict):
+    """Gameplay endpoints need an active game selected (the lobby sets it). 409 nudges
+    the client back to the lobby rather than failing a game_id=NULL query downstream."""
+    if not sess.get("game_id"):
+        raise HTTPException(409, "Pick a game from the lobby first.")
+
+
 def _is_admin(sess: dict) -> bool:
     return (sess.get("email") or "").lower() in ADMIN_EMAILS
 
 
 def _game_name() -> str:
-    """The currently-running game's name, from the data path (games/<Game>/data)."""
-    p = (os.environ.get("GAME_DATA_DIR") or os.environ.get("CONTENT_DIR") or "/content")
-    parts = [x for x in p.replace("\\", "/").split("/") if x not in ("", ".", "..")]
-    if len(parts) >= 2 and parts[-1].lower() == "data":
-        return parts[-2]
-    return parts[-1] if parts else "game"
+    """The currently-active game's name (admin-switchable; see gamestate)."""
+    return gamestate.active_game()
 
 
 def _require_admin(sess: dict):
@@ -168,28 +201,40 @@ def _require_admin(sess: dict):
 
 
 async def _start_game(conn, sess: dict):
-    """Idempotently begin a player's game: create the log and place them at the
-    entry node. No-op if they already have a game in progress."""
+    """Idempotently begin a player's game in their active game: create the log and
+    place them at that game's entry node. No-op if this save is already in progress."""
     if sess.get("log_id"):
         return
     pid = sess["player_id"]
+    gid = sess["game_id"]
+    if not gid:
+        raise HTTPException(409, "Pick a game from the lobby first.")
+    entry = await conn.fetchrow(
+        "SELECT id FROM story_nodes WHERE game_id=$1 AND is_entry LIMIT 1", gid)
+    if entry is None:
+        raise HTTPException(500, "This game has no entry node.")
+    first_summary = await conn.fetchval(
+        "SELECT first_summary FROM games WHERE id=$1", gid) or "You wake."
     log_id = await conn.fetchval(
-        "INSERT INTO game_logs (player_id) VALUES ($1) RETURNING id", pid)
-    entry = await conn.fetchrow("SELECT id FROM story_nodes WHERE is_entry LIMIT 1")
+        "INSERT INTO game_logs (player_id, game_id) VALUES ($1,$2) RETURNING id", pid, gid)
     await conn.execute(
-        """INSERT INTO log_entries (log_id, seq, story_time, node_id, summary, kind)
-           VALUES ($1,0,0,$2,'You woke at Killebäckskolan.','scene')""",
-        log_id, entry["id"])
+        """INSERT INTO log_entries (log_id, game_id, seq, story_time, node_id, summary, kind)
+           VALUES ($1,$2,0,0,$3,$4,'scene')""",
+        log_id, gid, entry["id"], first_summary)
     await conn.execute(
-        "UPDATE player_sessions SET current_node=$1, log_id=$2 WHERE player_id=$3",
-        entry["id"], log_id, pid)
+        """INSERT INTO player_games (player_id, game_id, current_node, log_id, story_time, last_played_at)
+           VALUES ($1,$2,$3,$4,0,now())
+           ON CONFLICT (player_id, game_id)
+           DO UPDATE SET current_node=EXCLUDED.current_node, log_id=EXCLUDED.log_id,
+                         story_time=0, last_played_at=now()""",
+        pid, gid, entry["id"], log_id)
     sess["current_node"] = entry["id"]
     sess["log_id"] = log_id
-    await engine.discover_clues(conn, pid, log_id, 0, entry["id"])
+    await engine.discover_clues(conn, pid, gid, log_id, 0, entry["id"])
     # Discover ONLY the start cell — neighbours stay hidden until the player reaches a
     # world-access node (engine.traverse_edge reveals them then, so "the map opens"
     # in play rather than at the very first instant).
-    await engine.reveal_cells_around(conn, pid, entry["id"], 0, log_id, 0, neighbors=False)
+    await engine.reveal_cells_around(conn, pid, gid, entry["id"], 0, log_id, 0, neighbors=False)
 
 
 # --------------------------------------------------------------------------- #
@@ -226,6 +271,13 @@ class PuzzleBody(BaseModel):
 
 class RollbackBody(BaseModel):
     to_seq: int
+
+class GameSwitchBody(BaseModel):
+    game: str
+
+class GameSelectBody(BaseModel):
+    game_id: str
+    mode: str = "continue"   # continue | new
 
 class TravelBody(BaseModel):
     cell_id: str
@@ -430,23 +482,97 @@ async def submit_onboarding(body: OnboardingBody,
     if passed:
         pool = await db.get_pool()
         async with pool.acquire() as conn:
-            async with conn.transaction():
-                await conn.execute(
-                    "UPDATE players SET onboarded=TRUE WHERE id=$1", sess["player_id"])
-                sess["onboarded"] = True
-                await _start_game(conn, sess)
+            await conn.execute(
+                "UPDATE players SET onboarded=TRUE WHERE id=$1", sess["player_id"])
+        # The game itself starts when the player picks one in the lobby
+        # (POST /api/games/select), not here.
     return {"passed": passed, "score": score, "total": total}
+
+
+# ---------- Lobby: pick which game to play (independent save per game) ----------
+@app.get("/api/games")
+async def lobby_games(authorization: str | None = Header(default=None)):
+    """Every available game + this player's per-game saves (Continue vs New) and
+    which one is currently active."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        games = await conn.fetch(
+            "SELECT id, title, subtitle FROM games ORDER BY sort_order, title")
+        saves = await conn.fetch(
+            """SELECT pg.game_id, pg.current_node, pg.last_played_at, pg.log_id,
+                      n.title AS node_title,
+                      COALESCE((SELECT SUM(points) FROM progress_events pe
+                                WHERE pe.player_id=pg.player_id AND pe.game_id=pg.game_id
+                                  AND NOT pe.voided), 0) AS progress
+               FROM player_games pg
+               LEFT JOIN story_nodes n ON n.game_id=pg.game_id AND n.id=pg.current_node
+               WHERE pg.player_id=$1""", sess["player_id"])
+    by = {r["game_id"]: r for r in saves}
+    return {
+        "active": sess["game_id"],
+        "games": [{
+            "id": g["id"], "title": g["title"] or g["id"], "subtitle": g["subtitle"],
+            "started": g["id"] in by and by[g["id"]]["log_id"] is not None,
+            "node_title": by[g["id"]]["node_title"] if g["id"] in by else None,
+            "progress": int(by[g["id"]]["progress"]) if g["id"] in by else 0,
+            "last_played_at": (by[g["id"]]["last_played_at"].isoformat()
+                               if g["id"] in by and by[g["id"]]["last_played_at"] else None),
+        } for g in games],
+    }
+
+
+@app.post("/api/games/select")
+async def select_game(body: GameSelectBody, authorization: str | None = Header(default=None)):
+    """Make a game active for this player and return its state. `mode=new` restarts
+    that game's save (this player only); `continue` resumes it (starting it if fresh)."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    game_id = (body.game_id or "").strip()
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        if not await conn.fetchval("SELECT 1 FROM games WHERE id=$1", game_id):
+            raise HTTPException(404, "No such game.")
+        await conn.execute(
+            "UPDATE players SET active_game_id=$1 WHERE id=$2", game_id, sess["player_id"])
+        sess["game_id"] = game_id
+        if body.mode == "new":
+            await admin.reset_player_game(conn, sess["player_id"], game_id)
+        slot = await conn.fetchrow(
+            "SELECT current_node, story_time, log_id FROM player_games WHERE player_id=$1 AND game_id=$2",
+            sess["player_id"], game_id)
+        sess["current_node"] = slot["current_node"] if slot else None
+        sess["story_time"] = slot["story_time"] if slot else 0
+        sess["log_id"] = slot["log_id"] if slot else None
+        if not sess.get("log_id"):
+            async with conn.transaction():
+                await _start_game(conn, sess)
+        return await engine.render_state(conn, sess["player_id"], sess)
+
+
+@app.post("/api/games/leave")
+async def leave_game(authorization: str | None = Header(default=None)):
+    """Return to the lobby (non-destructive — the save persists)."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await conn.execute(
+            "UPDATE players SET active_game_id=NULL WHERE id=$1", sess["player_id"])
+    return {"ok": True}
 
 
 @app.get("/api/state")
 async def state(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        # An onboarded player should always have a game in progress. If they don't
-        # (e.g. their progress was reset), bootstrap one instead of rendering a
-        # NULL current_node and crashing. _start_game is idempotent.
+        # A player with an active game should always have it in progress. If the save
+        # slot exists but isn't started yet (selected but never bootstrapped), start it
+        # instead of rendering a NULL current_node. _start_game is idempotent.
         if not sess.get("current_node") or not sess.get("log_id"):
             async with conn.transaction():
                 await _start_game(conn, sess)
@@ -471,13 +597,16 @@ async def save_clipboard(body: ClipboardBody, authorization: str | None = Header
 async def take_edge(body: EdgeBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            edge = await conn.fetchrow("SELECT * FROM story_edges WHERE id=$1", body.edge_id)
+            edge = await conn.fetchrow(
+                "SELECT * FROM story_edges WHERE game_id=$1 AND id=$2", gid, body.edge_id)
             if edge is None or edge["from_node"] != sess["current_node"]:
                 raise HTTPException(400, "That option isn't available from where you are right now.")
-            ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
+            ctx = await engine.load_context(conn, sess["player_id"], gid, sess["story_time"])
             if not evaluate(json.loads(edge["conditions"]), ctx):
                 raise HTTPException(400, "You can't take that path yet.")
             move_seq = await engine.traverse_edge(conn, sess, edge)
@@ -488,28 +617,28 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
             edge_effects = json.loads(edge["effects"]) if edge["effects"] else {}
             label = (edge["label"] or "").strip()
             if label and not edge_effects.get("no_alignment"):
-                v = await _edge_alignment(conn, edge["id"], label)
+                v = await _edge_alignment(conn, gid, edge["id"], label)
                 await engine.record_alignment(
-                    conn, sess["player_id"], move_seq, v["good_evil_delta"],
+                    conn, sess["player_id"], gid, move_seq, v["good_evil_delta"],
                     v["law_chaos_delta"], v["reason"], kind="edge")
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
-async def _edge_alignment(conn, edge_id: str, label: str) -> dict:
+async def _edge_alignment(conn, game_id: str, edge_id: str, label: str) -> dict:
     """The alignment shift of taking an edge, judged from its (static) label ONCE
-    and cached, so a choice's moral weight is consistent and we don't pay an LLM
-    call on every traversal."""
+    and cached per game, so a choice's moral weight is consistent and we don't pay an
+    LLM call on every traversal."""
     row = await conn.fetchrow(
         """SELECT good_evil_delta, law_chaos_delta, reason
-           FROM edge_alignment_cache WHERE edge_id=$1""", edge_id)
+           FROM edge_alignment_cache WHERE game_id=$1 AND edge_id=$2""", game_id, edge_id)
     if row:
         return {"good_evil_delta": row["good_evil_delta"],
                 "law_chaos_delta": row["law_chaos_delta"], "reason": row["reason"]}
     v = await llm.judge_alignment(label, context="A deliberate story choice.")
     await conn.execute(
-        """INSERT INTO edge_alignment_cache (edge_id, good_evil_delta, law_chaos_delta, reason)
-           VALUES ($1,$2,$3,$4) ON CONFLICT (edge_id) DO NOTHING""",
-        edge_id, v["good_evil_delta"], v["law_chaos_delta"], v["reason"])
+        """INSERT INTO edge_alignment_cache (game_id, edge_id, good_evil_delta, law_chaos_delta, reason)
+           VALUES ($1,$2,$3,$4,$5) ON CONFLICT (game_id, edge_id) DO NOTHING""",
+        game_id, edge_id, v["good_evil_delta"], v["law_chaos_delta"], v["reason"])
     return v
 
 
@@ -520,22 +649,25 @@ async def walk(body: WalkBody, authorization: str | None = Header(default=None))
     each hop, so clicking a far building on the cell map travels there in one go."""
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
             node = await conn.fetchrow(
-                "SELECT * FROM story_nodes WHERE id=$1", sess["current_node"])
+                "SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2", gid, sess["current_node"])
             paths = await engine.cell_walk_paths(
                 conn, sess["player_id"], node, sess["story_time"])
             path = paths.get(body.node_id)
             if not path:
                 raise HTTPException(400, "You can't walk there from where you are.")
             for eid in path:
-                edge = await conn.fetchrow("SELECT * FROM story_edges WHERE id=$1", eid)
+                edge = await conn.fetchrow(
+                    "SELECT * FROM story_edges WHERE game_id=$1 AND id=$2", gid, eid)
                 if edge is None or edge["from_node"] != sess["current_node"]:
                     raise HTTPException(400, "That path is no longer open.")
                 ctx = await engine.load_context(
-                    conn, sess["player_id"], sess["story_time"])
+                    conn, sess["player_id"], gid, sess["story_time"])
                 if not evaluate(json.loads(edge["conditions"]), ctx):
                     raise HTTPException(400, "The way there is blocked.")
                 await engine.traverse_edge(conn, sess, edge)
@@ -546,6 +678,7 @@ async def walk(body: WalkBody, authorization: str | None = Header(default=None))
 async def gate_message(body: GateBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -558,6 +691,7 @@ async def gate_message(body: GateBody, authorization: str | None = Header(defaul
 async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -570,6 +704,7 @@ async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(def
 async def puzzle_hint(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -582,6 +717,7 @@ async def puzzle_hint(authorization: str | None = Header(default=None)):
 async def do_rollback(body: RollbackBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
@@ -596,6 +732,8 @@ async def do_rollback(body: RollbackBody, authorization: str | None = Header(def
 async def get_log(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
@@ -607,11 +745,12 @@ async def get_log(authorization: str | None = Header(default=None)):
         # does (a name-withholder stays a role descriptor until it's learned).
         msgs = await conn.fetch(
             """SELECT m.seq, m.role, m.content, m.created_at, g.character_id
-               FROM gate_messages m JOIN dialogue_gates g ON g.id = m.gate_id
-               WHERE m.player_id=$1 ORDER BY m.seq, m.created_at""", sess["player_id"])
-        ctx = await engine.load_context(conn, sess["player_id"], sess["story_time"])
+               FROM gate_messages m JOIN dialogue_gates g ON g.id = m.gate_id AND g.game_id = m.game_id
+               WHERE m.player_id=$1 AND m.game_id=$2 ORDER BY m.seq, m.created_at""",
+            sess["player_id"], gid)
+        ctx = await engine.load_context(conn, sess["player_id"], gid, sess["story_time"])
         chars = {c["id"]: c for c in await conn.fetch(
-            "SELECT id, name, reveal_name FROM characters")}
+            "SELECT id, name, reveal_name FROM characters WHERE game_id=$1", gid)}
 
     entries = [{"seq": r["seq"], "ord": 0, "summary": r["summary"],
                 "node_id": r["node_id"], "kind": r["kind"]} for r in rows]
@@ -636,13 +775,15 @@ async def get_alignment(authorization: str | None = Header(default=None)):
     fading trail). Only non-rolled-back rows exist (rollback deletes them)."""
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        ge, lc = await engine.current_alignment(conn, sess["player_id"])
+        ge, lc = await engine.current_alignment(conn, sess["player_id"], gid)
         rows = await conn.fetch(
             """SELECT created_seq AS seq, good_evil, law_chaos, reason, kind
-               FROM player_alignment_events WHERE player_id=$1 ORDER BY id""",
-            sess["player_id"])
+               FROM player_alignment_events WHERE player_id=$1 AND game_id=$2 ORDER BY id""",
+            sess["player_id"], gid)
     return {
         "current": {"good_evil": ge, "law_chaos": lc,
                     "label": engine.alignment_label(ge, lc)},
@@ -656,26 +797,28 @@ async def get_alignment(authorization: str | None = Header(default=None)):
 async def memories(character: str = "the-janitor",
                    authorization: str | None = Header(default=None)):
     """Debug/demo view of what an NPC remembers, across all players."""
-    await _session(authorization)
+    sess = await _session(authorization)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
             """SELECT m.content, m.source, m.story_time, m.voided, p.display_name AS origin
                FROM agent_memories m
                LEFT JOIN players p ON p.id = m.origin_player_id
-               WHERE m.character_id=$1
-               ORDER BY m.created_at""", character)
+               WHERE m.game_id=$1 AND m.character_id=$2
+               ORDER BY m.created_at""", gid, character)
     return {"character": character, "memories": [
         {"content": r["content"], "source": r["source"], "story_time": r["story_time"],
          "voided": r["voided"], "origin": r["origin"]} for r in rows]}
 
 
-async def _current_cell(conn, current_node):
+async def _current_cell(conn, game_id, current_node):
     return await conn.fetchrow(
         """SELECT w.id, w.grid_x, w.grid_y FROM story_nodes n
-           JOIN locations l ON l.id = n.location_id
-           JOIN world_cells w ON w.id = l.cell_id
-           WHERE n.id=$1""", current_node)
+           JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+           JOIN world_cells w ON w.id = l.cell_id AND w.game_id = l.game_id
+           WHERE n.game_id=$1 AND n.id=$2""", game_id, current_node)
 
 
 def _adjacent(a, b) -> bool:
@@ -701,17 +844,22 @@ async def get_world(authorization: str | None = Header(default=None)):
     currently reachable, plus the roads (adjacent discovered pairs)."""
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         node = await conn.fetchrow(
-            "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
-        cur = await _current_cell(conn, sess["current_node"])
-        allcells = await conn.fetch("SELECT grid_x, grid_y FROM world_cells")
+            "SELECT world_access FROM story_nodes WHERE game_id=$1 AND id=$2",
+            gid, sess["current_node"])
+        cur = await _current_cell(conn, gid, sess["current_node"])
+        allcells = await conn.fetch("SELECT grid_x, grid_y FROM world_cells WHERE game_id=$1", gid)
         cells = await conn.fetch(
             """SELECT w.id, w.grid_x, w.grid_y, w.name, w.kind, w.region, w.map
                FROM world_cells w
-               JOIN player_cells pc ON pc.cell_id = w.id AND pc.player_id = $1
-               ORDER BY w.grid_y, w.grid_x""", sess["player_id"])
+               JOIN player_cells pc ON pc.cell_id = w.id AND pc.game_id = w.game_id
+                    AND pc.player_id = $1
+               WHERE w.game_id = $2
+               ORDER BY w.grid_y, w.grid_x""", sess["player_id"], gid)
     can_travel = bool(node and node["world_access"])
     xs = [c["grid_x"] for c in allcells] or [0]
     ys = [c["grid_y"] for c in allcells] or [0]
@@ -738,40 +886,44 @@ async def get_world(authorization: str | None = Header(default=None)):
 async def travel(body: TravelBody, authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
             node = await conn.fetchrow(
-                "SELECT world_access FROM story_nodes WHERE id=$1", sess["current_node"])
+                "SELECT world_access FROM story_nodes WHERE game_id=$1 AND id=$2",
+                gid, sess["current_node"])
             if not node or not node["world_access"]:
                 raise HTTPException(400, "You can't travel from here. Find a spot that opens the map first.")
-            cur = await _current_cell(conn, sess["current_node"])
+            cur = await _current_cell(conn, gid, sess["current_node"])
             dest = await conn.fetchrow(
-                "SELECT id, grid_x, grid_y, name, arrival_node FROM world_cells WHERE id=$1",
-                body.cell_id)
+                "SELECT id, grid_x, grid_y, name, arrival_node FROM world_cells WHERE game_id=$1 AND id=$2",
+                gid, body.cell_id)
             if dest is None or not dest["arrival_node"]:
                 raise HTTPException(404, "There's no such place to travel to.")
             discovered = await conn.fetchval(
-                "SELECT 1 FROM player_cells WHERE player_id=$1 AND cell_id=$2",
-                sess["player_id"], dest["id"])
+                "SELECT 1 FROM player_cells WHERE player_id=$1 AND game_id=$2 AND cell_id=$3",
+                sess["player_id"], gid, dest["id"])
             if not discovered:
                 raise HTTPException(400, "You don't know the way there yet.")
             if cur is None or not _adjacent(cur, dest):
                 raise HTTPException(400, "That's too far to travel in a single step.")
             arrival = dest["arrival_node"]
             seq, story_time = await engine.apply_action(
-                conn, sess["player_id"], sess["log_id"], node_id=arrival,
+                conn, sess["player_id"], gid, sess["log_id"], node_id=arrival,
                 effects={"progress_points": 5, "log": f"You traveled to {dest['name']}."},
                 story_time=sess["story_time"], kind="action")
             await conn.execute(
-                "UPDATE player_sessions SET current_node=$1, story_time=$2 WHERE token=$3",
-                arrival, story_time, sess["token"])
+                """UPDATE player_games SET current_node=$1, story_time=$2, last_played_at=now()
+                   WHERE player_id=$3 AND game_id=$4""",
+                arrival, story_time, sess["player_id"], gid)
             sess["current_node"] = arrival
             sess["story_time"] = story_time
             await engine.discover_clues(
-                conn, sess["player_id"], sess["log_id"], story_time, arrival)
+                conn, sess["player_id"], gid, sess["log_id"], story_time, arrival)
             await engine.reveal_cells_around(
-                conn, sess["player_id"], arrival, seq, sess["log_id"], story_time)
+                conn, sess["player_id"], gid, arrival, seq, sess["log_id"], story_time)
         return await engine.render_state(conn, sess["player_id"], sess)
 
 
@@ -792,23 +944,26 @@ async def get_atmosphere(spotify: int = 0,
     player's current location, set in southern Sweden, 1992."""
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         node = await conn.fetchrow(
-            "SELECT location_id, media, body FROM story_nodes WHERE id=$1", sess["current_node"])
+            "SELECT location_id, media, body FROM story_nodes WHERE game_id=$1 AND id=$2",
+            gid, sess["current_node"])
         loc = cell = None
         if node and node["location_id"]:
             loc = await conn.fetchrow(
-                "SELECT id, name, description, cell_id FROM locations WHERE id=$1",
-                node["location_id"])
+                "SELECT id, name, description, cell_id FROM locations WHERE game_id=$1 AND id=$2",
+                gid, node["location_id"])
         if loc and loc["cell_id"]:
             cell = await conn.fetchrow(
-                "SELECT region FROM world_cells WHERE id=$1", loc["cell_id"])
+                "SELECT region FROM world_cells WHERE game_id=$1 AND id=$2", gid, loc["cell_id"])
         media = json.loads(node["media"]) if node else {}
         theme = media.get("image_theme", "")
         setting = atmosphere.setting_for(loc, cell)
         image_url = await atmosphere.image_for(
-            conn, theme, loc, setting,
+            conn, gid, theme, loc, setting,
             real_place=media.get("real_place"), reference=media.get("reference_image"),
             scene_text=node["body"] if node else None)
     tracks = []
@@ -832,6 +987,41 @@ async def admin_me(authorization: str | None = Header(default=None)):
     return {"is_admin": _is_admin(await _session(authorization)), "game": _game_name()}
 
 
+# ---------- Admin: switch the active game (re-seed from another games/<G>/data) ----------
+@app.get("/api/admin/games")
+async def admin_games(authorization: str | None = Header(default=None)):
+    """Every game folder under games/ that has content, plus which one is active."""
+    await _admin_session(authorization)
+    return {"games": gamestate.list_games(), "active": gamestate.active_game()}
+
+
+@app.post("/api/admin/games/switch")
+async def admin_games_switch(body: GameSwitchBody,
+                             authorization: str | None = Header(default=None)):
+    """Switch the admin AUTHORING game — which dataset the map/graph editors and
+    /content-static act on. This is independent of what players play (each player
+    picks their own game in the lobby) and never touches player progress; it just
+    re-seeds the chosen game's content and remembers the choice across restarts."""
+    await _admin_session(authorization)
+    game = (body.game or "").strip()
+    if not gamestate.is_valid_game(game):
+        raise HTTPException(404, f"No game '{game}' with content under games/.")
+    data, _ = content.load_dir(gamestate.data_dir_for(game))
+    errors, warnings = content.validate(data)
+    if errors:
+        raise HTTPException(400, "Cannot switch — content has errors: " + "; ".join(errors[:5]))
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        await content.register_game(conn, game, data.get("game", {}))
+        skipped = await content.seed_content(conn, data, game)
+        gamestate.set_active_game(game)
+        await conn.execute(
+            """INSERT INTO app_settings (key, value) VALUES ('active_game', $1)
+               ON CONFLICT (key) DO UPDATE SET value=EXCLUDED.value""", game)
+    return {"ok": True, "game": game, "nodes": len(data["nodes"]),
+            "warnings": warnings, "skipped": skipped}
+
+
 # ---------- Admin: clickable-map editor (writes ellipse positions back to YAML) ----------
 @app.get("/api/admin/map/all")
 async def admin_map_all(authorization: str | None = Header(default=None)):
@@ -840,14 +1030,16 @@ async def admin_map_all(authorization: str | None = Header(default=None)):
     map lists the cells. Coords are explicit `map` values where set, else a derived
     default — so the editor always has something to drag."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         cells = await conn.fetch(
-            "SELECT id, name, grid_x, grid_y, map, map_image, world_exit FROM world_cells ORDER BY grid_y, grid_x")
+            "SELECT id, name, grid_x, grid_y, map, map_image, world_exit "
+            "FROM world_cells WHERE game_id=$1 ORDER BY grid_y, grid_x", gid)
         nodes = await conn.fetch(
             """SELECT n.id, n.title, n.type, n.map, l.cell_id
-               FROM story_nodes n JOIN locations l ON l.id = n.location_id
-               WHERE l.cell_id IS NOT NULL AND n.type <> 'death' ORDER BY n.id""")
+               FROM story_nodes n JOIN locations l ON l.id = n.location_id AND l.game_id = n.game_id
+               WHERE n.game_id=$1 AND l.cell_id IS NOT NULL AND n.type <> 'death' ORDER BY n.id""", gid)
     xs = [c["grid_x"] for c in cells] or [0]
     ys = [c["grid_y"] for c in cells] or [0]
     minx, maxx, miny, maxy = min(xs), max(xs), min(ys), max(ys)
@@ -915,7 +1107,7 @@ async def admin_map_save(body: MapSaveBody, authorization: str | None = Header(d
         raise HTTPException(400, "; ".join(errors[:5]))
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        await content.seed_content(conn, data)
+        await content.seed_content(conn, data, gamestate.active_game())
     return {"ok": True}
 
 
@@ -925,10 +1117,11 @@ async def admin_map_scale(body: MapScaleBody, authorization: str | None = Header
     (preserving any x/y/rx/ry) and mirrored into the live DB so the map updates without
     a full re-seed."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     scale = round(max(0.1, min(5.0, float(body.scale))), 3)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE id=$1", body.id)
+        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE game_id=$1 AND id=$2", gid, body.id)
         if row is None:
             raise HTTPException(404, f"no such node {body.id}")
         cur = row["map"]
@@ -940,8 +1133,8 @@ async def admin_map_scale(body: MapScaleBody, authorization: str | None = Header
             raise HTTPException(404, f"no YAML defines node {body.id}")
         except Exception as e:  # noqa: BLE001
             raise HTTPException(500, f"could not write YAML: {e}")
-        await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
-                           body.id, json.dumps(cur))
+        await conn.execute("UPDATE story_nodes SET map=$3::jsonb WHERE game_id=$1 AND id=$2",
+                           gid, body.id, json.dumps(cur))
     return {"ok": True, "scale": scale}
 
 
@@ -952,11 +1145,12 @@ async def admin_map_pos(body: MapPosBody, authorization: str | None = Header(def
     map reflects it without a full re-seed. This is the only thing dragging a node saves —
     graph pixel positions are left alone, so no other icon ever moves."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     x = round(max(0.0, min(1.0, float(body.x))), 4)
     y = round(max(0.0, min(1.0, float(body.y))), 4)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE id=$1", body.id)
+        row = await conn.fetchrow("SELECT map FROM story_nodes WHERE game_id=$1 AND id=$2", gid, body.id)
         if row is None:
             raise HTTPException(404, f"no such node {body.id}")
         cur = row["map"]
@@ -968,8 +1162,8 @@ async def admin_map_pos(body: MapPosBody, authorization: str | None = Header(def
             raise HTTPException(404, f"no YAML defines node {body.id}")
         except Exception as e:  # noqa: BLE001
             raise HTTPException(500, f"could not write YAML: {e}")
-        await conn.execute("UPDATE story_nodes SET map=$2::jsonb WHERE id=$1",
-                           body.id, json.dumps(cur))
+        await conn.execute("UPDATE story_nodes SET map=$3::jsonb WHERE game_id=$1 AND id=$2",
+                           gid, body.id, json.dumps(cur))
     return {"ok": True, "x": x, "y": y}
 
 
@@ -979,19 +1173,22 @@ async def admin_map_edge(body: MapEdgeBody, authorization: str | None = Header(d
     bidirectional is false), write it into the standalone `edges:` YAML, then re-seed so
     the road shows live. An already-existing direction is left untouched (no duplicate)."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     if body.from_node == body.to_node:
         raise HTTPException(400, "cannot connect a place to itself")
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         rows = await conn.fetch(
-            "SELECT id, title FROM story_nodes WHERE id = ANY($1::text[])",
-            [body.from_node, body.to_node])
+            "SELECT id, title FROM story_nodes WHERE game_id=$1 AND id = ANY($2::text[])",
+            gid, [body.from_node, body.to_node])
         nmap = {r["id"]: (r["title"] or r["id"]) for r in rows}
         if body.from_node not in nmap or body.to_node not in nmap:
             raise HTTPException(404, "unknown node")
-        existing_ids = {r["id"] for r in await conn.fetch("SELECT id FROM story_edges")}
+        existing_ids = {r["id"] for r in await conn.fetch(
+            "SELECT id FROM story_edges WHERE game_id=$1", gid)}
         existing_pairs = {(r["from_node"], r["to_node"])
-                          for r in await conn.fetch("SELECT from_node, to_node FROM story_edges")}
+                          for r in await conn.fetch(
+                              "SELECT from_node, to_node FROM story_edges WHERE game_id=$1", gid)}
 
     label = (body.label or "").strip()
     directions = [(body.from_node, body.to_node)]
@@ -1025,7 +1222,7 @@ async def admin_map_edge(body: MapEdgeBody, authorization: str | None = Header(d
         raise HTTPException(400, "; ".join(errors[:5]))
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        await content.seed_content(conn, data)
+        await content.seed_content(conn, data, gid)
     return {"ok": True, "created": created}
 
 
@@ -1035,7 +1232,7 @@ async def admin_map_overview(authorization: str | None = Header(default=None)):
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        return await engine.map_overview(conn)
+        return await engine.map_overview(conn, gamestate.active_game())
 
 
 @app.post("/api/admin/map/roads")
@@ -1045,9 +1242,10 @@ async def admin_map_roads(body: MapRoadsBody,
     route is written to every story edge between the two places' anchor nodes (oriented
     to that edge's direction) — in the YAML (source of truth) and the DB."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        anchor = await engine.map_road_anchors(conn)
+        anchor = await engine.map_road_anchors(conn, gid)
         written, missing = 0, 0
         for road in body.roads:
             fl, tl = road.get("from"), road.get("to")
@@ -1057,15 +1255,15 @@ async def admin_map_roads(body: MapRoadsBody,
                 continue
             erows = await conn.fetch(
                 """SELECT id, from_node FROM story_edges
-                   WHERE (from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1)""",
-                na, nb)
+                   WHERE game_id=$3 AND ((from_node=$1 AND to_node=$2) OR (from_node=$2 AND to_node=$1))""",
+                na, nb, gid)
             if not erows:
                 missing += 1
                 continue
             for e in erows:
                 pts = points if e["from_node"] == na else list(reversed(points))
-                await conn.execute("UPDATE story_edges SET road=$2::jsonb WHERE id=$1",
-                                   e["id"], json.dumps(pts))
+                await conn.execute("UPDATE story_edges SET road=$3::jsonb WHERE game_id=$1 AND id=$2",
+                                   gid, e["id"], json.dumps(pts))
                 try:
                     map_write.set_edge_road(e["id"], pts)
                     written += 1
@@ -1079,7 +1277,7 @@ async def admin_content_export(authorization: str | None = Header(default=None))
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        data = await content.export_content(conn)
+        data = await content.export_content(conn, gamestate.active_game())
     import yaml
     body = yaml.safe_dump(data, allow_unicode=True, sort_keys=False)
     return {"filename": "content-export.yaml", "body": body}
@@ -1095,17 +1293,17 @@ async def admin_content_all(authorization: str | None = Header(default=None)):
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        return await content_log.current(conn)
+        return await content_log.current(conn, gamestate.active_game())
 
 
-async def _persist_pos(conn, node_id: str, x, y) -> None:
+async def _persist_pos(conn, game_id, node_id: str, x, y) -> None:
     """Write a node's graph position into the authored YAML (the source of truth)
     and mirror it into the node_positions cache the map reads."""
     map_write.set_node_pos(node_id, x, y)
     await conn.execute(
-        """INSERT INTO node_positions (node_id,x,y) VALUES ($1,$2,$3)
-           ON CONFLICT (node_id) DO UPDATE SET x=EXCLUDED.x, y=EXCLUDED.y""",
-        node_id, float(x), float(y))
+        """INSERT INTO node_positions (game_id,node_id,x,y) VALUES ($1,$2,$3,$4)
+           ON CONFLICT (game_id,node_id) DO UPDATE SET x=EXCLUDED.x, y=EXCLUDED.y""",
+        game_id, node_id, float(x), float(y))
 
 
 @app.post("/api/admin/content/move")
@@ -1115,7 +1313,7 @@ async def admin_content_move(body: ContentMoveBody,
     await _admin_session(authorization)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        await _persist_pos(conn, body.id, body.x, body.y)
+        await _persist_pos(conn, gamestate.active_game(), body.id, body.x, body.y)
     return {"ok": True}
 
 
@@ -1124,10 +1322,11 @@ async def admin_content_layout(body: ContentLayoutBody,
                                authorization: str | None = Header(default=None)):
     """Persist a whole-graph re-layout into the YAML files + the cache."""
     await _admin_session(authorization)
+    gid = gamestate.active_game()
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         for nid, p in body.positions.items():
-            await _persist_pos(conn, nid, p["x"], p["y"])
+            await _persist_pos(conn, gid, nid, p["x"], p["y"])
     return {"ok": True}
 
 
@@ -1195,24 +1394,28 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int
     `around=N` returns the caller +/- N neighbours; otherwise the window starting
     at rank `offset`+1 (for jump-to-position)."""
     sess = await _session(authorization)
+    _require_in_game(sess)
+    gid = sess["game_id"]
     offset = max(0, offset)
     limit = max(1, min(limit, 100))
     pid = sess["player_id"]
-    # `completed` = the player has reached an ending node on their live (non-rolled-back)
-    # timeline; rollback past the ending un-completes it, consistent with the log invariant.
+    # Per-game board: $1 is the game being ranked. `completed` = the player reached an
+    # ending node on their live (non-rolled-back) timeline IN THIS GAME; rollback past
+    # the ending un-completes it, consistent with the log invariant.
     cte = ("WITH done AS (SELECT DISTINCT g.player_id FROM log_entries le "
            "  JOIN game_logs g ON g.id = le.log_id "
-           "  WHERE NOT le.rolled_back "
-           "    AND le.node_id IN (SELECT id FROM story_nodes WHERE type='ending')), "
-           # Each player's current alignment = their latest (non-rolled-back) event;
-           # rollback deletes events, so the newest row is always the live standing.
+           "  WHERE NOT le.rolled_back AND g.game_id=$1 "
+           "    AND le.node_id IN (SELECT id FROM story_nodes WHERE game_id=$1 AND type='ending')), "
+           # Each player's current alignment in this game = their latest (non-rolled-back)
+           # event; rollback deletes events, so the newest row is always the live standing.
            "align AS (SELECT DISTINCT ON (player_id) player_id, good_evil, law_chaos "
-           "  FROM player_alignment_events ORDER BY player_id, id DESC), "
+           "  FROM player_alignment_events WHERE game_id=$1 ORDER BY player_id, id DESC), "
            "ranked AS (SELECT l.player_id, l.display_name, l.progress, "
            "  (d.player_id IS NOT NULL) AS completed, a.good_evil, a.law_chaos, "
            "  ROW_NUMBER() OVER (ORDER BY l.progress DESC, l.display_name) AS rank "
            "  FROM leaderboard l LEFT JOIN done d ON d.player_id = l.player_id "
-           "  LEFT JOIN align a ON a.player_id = l.player_id) ")
+           "  LEFT JOIN align a ON a.player_id = l.player_id "
+           "  WHERE l.game_id=$1) ")
 
     def _align(r):
         # No alignment events yet → treated as the origin (true neutral).
@@ -1220,8 +1423,10 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int
 
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        total = await conn.fetchval(cte + "SELECT count(*) FROM ranked")
-        me = await conn.fetchrow(cte + "SELECT rank, display_name, progress, completed, good_evil, law_chaos FROM ranked WHERE player_id=$1", pid)
+        total = await conn.fetchval(cte + "SELECT count(*) FROM ranked", gid)
+        me = await conn.fetchrow(
+            cte + "SELECT rank, display_name, progress, completed, good_evil, law_chaos "
+            "FROM ranked WHERE player_id=$2", gid, pid)
         if around > 0 and me:
             offset = max(0, me["rank"] - around - 1)
             limit = min(2 * around + 1, 100)
@@ -1229,11 +1434,11 @@ async def leaderboard(offset: int = 0, limit: int = 20, q: str = "", around: int
         if q.strip():
             rows = await conn.fetch(
                 cte + "SELECT player_id, rank, display_name, progress, completed, good_evil, law_chaos FROM ranked "
-                "WHERE display_name ILIKE '%'||$1||'%' ORDER BY rank LIMIT $2", q.strip(), limit)
+                "WHERE display_name ILIKE '%'||$2||'%' ORDER BY rank LIMIT $3", gid, q.strip(), limit)
         else:
             rows = await conn.fetch(
                 cte + "SELECT player_id, rank, display_name, progress, completed, good_evil, law_chaos FROM ranked "
-                "ORDER BY rank OFFSET $1 LIMIT $2", offset, limit)
+                "ORDER BY rank OFFSET $2 LIMIT $3", gid, offset, limit)
     return {
         "total": total,
         "me": ({"rank": me["rank"], "display_name": me["display_name"], "progress": me["progress"],

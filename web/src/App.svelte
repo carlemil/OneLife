@@ -9,7 +9,11 @@
   import MapOverlay from './lib/MapOverlay.svelte';
   import AlignmentChart from './lib/AlignmentChart.svelte';
 
-  let phase = $state('loading');        // loading | auth | twofa | onboarding | game
+  let phase = $state('loading');        // loading | auth | twofa | onboarding | lobby | game
+  // lobby (game picker; independent save per game)
+  let lobbyGames = $state([]);
+  let lobbyActive = $state(null);
+  let activeGameTitle = $state('');
   let authMode = $state('login');       // login | register
   let busy = $state(false);
   let error = $state('');
@@ -136,6 +140,9 @@
   let adminGame = $state('');
   let showAdmin = $state(false);
   let adminMsg = $state('');
+  let adminGames = $state([]);     // games available under games/
+  let selGame = $state('');        // game picked in the switch dropdown
+  let switching = $state(false);
   let adminPlayers = $state([]);
   let selPlayer = $state('');
   let dbConfirm = $state('');
@@ -357,14 +364,52 @@
     finally { busy = false; }
   }
 
+  // ---------- lobby ----------
+  async function loadLobby() {
+    try {
+      const r = await api.games();
+      lobbyGames = r.games; lobbyActive = r.active;
+      error = ''; notice = ''; phase = 'lobby';
+    } catch (e) {
+      if (e.unauthorized) phase = 'auth';
+      else if (e.forbidden) await loadOnboarding();
+      else error = e.message;
+    }
+  }
+  async function pickGame(id, mode = 'continue') {
+    busy = true; error = '';
+    try {
+      await api.selectGame(id, mode);
+      await loadGame();
+    } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+  async function toLobby() {
+    try { await api.leaveGame(); } catch { /* non-fatal */ }
+    game = null;
+    await loadLobby();
+  }
+
   // ---------- game ----------
   async function loadGame() {
-    game = await api.state();
+    let s;
+    try {
+      s = await api.state();
+    } catch (e) {
+      if (e.needGame) { await loadLobby(); return; }
+      throw e;
+    }
+    game = s;
     logEntries = (await api.log()).entries;
     myWindow = (await api.leaderboard({ around: 1 })).rows;
     error = ''; notice = ''; phase = 'game';
-    try { const me = await api.adminMe(); isAdmin = me.is_admin; adminGame = me.game || ''; }
-    catch { isAdmin = false; }
+    try {
+      const me = await api.adminMe(); isAdmin = me.is_admin; adminGame = me.game || '';
+    } catch { isAdmin = false; }
+    try {
+      const lg = (await api.games());
+      activeGameTitle = (lg.games.find(g => g.id === lg.active) || {}).title || '';
+    } catch { activeGameTitle = ''; }
   }
 
   // ---------- leaderboard page ----------
@@ -393,6 +438,20 @@
   async function openAdmin() {
     adminMsg = ''; showAdmin = true;
     try { adminPlayers = (await api.listPlayers()).players; } catch (e) { adminMsg = e.message; }
+    try {
+      const g = await api.adminGames();
+      adminGames = g.games; adminGame = g.active; selGame = g.active;
+    } catch (e) { adminMsg = e.message; }
+  }
+  async function switchGame() {
+    if (!selGame || selGame === adminGame || switching) return;
+    switching = true; adminMsg = `Switching authoring to ${selGame}…`;
+    try {
+      const r = await api.switchGame(selGame);
+      adminGame = r.game;
+      adminMsg = `Now authoring ${r.game} (the map/graph editors act on this game). Players are unaffected.`;
+    } catch (e) { adminMsg = e.message; }
+    finally { switching = false; }
   }
   async function readJson(ev) {
     const f = ev.target.files?.[0]; if (!f) return null;
@@ -759,8 +818,43 @@
       <button class="primary" onclick={submitQuiz} disabled={busy}>Begin</button>
     </div>
 
+  {:else if phase === 'lobby'}
+    <div class="topbar">
+      <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
+    </div>
+    <div class="panel">
+      <h2>Choose your game</h2>
+      <p class="sub">Each world keeps its own progress — switch any time.</p>
+      {#if error}<div class="error">{error}</div>{/if}
+      <div class="lobby">
+        {#each lobbyGames as g}
+          <div class="gamecard" class:active={g.id === lobbyActive}>
+            <div class="gameinfo">
+              <h3>{g.title}</h3>
+              {#if g.subtitle}<p class="sub">{g.subtitle}</p>{/if}
+              {#if g.started}
+                <p class="save">Continue — {g.node_title || 'in progress'} · {g.progress} pts{#if g.id === lobbyActive} · current{/if}</p>
+              {:else}
+                <p class="save sub">Not started yet</p>
+              {/if}
+            </div>
+            <div class="gameactions">
+              {#if g.started}
+                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>Continue</button>
+                <button onclick={() => pickGame(g.id, 'new')} disabled={busy}>Start over</button>
+              {:else}
+                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>New game</button>
+              {/if}
+            </div>
+          </div>
+        {/each}
+        {#if !lobbyGames.length}<p class="sub">No games are available right now.</p>{/if}
+      </div>
+    </div>
+
   {:else if phase === 'game' && game}
     <div class="topbar">
+      <button class="link" title="Switch game" onclick={toLobby}>🏠</button>
       <button class="link" title="How to play" onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title="Admin & settings" onclick={openAdmin}>⚙</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
@@ -1009,6 +1103,17 @@
         {#if adminMsg}<div class="notice">{adminMsg}</div>{/if}
 
         <div class="admin-sec">
+          <h3>Authoring game</h3>
+          <p class="sub">Which dataset the map &amp; story-graph editors and content export act on. Players pick their own game in the lobby — this does <b>not</b> change what anyone plays. Persists across restarts.</p>
+          <div class="row">
+            <select bind:value={selGame} disabled={switching}>
+              {#each adminGames as g}<option value={g}>{g}{g === adminGame ? ' (current)' : ''}</option>{/each}
+            </select>
+            <button onclick={switchGame} disabled={switching || !selGame || selGame === adminGame}>Switch authoring</button>
+          </div>
+        </div>
+
+        <div class="admin-sec">
           <h3>Editors</h3>
           <p class="sub">Authoring lives in the YAML files; these editors write changes back to them.</p>
           <button onclick={() => { showAdmin = false; openGraph(); }}>Story graph…</button>
@@ -1189,6 +1294,13 @@
   .opt { display:block; cursor:pointer; padding:.15rem 0; }
   .opt.toggle { font-size:.9rem; color:#9aa; margin:.3rem 0 .6rem; }
   .opt input { display:inline; width:auto; margin-right:.5rem; }
+  .lobby { display:flex; flex-direction:column; gap:.7rem; margin-top:.8rem; }
+  .gamecard { display:flex; justify-content:space-between; align-items:center; gap:1rem;
+    background:#0d0e14; border:1px solid #2a2e3e; border-radius:10px; padding:.8rem 1rem; }
+  .gamecard.active { border-color:#5b6cff; }
+  .gameinfo h3 { margin:0 0 .15rem; }
+  .gameinfo .save { margin:.25rem 0 0; font-size:.85rem; color:#9aa; }
+  .gameactions { display:flex; gap:.4rem; flex-shrink:0; }
   .codes { list-style:none; padding:0; display:grid; grid-template-columns:1fr 1fr; gap:.4rem; }
   .codes code { background:#0d0e14; padding:.35rem .5rem; border-radius:6px; display:block; text-align:center; letter-spacing:1px; }
   .maphint { margin:.4rem 0 0; text-align:center; }

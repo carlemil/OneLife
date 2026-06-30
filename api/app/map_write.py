@@ -11,12 +11,13 @@ import glob
 import os
 import re
 
-CONTENT_DIR = os.environ.get("CONTENT_DIR", "/content")
+from . import gamestate
 
 
 def _files():
-    return sorted(glob.glob(os.path.join(CONTENT_DIR, "*.yaml"))
-                  + glob.glob(os.path.join(CONTENT_DIR, "*.yml")))
+    content_dir = gamestate.active_dir()
+    return sorted(glob.glob(os.path.join(content_dir, "*.yaml"))
+                  + glob.glob(os.path.join(content_dir, "*.yml")))
 
 
 def _fmt(value: dict) -> str:

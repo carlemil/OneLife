@@ -25,6 +25,9 @@ services:
       # Game data lives in-repo under games/<Game>/data, mounted at /content. The
       # path is passed in so the admin UI can name the running game.
       GAME_DATA_DIR: ${GAME_DATA_DIR:-./games/SandbyMystery/data}
+      # Where the whole games/ tree is mounted in the container (see volumes
+      # below). The admin "switch game" control seeds from games/<name>/data.
+      GAMES_DIR: /games
       # Optional: set to use the real Claude API for the dialogue gate.
       # Leave empty to run the deterministic offline stub (no key required).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
@@ -64,6 +67,10 @@ services:
       # Game data now lives in-repo under games/<Game>/data (override with ${GAME_DATA_DIR}).
       # Read-WRITE: the in-UI map editor writes ellipse positions back into the YAML.
       - ${GAME_DATA_DIR:-./games/SandbyMystery/data}:/content:rw
+      # The whole games/ tree, so the admin "switch game" control can seed from any
+      # games/<name>/data without a remount. Read-WRITE so the map editor keeps
+      # working after a switch (it writes ellipse positions back into the YAML).
+      - ./games:/games:rw
     # Loopback-only: in production Caddy reaches the api via the compose network
     # (api:8000), so it never needs to be published to the host's LAN/internet.
     ports:
