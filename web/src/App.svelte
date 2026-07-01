@@ -765,25 +765,25 @@
 
   {:else if phase === 'auth'}
     <div class="panel narrow">
-      <h2>{authMode === 'login' ? 'Log in' : 'Create account'}</h2>
+      <h2>{authMode === 'login' ? UI.auth.logIn : UI.auth.createAccount}</h2>
       <input type="text" bind:value={email} placeholder="Email or username" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       <input type="password" bind:value={password} placeholder="Password (min 8 chars)" onkeydown={(e) => e.key === 'Enter' && authSubmit()} />
       {#if authMode==='register'}
         <input bind:value={displayName} placeholder="Character name" onkeydown={(e) => e.key === 'Enter' && doRegister()} />
         <p class="sub authhint">No email needed — leave the first field blank and your character name becomes your login name.</p>
         <label class="opt toggle"><input type="checkbox" bind:checked={twoFactor} /> Protect this account with two-factor auth (recommended)</label>
-        <button class="primary" onclick={doRegister} disabled={busy}>Create account</button>
-        <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>Log in</button></p>
+        <button class="primary" onclick={doRegister} disabled={busy}>{UI.auth.createAccount}</button>
+        <p class="switch">Already have an account? <button class="link" onclick={() => { authMode='login'; error=''; }}>{UI.auth.logIn}</button></p>
       {:else}
         <input bind:value={code} placeholder="Authenticator code (blank if 2FA is off)" onkeydown={(e) => e.key === 'Enter' && doLogin()} />
-        <button class="primary" onclick={doLogin} disabled={busy}>Log in</button>
-        <p class="switch">No account yet? <button class="link" onclick={() => { authMode='register'; error=''; }}>Register</button></p>
+        <button class="primary" onclick={doLogin} disabled={busy}>{UI.auth.logIn}</button>
+        <p class="switch">No account yet? <button class="link" onclick={() => { authMode='register'; error=''; }}>{UI.auth.register}</button></p>
       {/if}
     </div>
 
   {:else if phase === 'twofa'}
     <div class="panel narrow">
-      <h2>Set up two-factor auth</h2>
+      <h2>{UI.auth.twofa}</h2>
       <p>Scan this with Google Authenticator, Authy, 1Password, etc. — then enter a code to confirm.</p>
       <div class="qr">{@html qrSvg}</div>
       <p class="sub">Can't scan? Secret: <code>{secret}</code></p>
@@ -793,7 +793,7 @@
 
   {:else if phase === 'recovery'}
     <div class="panel narrow">
-      <h2>Save your recovery codes</h2>
+      <h2>{UI.auth.recovery}</h2>
       <p>If you lose your authenticator, each code below logs you in <b>once</b>. Store them somewhere safe — they won't be shown again.</p>
       <ul class="codes">{#each recoveryCodes as c}<li><code>{c}</code></li>{/each}</ul>
       <button class="primary" onclick={recoveryDone}>I've saved them — continue</button>
@@ -801,9 +801,9 @@
 
   {:else if phase === 'onboarding'}
     <div class="panel">
-      <h2>Before you begin</h2>
+      <h2>{UI.onboarding.title}</h2>
       <pre class="manual">{manual}</pre>
-      <h3>Quick check</h3>
+      <h3>{UI.onboarding.quickCheck}</h3>
       {#each questions as q}
         <div class="quiz-q">
           <p class="q">{q.prompt}</p>
@@ -824,7 +824,7 @@
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="panel">
-      <h2>Choose your game</h2>
+      <h2>{UI.lobby.chooseGame}</h2>
       <p class="sub">Each world keeps its own progress — switch any time.</p>
       {#if error}<div class="error">{error}</div>{/if}
       <div class="lobby">
@@ -856,8 +856,8 @@
   {:else if phase === 'game' && game}
     <div class="topbar">
       <button class="link" title="Switch game" onclick={toLobby}>🏠</button>
-      <button class="link" title="How to play" onclick={openHelp}>❓</button>
-      {#if isAdmin}<button class="link" title="Admin & settings" onclick={openAdmin}>⚙</button>{/if}
+      <button class="link" title={UI.howToPlay} onclick={openHelp}>❓</button>
+      {#if isAdmin}<button class="link" title={UI.admin} onclick={openAdmin}>⚙</button>{/if}
       <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
@@ -1089,7 +1089,7 @@
   {#if showHelp}
     <div class="modal" onclick={() => (showHelp = false)}>
       <div class="modal-card help" onclick={(e) => e.stopPropagation()}>
-        <h2>How to play</h2>
+        <h2>{UI.howToPlay}</h2>
         <pre class="manual">{helpText}</pre>
         <button onclick={() => (showHelp = false)}>Close</button>
       </div>
@@ -1099,7 +1099,7 @@
   {#if showAdmin}
     <div class="modal" onclick={() => (showAdmin = false)}>
       <div class="modal-card admin" onclick={(e) => e.stopPropagation()}>
-        <h2>⚙ Admin &amp; settings</h2>
+        <h2>⚙ {UI.admin}</h2>
         <p class="sub">Running game: <b>{adminGame || '—'}</b> <span class="sub">(games/{adminGame}/data)</span></p>
         {#if adminMsg}<div class="notice">{adminMsg}</div>{/if}
 
