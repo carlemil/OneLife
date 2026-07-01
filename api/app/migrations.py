@@ -87,8 +87,9 @@ async def ensure_multigame(conn) -> bool:
     g = gamestate.default_game()
     if not re.fullmatch(r"[A-Za-z0-9_-]+", g):
         g = "SandbyMystery"
-    # The existing single game's first scene line, preserved verbatim.
-    first_summary = "You woke at Killebäckskolan." if "sandby" in g.lower() else "You wake."
+    # Generic placeholder for the legacy volume's games row; the real first-scene line
+    # comes from the dataset's `game:` block (first_summary) via register_game on seed.
+    first_summary = "You wake."
 
     sql = _build_sql(g, first_summary)
     async with conn.transaction():

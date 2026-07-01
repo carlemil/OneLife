@@ -5,16 +5,14 @@ import math
 import re
 from collections import deque
 from .dsl import PlayerContext, evaluate
-from . import memory
-
-# Tokens that are titles/particles, not the name itself (so "Herr Dödblek" is
-# "known" when an NPC says "Dödblek", not merely "Herr").
-_NAME_NOISE = {"the", "herr", "fru", "greve", "von", "van", "der", "af", "de", "la", "le"}
+from . import memory, gameconfig
 
 
-def _name_tokens(full_name: str) -> list[str]:
+def _name_tokens(full_name: str, particles: set) -> list[str]:
+    """Distinctive name tokens (so "Herr Dödblek" is "known" from "Dödblek", not just
+    "Herr"). `particles` (titles/honorifics that aren't the name) is per-game config."""
     return [t for t in re.findall(r"[^\W\d_]+", (full_name or "").lower())
-            if len(t) >= 3 and t not in _NAME_NOISE]
+            if len(t) >= 3 and t not in particles]
 
 
 # --------------------------------------------------------------------------- #
@@ -47,9 +45,10 @@ async def load_context(conn, player_id, game_id, story_time: int = 0) -> PlayerC
         "SELECT content FROM gate_messages WHERE player_id=$1 AND game_id=$2 AND role='agent'",
         player_id, game_id)
     spoken = "\n".join((r["content"] or "") for r in said).lower()
+    particles = set(gameconfig.for_game(game_id).get("name_particles") or [])
     known_names = set()
     for c in chars:
-        toks = _name_tokens(c["reveal_name"] or c["name"])  # true name (reveal if withholding)
+        toks = _name_tokens(c["reveal_name"] or c["name"], particles)  # true name (reveal if withholding)
         if toks and any(re.search(r"\b" + re.escape(t) + r"\b", spoken) for t in toks):
             known_names.add(c["id"])
     ge, lc = await current_alignment(conn, player_id, game_id)

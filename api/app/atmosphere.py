@@ -16,9 +16,7 @@ import hashlib
 
 import httpx
 
-from . import llm, imagegen
-
-REGION = "southern Sweden"
+from . import llm, imagegen, gameconfig
 
 _SP_ID = os.environ.get("SPOTIFY_CLIENT_ID", "").strip()
 _SP_SECRET = os.environ.get("SPOTIFY_CLIENT_SECRET", "").strip()
@@ -62,10 +60,17 @@ def image_svg(theme: str) -> str:
     return svg
 
 
-def setting_for(loc, cell=None) -> str:
+def setting_for(loc, cell=None, game_id=None) -> str:
+    """"<place> · <region> · <period>" for the music director / image prompts. Region
+    falls back from the cell to the game's configured setting.region; the game's
+    setting.period (e.g. a year) is appended when present. All of it is dataset config
+    (the engine hardcodes no place or year)."""
+    s = (gameconfig.for_game(game_id) if game_id else gameconfig.active()).get("setting", {})
     place = loc["name"] if loc else "Unknown"
-    region = cell["region"] if cell and cell["region"] else REGION
-    return f"{place} · {region}"
+    region = (cell["region"] if cell and cell["region"] else s.get("region")) or ""
+    period = (s.get("period") or "").strip()
+    parts = [place] + [p for p in (region, period) if p]
+    return " · ".join(parts)
 
 
 # House look for every location image: retro, monochrome sepia (dark brown ->

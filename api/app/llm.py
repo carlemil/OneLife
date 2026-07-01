@@ -7,7 +7,10 @@ Hard rule: neither function mutates game state. The Actor returns words; the
 Referee returns a typed verdict. The caller (gates.py) applies effects in code.
 """
 import os
+import re
 import json
+
+from . import gameconfig
 
 _API_KEY = os.environ.get("ANTHROPIC_API_KEY", "").strip()
 _ACTOR_MODEL = os.environ.get("ACTOR_MODEL", "claude-haiku-4-5")
@@ -287,26 +290,31 @@ async def judge_alignment(action_text: str, context: str = "") -> dict:
 # --------------------------------------------------------------------------- #
 def _stub_actor(history: list[dict], hint_level: int, ladder: list[str],
                 leaked_memories: list[str] | None = None) -> str:
-    base = ladder[min(hint_level, len(ladder) - 1)] if ladder else "The old man says nothing."
+    # Offline/no-API fallback: replay the authored hint ladder (dataset content), with
+    # a neutral default when there is none. No hardcoded character flavor here.
+    base = ladder[min(hint_level, len(ladder) - 1)] if ladder else "(No reply comes.)"
     if leaked_memories:
-        base += " He eyes you. \"You're not the first to come through here asking.\""
+        base += " (Something in how they look at you says you are not the first to ask.)"
     return base
+
+
+# Generic stopwords so the offline referee's lexical heuristic ignores filler.
+_STUB_STOP = {"the", "and", "that", "this", "with", "your", "their", "they", "them",
+              "into", "from", "have", "has", "not", "but", "for", "any", "are", "you",
+              "who", "what", "when", "where", "why", "how", "player", "does", "did"}
 
 
 def _stub_referee(criteria: list[dict], player_text: str,
                   already_met: list[str]) -> dict:
-    t = player_text.lower()
+    """Offline fallback (no LLM): mark a criterion met when the player's words overlap
+    its authored description. Dataset-agnostic — no hardcoded criterion ids."""
+    t = set(re.findall(r"[a-z]{4,}", player_text.lower()))
     met = set(already_met)
-    trust_words = ("lost", "scared", "afraid", "confused", "please", "help",
-                   "sorry", "kind", "don't know", "dont know", "where am i")
-    exit_words = ("out", "exit", "leave", "door", "escape", "way", "outside",
-                  "get away", "how do i")
     for c in criteria:
-        cid = c["id"]
-        if cid == "established_trust" and any(w in t for w in trust_words):
-            met.add(cid)
-        if cid == "asked_about_exit" and any(w in t for w in exit_words):
-            met.add(cid)
+        words = {w for w in re.findall(r"[a-z]{4,}", (c.get("desc", "")).lower())
+                 if w not in _STUB_STOP}
+        if words & t:
+            met.add(c["id"])
     return {"criteria_met": sorted(met)}
 
 
@@ -397,13 +405,10 @@ async def suggest_tracks(location: str, description: str, theme: str,
 
 
 def _stub_tracks(n: int) -> list[dict]:
-    base = [
-        {"artist": "Brian Eno", "title": "An Ending (Ascent)", "why": "cold, weightless dread"},
-        {"artist": "Burzum", "title": "Tomhet", "why": "bleak early-90s Nordic atmosphere"},
-        {"artist": "Kate Bush", "title": "Under Ice", "why": "frozen, uneasy stillness"},
-        {"artist": "Tangerine Dream", "title": "Love on a Real Train", "why": "haunted nostalgia"},
-    ]
-    return base[:n]
+    # Deterministic offline soundtrack — curated per dataset in its `game:` block
+    # (offline.tracks), with a generic engine fallback in gameconfig.DEFAULTS.
+    tracks = gameconfig.active().get("offline", {}).get("tracks") or []
+    return tracks[:n]
 
 
 def success_rule_met(spec: dict, met: list[str]) -> bool:

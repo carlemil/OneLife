@@ -471,7 +471,7 @@ async def login(body: LoginBody, request: Request):
 @app.get("/api/onboarding")
 async def get_onboarding(authorization: str | None = Header(default=None)):
     await _session(authorization)
-    return {"manual": onboarding.MANUAL, "questions": onboarding.public_questions()}
+    return {"manual": onboarding.manual(), "questions": onboarding.public_questions()}
 
 
 @app.post("/api/onboarding/submit")
@@ -961,7 +961,7 @@ async def get_atmosphere(spotify: int = 0,
                 "SELECT region FROM world_cells WHERE game_id=$1 AND id=$2", gid, loc["cell_id"])
         media = json.loads(node["media"]) if node else {}
         theme = media.get("image_theme", "")
-        setting = atmosphere.setting_for(loc, cell)
+        setting = atmosphere.setting_for(loc, cell, gid)
         image_url = await atmosphere.image_for(
             conn, gid, theme, loc, setting,
             real_place=media.get("real_place"), reference=media.get("reference_image"),

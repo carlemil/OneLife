@@ -8,6 +8,7 @@
   import StoryEdge from './lib/StoryEdge.svelte';
   import MapOverlay from './lib/MapOverlay.svelte';
   import AlignmentChart from './lib/AlignmentChart.svelte';
+  import { UI } from './lib/strings.js';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | lobby | game
   // lobby (game picker; independent save per game)
@@ -755,7 +756,7 @@
 </script>
 
 <main>
-  <h1>OneLife <span class="sub">— prototype slice</span></h1>
+  <h1>{UI.appTitle} <span class="sub">{UI.appTagline}</span></h1>
   {#if error}<div class="error">{error}</div>{/if}
   {#if notice}<div class="notice">{notice}</div>{/if}
 
@@ -944,7 +945,7 @@
         <div class="panel" class:collapsed={!panelOpen.atmosphere}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.atmosphere} onclick={() => togglePanel('atmosphere')}>
-              <span class="chev">{panelOpen.atmosphere ? '▲' : '▼'}</span> Atmosphere
+              <span class="chev">{panelOpen.atmosphere ? '▲' : '▼'}</span> {UI.panels.atmosphere}
             </button>
           </h3>
           {#if panelOpen.atmosphere}
@@ -985,7 +986,7 @@
         <div class="panel" class:collapsed={!panelOpen.alignment}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.alignment} onclick={() => togglePanel('alignment')}>
-              <span class="chev">{panelOpen.alignment ? '▲' : '▼'}</span> Alignment
+              <span class="chev">{panelOpen.alignment ? '▲' : '▼'}</span> {UI.panels.alignment}
             </button>
           </h3>
           {#if panelOpen.alignment}
@@ -999,7 +1000,7 @@
         <div class="panel" class:collapsed={!panelOpen.leaderboard}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.leaderboard} onclick={() => togglePanel('leaderboard')}>
-              <span class="chev">{panelOpen.leaderboard ? '▲' : '▼'}</span> Leaderboard
+              <span class="chev">{panelOpen.leaderboard ? '▲' : '▼'}</span> {UI.panels.leaderboard}
             </button>
             <button class="link paneltitle" title="Open full leaderboard" aria-label="Open full leaderboard" onclick={openLeaderboard}>↗</button>
           </h3>
@@ -1014,7 +1015,7 @@
         <div class="panel" class:collapsed={!panelOpen.notes}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.notes} onclick={() => togglePanel('notes')}>
-              <span class="chev">{panelOpen.notes ? '▲' : '▼'}</span> Notes
+              <span class="chev">{panelOpen.notes ? '▲' : '▼'}</span> {UI.panels.notes}
             </button>
           </h3>
           {#if panelOpen.notes}
@@ -1025,7 +1026,7 @@
         <div class="panel" class:collapsed={!panelOpen.log}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.log} onclick={() => togglePanel('log')}>
-              <span class="chev">{panelOpen.log ? '▲' : '▼'}</span> Log <span class="sub">(your progress)</span>
+              <span class="chev">{panelOpen.log ? '▲' : '▼'}</span> {UI.panels.log} <span class="sub">{UI.panels.logHint}</span>
             </button>
           </h3>
           {#if panelOpen.log}
