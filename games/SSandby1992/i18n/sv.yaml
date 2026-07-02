@@ -657,9 +657,9 @@ puzzles:
       - kl. 12
   letters-box:
     hint_ladder:
-    - Inte ett årsdatum. En födelsedag — den som Mamma avslöjade.
-    - 'Fjortonde mars: dag, sedan månad.'
-    - 1403. (14 mars.)
+    - Kanske min brors födelsedag? Den som Mamma avslöjade.
+    - 'Kanske min brors födelsedag — fjortonde mars: dag, sedan månad.'
+    - 1403. (14 mars — Mattias födelsedag.)
     on_solve:
       log: Boxen öppnades på Mattias födelsedag — 1403.
     prompt: Stålboxen i Pappas skrivbord har ett fyrsiffrigt lås. Det ena datumet han aldrig skulle skriva

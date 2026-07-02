@@ -55,9 +55,9 @@ puzzles:
     solution: {kind: set, set: ["1403", "14 03", "14-03", "1403", "1473", "140373"]}
     required_clues: [mattias-birthday]
     hint_ladder:
-      - "Not an anniversary. A birthday — the one Mum let slip."
-      - "The fourteenth of March: day, then month."
-      - "1403. (14 March.)"
+      - "Might be my brother's birthday? The one Mum let slip."
+      - "Might be my brother's birthday — the fourteenth of March: day, then month."
+      - "1403. (14 March — Mattias's birthday.)"
     on_solve:
       progress_points: 45
       set_flag: letters_read
