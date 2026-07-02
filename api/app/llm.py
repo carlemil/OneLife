@@ -200,7 +200,8 @@ def build_actor(spec: dict, history: list[dict], hint_level: int,
                 identity: dict | None = None, reveal: bool = False,
                 alignment: str | None = None,
                 recap: str | None = None, already_helped: bool = False,
-                name_earned: bool = False, language: str = "en") -> dict:
+                name_earned: bool = False, language: str = "en",
+                place: dict | None = None) -> dict:
     kb = spec.get("knowledge_boundary", {})
     _, _, hint = _actor_eff_level(spec, hint_level, reveal, already_helped)
     own_memories = own_memories or []
@@ -227,6 +228,25 @@ def build_actor(spec: dict, history: list[dict], hint_level: int,
                 f"\nIDENTITY: your name is \"{identity['name']}\". If you have not already "
                 "in this conversation, introduce yourself by name early and naturally, in "
                 "character, so the player learns what to call you.")
+
+    # Ground the NPC in the actual place: without this the model invents surroundings
+    # (an alley, a "city") and tries to lead the player elsewhere. The encounter is
+    # stationary — the NPC talks to the player right here and never moves.
+    location_block = ""
+    if place:
+        where = (place.get("name") or "").strip()
+        desc = (place.get("description") or "").strip()
+        region = (place.get("region") or "").strip()
+        if where or desc:
+            location_block = (
+                f"\nWHERE YOU ARE: you are at {where or 'this place'}"
+                + (f" — {desc}" if desc else "")
+                + (f", in {region}" if region else "") + ". This is the ONLY place you are. "
+                "You stay HERE for the whole conversation: you do NOT move, walk off, step "
+                "outside, open a door to somewhere else, lead the player away, or suggest "
+                "going anywhere else — you speak with them right here. Describe only THIS "
+                "place and what is plausibly around you here; never put yourself in a city, "
+                "an alley, or any location other than this one.")
 
     memory_block = ""
     if own_memories:
@@ -294,6 +314,7 @@ def build_actor(spec: dict, history: list[dict], hint_level: int,
         "go see another person, open a door, or perform an errand — they cannot act "
         "on such instructions and it leaves them stuck. Mention other people, places, "
         "or things only as part of what you know or feel, never as a task for them."
+        f"{location_block}"
         f"{identity_block}"
         f"{memory_block}"
         f"{align_block}"
@@ -319,13 +340,14 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       identity: dict | None = None, reveal: bool = False,
                       alignment: str | None = None,
                       recap: str | None = None, already_helped: bool = False,
-                      name_earned: bool = False, language: str = "en") -> str:
+                      name_earned: bool = False, language: str = "en",
+                      place: dict | None = None) -> str:
     eff_level, ladder, _ = _actor_eff_level(spec, hint_level, reveal, already_helped)
     if not _USE_ANTHROPIC:
         return _stub_actor(history, eff_level, ladder, leaked_memories or [])
     req = build_actor(spec, history, hint_level, own_memories, leaked_memories,
                       identity, reveal, alignment, recap, already_helped, name_earned,
-                      language=language)
+                      language=language, place=place)
     return parse_actor(await _run_text(req))
 
 

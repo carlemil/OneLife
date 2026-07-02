@@ -49,6 +49,14 @@ async def _turn_context(conn, player_id, session, text: str) -> dict:
     char = await conn.fetchrow(
         "SELECT name, reveal_name FROM characters WHERE game_id=$1 AND id=$2",
         gid, gate["character_id"])
+    # Where this encounter physically happens — so the Actor stays put and describes the
+    # real surroundings instead of inventing a place and wandering off. Prefer the node's
+    # location, falling back to the gate's.
+    place = await conn.fetchrow(
+        """SELECT l.name, l.description, w.region
+           FROM locations l LEFT JOIN world_cells w ON w.id=l.cell_id AND w.game_id=l.game_id
+           WHERE l.game_id=$1 AND l.id=$2""",
+        gid, node["location_id"] or gate["location_id"])
 
     ga = await conn.fetchrow(
         "SELECT * FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND gate_id=$3",
@@ -105,7 +113,8 @@ async def _turn_context(conn, player_id, session, text: str) -> dict:
             "char": char, "ga": ga, "cur_seq": cur_seq, "history": history,
             "attempts": attempts, "hint_level": hint_level, "ladder": ladder,
             "own_mem": own_mem, "leaked_mem": leaked_mem, "identity": identity,
-            "recap": recap, "name_earned": name_earned, "align_pre": align_pre}
+            "recap": recap, "name_earned": name_earned, "align_pre": align_pre,
+            "place": dict(place) if place else None}
 
 
 async def _finalize(conn, player_id, session, ctx, met, satisfied, reply) -> dict:
@@ -215,7 +224,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                                       identity=ctx["identity"], alignment=align_str,
                                       recap=ctx["recap"], already_helped=True,
                                       name_earned=ctx["name_earned"],
-                                      language=session.get("language", "en"))
+                                      language=session.get("language", "en"),
+                                      place=ctx["place"])
         await _say(conn, player_id, gid, gate_id, cur_seq, reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
@@ -234,7 +244,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                                   alignment=align_str,
                                   recap=(ctx["recap"] if satisfied else None),
                                   name_earned=ctx["name_earned"],
-                                  language=session.get("language", "en"))
+                                  language=session.get("language", "en"),
+                                  place=ctx["place"])
     return await _finalize(conn, player_id, session, ctx, met, satisfied, reply)
 
 
@@ -259,13 +270,14 @@ async def build_turn(conn, player_id, session, text: str) -> dict:
         text, context=f"Talking to {char['name'] if char else 'someone'}.")]
 
     lang = session.get("language", "en")
+    place = ctx["place"]
     already = bool(ctx["ga"]["satisfied"])
     if already:
         req = llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                               ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                               alignment=ctx["align_pre"], recap=ctx["recap"],
                               already_helped=True, name_earned=ctx["name_earned"],
-                              language=lang)
+                              language=lang, place=place)
         req["id"] = "actor_helped"
         reqs.append(req)
     else:
@@ -274,11 +286,13 @@ async def build_turn(conn, player_id, session, text: str) -> dict:
         reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                                     ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                                     reveal=False, alignment=ctx["align_pre"],
-                                    recap=None, name_earned=ctx["name_earned"], language=lang))
+                                    recap=None, name_earned=ctx["name_earned"], language=lang,
+                                    place=place))
         reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                                     ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                                     reveal=True, alignment=ctx["align_pre"],
-                                    recap=ctx["recap"], name_earned=ctx["name_earned"], language=lang))
+                                    recap=ctx["recap"], name_earned=ctx["name_earned"], language=lang,
+                                    place=place))
 
     decision = {"already_satisfied": already,
                 "criteria": [c["id"] for c in ctx["spec"].get("criteria", [])],
