@@ -1,0 +1,706 @@
+cells:
+  lund:
+    name: Lund
+    region: Lund, Skåne
+  sandby:
+    name: Södra Sandby
+    region: Södra Sandby, Skåne
+  trail:
+    name: Hardebergaspåret
+    region: den gamla järnvägsvägen mellan Sandby och Lund, Skåne
+characters:
+  ann-marie:
+    name: Ann-Marie
+  bengt:
+    name: Bengt
+  krister:
+    name: Krister
+  robin:
+    name: Robin
+  sonny:
+    name: Sonny
+clues:
+  giants-noon:
+    reveal_text: 'Legenden vid kryptan: jättens kungar och trumpetare processerar från det astronomiska
+      uret när klockan slår tolv — ''när jättarna kommer ut'' — och igen klockan tre.'
+  mattias-birthday:
+    reveal_text: 'Mamma avslöjade Mattias födelsedag: fjortonde mars — 14/03.'
+  mattias-birthyear:
+    reveal_text: Mamma sa att Mattias föddes nittiohundratrettiotio — tjugotre.
+  mixtape-tracklist:
+    reveal_text: 'Inläggskortet, i Mattias tjocka versaler: 1. SISTER MOON  2. TRAINS I MISSED  3. IN
+      THE UNDERTOW  4. LONG WAY TO LUND  5. LEAVING LIGHT  6. ALL ALONG THE PATH.'
+  phone-scrap:
+    reveal_text: 'Kristers lapp, i Mattias handstil: "046 15 78 __ __" — de två sista siffrorna är bortrivna.'
+edges:
+  e-cathedral-back:
+    effects:
+      log: Du lämnade katedralen.
+    label: Tillbaka ut till torget
+  e-cathedral-crypt:
+    effects:
+      log: Du stod i kryptan vid jättens vrida pelare — sagoberättarens jätte som 'byggde' katedralen,
+        och den enkla sorgsna stenen under historien.
+    label: Gå ner till kryptan och ställ dig vid Finns pelare
+  e-cathedral-solved:
+    effects:
+      log: Du räknade ut när klockan spelar — vid middagstid — och när du kan träffa din kontakt.
+    label: Du känner till tiden — gå ner igen till Lund
+  e-centrum-dial:
+    effects:
+      log: Du slog Lundnumret från telefonen. En studentkorridor svarade; du lämnade ett meddelande till
+        Mattias folk, och ett möte bokades.
+    label: Mata mynt i telefonen och slå numret
+  e-centrum-home:
+    effects:
+      log: Du gick tillbaka hem.
+    label: Tillbaka till huset
+  e-centrum-kiosk:
+    effects:
+      log: Kioskmannen mindes Mattias ungefär — en artig pojke, alltid en kassett i sin walkman, som åkte
+        till Lund på tidig buss en morgon och inte sågs sedan.
+    label: Fråga kioskmannen om Mattias
+  e-centrum-krister:
+    effects:
+      log: Du gick över till Krister.
+    label: Gå över till Krister vid kiosktrappan
+  e-centrum-phone:
+    effects:
+      log: Du slätkade ut Kristers lapp under gatlyktans ljus.
+    label: Räkna ut numret på Kristers lapp
+  e-centrum-trail:
+    effects:
+      log: Du började västerut längs den gamla järnvägsvägen.
+    label: Ta Hardebergaspåret västerut mot Lund
+  e-corridor-back:
+    effects:
+      log: Du gick tillbaka ut från korridoren.
+    label: Gå tillbaka ut i mörkret
+  e-dad-back:
+    effects:
+      log: Du gick ut från Pappas studierum.
+    label: Gå ut från studierum
+  e-deskbox-back:
+    effects:
+      log: Du skjöt skrivbordslådan försiktigt igen.
+    label: Skjut lådan försiktigt igen för nu
+  e-deskbox-open:
+    effects:
+      log: Kombinationen — Mattias födelsedag — öppnade lådan.
+    label: Öppna lådan
+  e-discovery-home:
+    effects:
+      log: 'Du stoppade Mattias mixtape och Lund-fotot i fickan. Mål: ta reda på vad som verkligen hände
+        honom — spåret går till Lund.'
+    label: Stoppa bandet och fotot i fickan
+  e-flat-partial:
+    effects:
+      log: Du satte dig ned framför din bror.
+    label: Sätt dig bara ned framför honom
+  e-flat-true:
+    effects:
+      log: Du berättade för Mattias om breven.
+    label: Berätta vad du hittade i pappas skrivbord
+  e-home-centrum:
+    effects:
+      log: Du gick ned till byn.
+    label: Gå ut till Sandby centrum
+  e-home-clear:
+    effects:
+      log: Du sökte igenom Mattias rum.
+    label: Sök igenom Mattias gamla rum
+  e-home-dad:
+    effects:
+      log: Du gick till Pappas studierum.
+    label: Titta in på Pappa i hans studierum
+  e-home-desk:
+    effects:
+      log: Du började gå igenom Pappas skrivbord.
+    label: Gå igenom lådorna på Pappas skrivbord
+  e-home-mixtape:
+    effects:
+      log: Du vände på mixtapen för att läsa spårlistan.
+    label: Studera mixtapets spårlista
+  e-home-mum:
+    effects:
+      log: Du gick för att hitta Mamma.
+    label: Hitta Mamma i köket
+  e-krister-back:
+    effects:
+      log: Du lämnade Krister vid kiosken.
+    label: Låt Krister vara
+  e-letters-home:
+    effects:
+      log: 'Du hittade de gömda breven: Mattias skrev hem i flera månader, och pappa avlyssnade varje
+        enda brev. Han övergav dig aldrig.'
+    label: Ta breven
+  e-lund-back-trail:
+    effects:
+      log: Du började gå tillbaka längs vägen.
+    label: Gå tillbaka längs vägen mot Sandby
+  e-lund-cathedral:
+    effects:
+      log: Du gick upp till katedralen.
+    label: Gå upp till katedralen
+  e-lund-corridor:
+    effects:
+      log: Du gick ut till studentkorridoren.
+    label: Gå ut till studentkorridor
+  e-lund-flat:
+    effects:
+      log: Du gick för att hitta Mattias lägenhet.
+    label: Gå till adressen Robin gav dig
+  e-lund-record:
+    effects:
+      log: Du hittade skivbutiken vid Klostergatan.
+    label: Hitta skivbutiken vid Klostergatan
+  e-lund-turnback:
+    effects:
+      log: Du vände ryggen till Lund.
+    label: Ge upp och vend tillbaka mot Sandby
+  e-marlpit-back:
+    effects:
+      log: Du klättrade tillbaka upp till vägen.
+    label: Klättra tillbaka upp till vägen
+  e-marlpit-remember:
+    effects:
+      log: Du satte dig vid vattnet och tillät dig själv att sakna honom på riktigt för första gången
+        — inte idolen, brodern. Vad än som väntar i Lund gör du det för att du älskar honom.
+    label: Sitt vid stranden en stund
+  e-marlpit-swim:
+    effects:
+      log: Du vadade ut i lerskålen.
+    label: Klä av dig och simma ut till mitten, som du brukade göra
+  e-mixtape-back:
+    effects:
+      log: Du la mixtapen åt sidan.
+    label: Lägg bandet åt sidan för nu
+  e-mixtape-solved:
+    effects:
+      log: 'Du knäckte mixtapen: första bokstaven i varje låt stavar bandets namn — Stilla.'
+    label: Stoppa bandet — du har bandets namn
+  e-mum-back:
+    effects:
+      log: Du lämnade Mamma i köket.
+    label: Låt henne vara
+  e-phone-back:
+    effects:
+      log: Du stoppade lappen i fickan.
+    label: Stoppa lappen i fickan för nu
+  e-phone-solved:
+    effects:
+      log: 'Du löste numret: 046 15 78 73. Nu måste du ringa det från telefonkuren.'
+    label: Du har hela numret
+  e-record-back:
+    effects:
+      log: Du lämnade skivaffären.
+    label: Tillbaka ut på vägen
+  e-start-room:
+    effects:
+      log: Du öppnade dörren till Mattias rum.
+    label: Öppna dörren till Mattias rum
+  e-torn-central:
+    effects:
+      log: Du gick in i Lund.
+    label: Gå vidare in i Lund
+  e-trail-back:
+    effects:
+      log: Du vände tillbaka mot byn.
+    label: Vrid tillbaka mot Sandby
+  e-trail-lund:
+    effects:
+      log: Du fortsatte västerut mot Lund.
+    label: Fortsätt västerut, mot ljusen från Lund
+  e-trail-marlpit:
+    effects:
+      log: Du svängde av mot märgelgraven.
+    label: Sväng av ned på vägen till märgelgraven
+  e-trail-road:
+    effects:
+      log: Du började gå över huvudvägen i mörkret.
+    label: Gå rakt över väg 11 i mörkret
+game:
+  first_summary: Södra Sandby, sommaren 1992 — din brors tomma rum.
+  onboarding:
+    manual: "VÄGEN TILL LUND\n\nSödra Sandby, sommaren du är femton år. För sex månader sedan åkte din\
+      \ större bror Mattias härifrån efter bråk med din far, och hela familjen stannade vid samma mening:\
+      \ \"han flyttade till Lund.\" Du trodde aldrig på det. När du rensar hans gamla rum hittar du ett\
+      \ band han gjorde och ett foto på honom i Lund tillsammans med människor du inte känner.\n\nFå reda\
+      \ på vad som verkligen hände med Mattias. Spåret går till Lund.\n\n\U0001F4DD HA PENNA OCH PAPPER\
+      \ NÄRA — du kommer att vilja anteckna namn, datum och lösa siffror.\nDet här är ett mysterium som\
+      \ är tänkt att pusslas ihop för hand.\n\nSÅ HÄR FUNGERAR DET\n• Spelet är en ström av text. Du agerar\
+      \ genom att välja vad du ska göra, tala med de människor du träffar och lösa de pussel som är vävda\
+      \ in i dem.\n• Spelet håller en LOGG över allt som händer. Din logg ÄR dina framsteg — svaren på\
+      \ pusslen är gömda i vad människor berättar och vad du läser.\n• Vissa människor måste PRATAS IGENOM\
+      \ — säg rätt sorts sak och de öppnar sig.\n  Det finns ingen magisk fras; var mänsklig om det.\n\
+      \nDÖD OCH ATT FUSKA MOT DÖDEN\n• Du är ett barn ute ensam på natten, och världen har kanter. Du\
+      \ kan dö, och du kan\n  fastna. När det händer kan du FUSKA MOT DÖDEN: spola tillbaka din LOGG till\
+      \ en tidigare punkt och fortsätta därifrån.\n• Att fuska mot döden är aldrig gratis: det raderar\
+      \ det framsteg du gjorde efter den punkten och kostar dig positioner på RANKINGEN. Det du lärt dig,\
+      \ behåller du.\n\nLäs detta, visa sedan att du har grunderna på plats."
+    quiz:
+    - options:
+      - Din inventarier med föremål
+      - Loggen över allt som händer dig
+      - Din karaktärs hälsostapel
+      - Antalet rum du låst upp
+      prompt: Vad representerar dina framsteg?
+    - options:
+      - Ingenting — det är ett gratis ångrande
+      - Du förlorar framsteg gjorda efter den punkten och sjunker på rankingen
+      - Du får bonusframsteg för att överleva
+      - Ditt konto återställs
+      prompt: Vad händer när du fuskar mot döden för att fly en dålig situation?
+    - options:
+      - Genom att slåss med dem
+      - Genom att betala dem mynt
+      - Genom att prata med dem och säga rätt sorts sak
+      - Genom att ignorera dem och gå förbi
+      prompt: Hur kommer du huvudsakligen förbi de människor du möter?
+  subtitle: Sommaren 1992. Din bror tystnade. Följ mixbandet.
+  title: Vägen till Lund
+gates:
+  dad-silence:
+    hint_ladder:
+    - Han tittar inte upp från huvudboken. "Gå och lägg dig."
+    - Hans penna stannar. "Det finns inget att prata om. Han gjorde sitt val."
+    - Något i honom sprickor en bråkdel. "…Lund. Han är i Lund. Det är allt du får från mig." Han vänder
+      ryggen till.
+    knowledge_boundary:
+      knows:
+      - att Mattias är i Lund
+      refuses:
+      - att säga Mattias namn högt
+      - den verkliga anledningen till att Mattias lämnade, och — framför allt — att han fångade och dolde
+        breven som Mattias skickade hem. Han kommer ALDRIG att erkänna att breven finns.
+      tone: lakonisk, stängd, sårad stolthet och begravad skam; hittar på arbete för sina händer; avleder
+    on_success:
+      announce: En kort stund öppnas den stängda dörren i honom en springa. "Lund," säger han, och det
+        kostar honom. "Han är i Lund." Han säger inte namnet, och han säger inte resten — han vänder sig
+        tillbaka till sin huvudbok, käken arbetande. (Pappa erkände bara att Mattias är i Lund.)
+      log: Pappa erkände, knappast, att Mattias är i Lund — och ingenting mer.
+      write_memory:
+        content: Pressades av sitt yngre barn och erkände bara att Mattias är i Lund; avslöjade ingenting
+          om de brev han dolde.
+  krister-lead:
+    hint_ladder:
+    - Han rycker på axlarna. "Vet inte vad du vill att jag ska säga."
+    - '"Han är inte vad din far säger, du vet. Det är allt jag säger här ute."'
+    - Han gräver fram en mjuk papperslapp ur sin plånbok. "Han lämnade det här åt mig. Hälften av ett
+      Lundnummer. Gå och se Sonny på skivaffären vid Klostergatan — han känner bandet."
+    knowledge_boundary:
+      knows:
+      - Mattias hamnade tillsammans med ett Lundband som hette Stilla, och det fanns någon där nere som
+        betydde något för honom
+      - han behöll en papperslapp med hälften av ett Lundtelefonummer som Mattias lämnade åt honom — 046
+        15 78, de sista siffrorna borta — och han ger över den
+      - Sonny, som driver skivaffären vid Klostergatan, känner hela scenen
+      refuses:
+      - den exakta sanningen om Robin — han misstänker, men det är inte hans att berätta
+      - något om familjens brev (han vet ingenting om dem)
+      tone: blygsam småstadstonåring, försiktig, lojal mot Mattias, varmare än han låtsas
+    on_success:
+      announce: 'Krister tittar sig omkring, sedan trycker han en mjukt sliten papperslapp i din hand
+        — hälften av ett Lundtelefonummer i Mattias handstil, 046 15 78 och sedan sönderrivet. "Gå och
+        se Sonny, skivaffären vid Klostergatan. Han känner bandet. Och — var försiktig med Mattias, ja?"
+        (Du har nu papperslappen med telefonnumret, och ett namn: Sonny.)'
+      log: Krister gav dig en lapp med hälften av ett Lundtelefonummer, och pekade på Sonny på skivaffären.
+      write_memory:
+        content: Gav Mattias yngre syskon papperslappen med telefonnumret och skickade dem till Sonny
+          på skivaffären.
+  mum-birthday:
+    hint_ladder:
+    - Hon fortsätter att torka av bänken, vänder sig inte om. "Du borde sova."
+    - Hennes händer blir stilla. "Du saknar honom också. Förstås gör du det."
+    - 'Hon säger lågt, nästan för sig själv: "Min Mattias. Född fjortonde mars — sjuttioutvå, min första,
+      på våren. Säg inte till din far att vi pratade."'
+    knowledge_boundary:
+      knows:
+      - Mattias föddes fjortonde mars nittiohundrasjuttioutvå (14/3, '73), hennes förstfödde
+      - att hon saknar honom och att Bengt drev honom bort och inte vill höra hans namn
+      refuses:
+      - att öppet kritisera eller klandra Bengt, eller något som startar ett bråk i huset
+      - den verkliga anledningen till att Mattias lämnade (hon vet verkligen inte), och hon vet ingenting
+        om några dolda brev
+      tone: stillsam, slitad av sorg, trött; värms och minns högt om hennes barn är försiktig med henne
+    on_success:
+      announce: 'Hon lägger ner trasan och låter sig för första gången på sex månader minnas honom högt.
+        "Min Mattias. Född fjortonde mars — nittiohundrasjuttioutvå, min första." Hon klämmer din hand.
+        "Säg inte till din far att vi pratade." (Du vet nu Mattias födelsedag: 14 mars 1973.)'
+      log: 'Mamma glappade till sig Mattias födelsedag: fjortonde mars, 1973.'
+      write_memory:
+        content: Låta hennes yngre barn trösta henne, och berättat för dem Mattias födelsedag — 14 mars
+          1973.
+  robin-truth:
+    hint_ladder:
+    - '"Han slutade aldrig prata om dig, vet du." Robin studerar dig. "Varför kom du?"'
+    - '"Det finns en anledning till att han lämnade som din familj inte berättade för dig. Det är ingen
+      dålig anledning. Det är bara sant."'
+    - '"Han älskar mig. Det är därför han lämnade — inte för att han slutade älska dig. Och han skrev
+      till dig, varje månad. Du fick aldrig breven, eller hur? Din far såg till att det blev så."'
+    knowledge_boundary:
+      knows:
+      - Mattias lämnade Södra Sandby för att han hade blivit förälskad i Robin, och grälet med sin far
+        handlade egentligen om det
+      - Mattias har skrivit hem i månader — brevkort och brev — och varje enskilt intercepterades och
+        göms av hans far, vilket är varför de aldrig besvarades
+      - var Mattias bor nu — en lägenhet tio minuter bort — och adressen
+      refuses:
+      - göra det fulare än det är, eller ljuga; men själva sanningen hålls inte tillbaka för en ärlig,
+        lyssnande syskon
+      tone: försiktig, uppmärksam, lite misstrogen mot familjen; vänlig och försiktig med något tungt
+    on_success:
+      announce: 'Robin berättar allt för dig, försiktigt: att Mattias lämnade för kärleken, inte bort
+        från dig; att han skrev hem månad efter månad, och att inte ett enda brev någonsin besvarades
+        för att din far tog dem och göms. Robin skriver en adress på baksidan av ditt foto. "Det är tio
+        minuters promenad. Gå — han har väntats mycket längre än en natt." (Du vet sanningen, och du har
+        Mattias adress.)'
+      log: 'Robin berättade sanningen för dig: Mattias lämnade för kärleken, och skrev hem i månader —
+        brev som din far intercepterade. Du har hans adress.'
+      write_memory:
+        content: Berättade Mattias yngre syskon hela sanningen — kärleken, de gömda breven — och skickade
+          dem till hans lägenhet.
+  sonny-band:
+    hint_ladder:
+    - '"Skivorna är där borta. Var det något särskilt?"'
+    - '"Du skulle behöva veta vad du frågar om. Jag sysslär inte med skvaller."'
+    - Han lägger ner en skiva. "Stilla. Ja. Du vill ha Robin — uppe på universitetet, studentkorridor.
+      Var snäll mot honom."
+    knowledge_boundary:
+      knows:
+      - bandet Stilla, och att Mattias hängde omkring dem
+      - den som verkligen betydde något för Mattias är Robin, uppe på universitetet, i studentkorridor
+      refuses:
+      - lös skvaller, eller att öppna sig för någon som inte kan namnge bandet
+      - något om familjen eller dolda brev (han vet ingenting om dem)
+      tone: lakonisk, torr, ohurtig; beskyddande av de lokala ungdomarna; mjuknar så fort någon visar
+        att de hör hemma
+    on_success:
+      announce: Vid namnet — Stilla — tittar Sonny äntligen på dig ordentligt. "Rätt. Så du vet faktiskt
+        redan." Han nickar långsamt. "Det är Robin du ska prata med. Universitetet, studentkorridor. Säg
+        att Sonny hälsar — och var snäll. Det där killen har haft det tungt med sin egen familj." (Du
+        vet nu att du ska hitta Robin på universitetets studentkorridor.)
+      log: Sonny sa åt dig att hitta Robin på universitetets studentkorridor.
+      write_memory:
+        content: En kille från bandet Stilla sa åt mig att hitta Robin på universitetet.
+lang: sv
+locations:
+  cathedral:
+    description: Den stora romanska katedralen — där uppe, det astronomiska ur som spelar två gånger om
+      dagen; därunder, kryptan och jättefinnen vridna pelare.
+    name: Lunds Domkyrka & Krypta
+  centrum:
+    description: 'Bycentrum: en kiosk, ett buskehål, en glaskiosk med telefon och det långa sommarlljuset
+      från åkrarna.'
+    name: Sandby Centrum
+  corridor:
+    description: En studentkorridor på universitetsboendet — ett gemensamt kök, en väggtelefon, en rad
+      dörrar med namn tejpade på dem.
+    name: Studentkorridor
+  flat:
+    description: En ettorummare två trappor upp, en gitarr mot väggen, fönstret öppet mot Lunds tak.
+    name: Mattias lägenhet
+  home:
+    description: Ett tegelhuus från 1970-talet på kanten av byn. Din bros rum är lämnat exakt som det
+      var — en dörr som ingen öppnar.
+    name: Hem — Mattias rum
+  lundcentral:
+    description: Gamla stan — kullerstenslagda gränder från Stortorget, katedralen över taken, studenterna
+      borta för sommaren.
+    name: Centrala Lund
+  lundedge:
+    description: Där åkrarna tar slut och Lunds första höghus börjar. Byn är bakom dig nu.
+    name: Östra Torn — Kanten av Lund
+  marlpit:
+    description: En vattenfylld märgelgrop ute på åkrarna från vägen — grönt stillastående vatten, branta
+      lerkanter, en plats där du och Mattias brukade bada.
+    name: Märkelgraven
+  recordshop:
+    description: En trång second-hand-skivbutik vid Klostergatan, lådar med vinyl och en doft av damm
+      och kaffe.
+    name: Skivbutiken
+  trailpath:
+    description: Den gamla järnvägen mellan Södra Sandby och Lund, rivna och lagd som cykelväg — rak,
+      plan och lång, löpande västerut genom åkrarna.
+    name: Hardebergaspåret
+nodes:
+  cathedral:
+    body: Inne väntar det stora astronomiska uret ovanför skeppet, dess små figurer frusna mitt i en processionen.
+      Ett kort vid repet förklarar att det bara spelas två gånger om dagen — kungarna kommer ut, trumpeterna
+      ljuder, In dulci jubilo — och nedan, förslitna trappsteg leder ner i kryptan där jätten Finn är
+      fångad i sten för alltid och försöker riva ner hela kyrkan. Som barn fick du höra sagohistorien.
+      Här nere är det bara kallt berg och en sorglig gammal berättelse. Din kontakt kommer här när jättarna
+      kommer ut. (Vid vilken tid?)
+    body_variants:
+    - body: Du bestämmer dig för timmen — mittag, när kungarna processerar och trumpeterna blåser — och
+        svaret sitter rätt. Myten du fick höra som barn och den mänskliga sanningen under den har samma
+        form som allt det här sommaren. Finn håller sin pelare. Kryptan behåller sin köld. Du vet när
+        du ska komma tillbaka.
+    title: Klockan & Kryptan
+  centrum:
+    body: Byn centrum i det långa kvällsluset. Kiosken är fortfarande öppen, raclarna med kvällstidningar
+      mjukar till i värmen. En busshållplats, en glaskiosk för telefon, och Krister — Mattias gamla kamrat
+      — slängd på kiosktrappan som om han varit där sedan skolan släppte ut.
+    body_variants:
+    - body: Byn centrum, tystare nu. Telefonkiosken luktar fortfarande het plast och småpengar från ditt
+        samtal till Lund — en röst i en studentkorridor, en tid och ett namn överenskommet. Krister sitter
+        fortfarande på kiosktrappan. Vägen västerut ut ur byn väntar.
+    title: Sandby Centrum
+  corridor:
+    body: Studentkorridor är sommartom, ett kökslys tänt. En dörr med ROBIN tejpad på sig öppnas innan
+      du knackar — en musiker omkring din brors ålder, med gitarrbildningar, vaksam. "Du är lillasyskonen,"
+      säger Robin lågt. "Han talar om dig hela tiden." Något i ditt bröst ger vika. (Var ärlig. Lyssna.)
+    body_variants:
+    - body: Robin har berättat allt för dig nu — varför Mattias verkligen gick, och breven han skrev hem
+        som aldrig besvarades för din far gömmde dem. Det är mycket att hålla i en sommartyst korridor.
+        Robin skriver en adress på baksidan av ditt fotografi. "Han är tio minuters promenad. Gå. Han
+        har väntat mycket längre än i kväll."
+    title: Robins dörr
+  dad:
+    body: Pappa sitter vid sitt skrivbord med ryggen halvvänd mot dörren, en lampa, en huvudbok, en man
+      gjord av stängda dörrar. Han har inte sagt din brors namn på sex månader. Han säger det inte nu.
+      "Du borde vara i sängen," är allt han erbjuder. (Nå honom — om du kan.)
+    body_variants:
+    - body: Pappa sitter med händerna platta på skrivbordet, ordet han slutligen gav dig — "Lund" — hänger
+        fortfarande mellan er som något som tappats och inte plockas upp. Han säger inte namnet. Han säger
+        inte resten. Han har vänt tillbaka till sin huvudbok, men hans käke arbetar. Vad han än bär på,
+        han lägger det inte ner i kväll.
+    title: Pappas arbetsrum
+  death-marlpit:
+    body: Du simmar ut på samma sätt som alltid, men den här gången är du ensam och vattnet är djupare
+      och mycket kallare än en sommarkväll säger. Tio meter ut sluter kylan en näve om ditt bröst och
+      lerbranten lutar bort och det finns ingen på stigen som kan höra. Märgelgraven behåller vad den
+      har getts, som den alltid har gjort. ▒ Du är död. ▒
+    title: Kallare än det ser ut
+  death-road:
+    body: Du cyklar ut över huvudvägen utan att falla av, självsäker med all den sträcka som ännu återstår.
+      Asfalten är varm och fälten bullrar av crickor och du hör inte bilen förrän den redan är hela världen
+      — ingen tid att vara rädd, bara överraskad. Föraren såg aldrig ett barn på en olmyst cykel en sommarkväll.
+      Vägen fortsätter till Lund utan dig. ▒ Du är död. ▒
+    title: Väg 11
+  deskbox:
+    body: I den nedersta lådan på Pappas skrivbord, under huvudböckerna, finns en liten stålkassa med
+      ett fyrsiffrigt kombinationslås. Det här är det slag av sak man döljer när man inte vill att den
+      ska hittas. Pappa skulle aldrig välja ett årtal. Men det finns ett datum han aldrig skulle skriva
+      ner och aldrig glömma. (Fyra siffror.)
+    body_variants:
+    - body: De små hjulen ställs in på Mattias födelsedag och låset ger vika. Locket sitter löst i dina
+        händer nu, vad som än ligger där inne är på väg att sluta vara en hemlighet.
+    title: Lådan
+  discovery:
+    body: 'Du rensar hörnet där hans saker fortfarande ligger staplade, och två saker lossnar från högen.
+      En kassett, en mixtape i hans egna blockbokstäver, inget band namngivet — bara en spårlista ner
+      längs inläggskortet. Och ett fotografi: Mattias på en Lund-torg du inte känner, skrattande, en arm
+      slängd omkring människor du aldrig sett. På baksidan, i hans handstil: LUND. Han ser lycklig ut.
+      Han ser ut som någon med ett helt liv som du aldrig fick se. Den tysta meningen — han flyttade till
+      Lund — spricker upp, och under den ligger det enda som spelar roll nu: ta reda på vad som verkligen
+      hände med Mattias. Spåret löper till Lund.'
+    title: Kassetten och fotot
+  ending-home:
+    body: Till slut kan du inte göra det — kan inte korsa de sista gatorna, kan inte knacka, kan inte
+      ta reda på det. Det är sent och du är femton och Lund är mycket stort, och familjens platta mening
+      är lättare att bära än vad som helst bakom den dörren. Du vänder om. Den långa vägen till Lund blir
+      den långa vägen hem, och fälten stänger sig över staden bakom dig. Kanske nästa sommar. Kanske när
+      du är modigare. Mattias förblir ett fotografi och en röst på ett band, en idol du aldrig tillät
+      bli en person, och sanningen förblir begravd där din far la den. Du växte inte upp den här sommaren.
+      Inte ännu. ▒ Slut. ▒
+    title: Hemma igen
+  ending-partial:
+    body: 'Du sätter dig ner mittemot honom och det är verkligt — han är här, han är din bror, han kom
+      till dörren för dig. Han frågar om hemma med försiktig röst och du märker att du inte vet vad du
+      ska säga, för du aldrig hittade breven, och så vet du inte vad han inte vet: att han skrev, och
+      skrev, och inget svar kom någonsin för din far såg till att det inte gjorde det. Så ni två talar
+      runt en form som ingen av er kan se helheten av, varm och otrygg och smärtande, och under det sitter
+      den gamla tystnaden på obruten. Du hittade honom. Det är mer än du hade i morse. Men ni möts som
+      halv-främlingar, och långt bort i Sandby håller en stålbox i en skrivbordslåda fortfarande den del
+      av historien som kunde ha gjort er hela. ▒ Slut. ▒'
+    title: Halv-främlingar
+  ending-true:
+    body: Du berättar för honom. Om hörnet av hans rum och mixtapen och den långa vägen västerut; om Mamma
+      med sitt rena diskbänk, och Pappa — och lådan i skrivbordet, och breven han skrev som aldrig kom
+      förbi hans egen far. Mattias blir helt stilla, och sedan gråter han, på ett sätt du aldrig sett
+      en vuxen gråta, för under sex månader trodde han att ni alla läste hans ord och valde tystnad. "Jag
+      lämnade er aldrig," säger han. "Jag vill att du vet att jag aldrig lämnade er." Du vet. Du vet allt
+      nu — att storebrodern på fotot var en verklig, rädd, hopplös person som blev förälskad och var tvungen
+      att springa för det; och att fadern du litade på gjorde en liten, tyst, oförlåtlig sak för att hålla
+      sanningen från dig. Det är inte snyggt. Robin sätter vattenkokaren på. Men tystnad är bruten, och
+      du förde familjens bitar till den enda plats där de kunde sättas samman igen. Du växte upp den här
+      sommaren — genom att välja honom, och sanningen, före familjens lögn. ▒ Slut. ▒
+    title: Verklig återförening
+  flat:
+    body: 'Två trappor upp, en dörr med hans namn på ett tejpat pappersark. Bakom den, en gitarr, en lampa,
+      lukten av kaffe — och Mattias, äldre och mer verklig än helgonet på fotot, som öppnar dörren för
+      det lilla syskonet som kom helt vägen till Lund för att hitta honom. För ett ögonblick kan ingen
+      av er tala. Sedan: hur möter du honom?'
+    title: Mattias Dörr
+  home:
+    body: 'Din brors rum, begravet under sex månaders damm. Affischer, en bunt pocketböcker, hörnet där
+      hans saker fortfarande ligger staplade. Huset andas omkring dig: mamma någonstans i köket, pappa
+      instängd på sitt arbetsrum längst ner i hallen. Vad som än verkligen hände, det började här.'
+    body_variants:
+    - body: Din brors rum. Kassetten och Lund-fotot ligger i din ficka nu, och rummet känns annorlunda
+        för det — mindre ett helgon, mer en första ledtråd. Mamma är i köket; pappas arbetsrumsdörr är
+        stängd längst ner i hallen. Vägen ut ur byn — och vägen till Lund — börjar vid dörren.
+    title: Mattias rum
+  krister:
+    body: Krister tittar upp, lite försiktig — Mattias lillasyster eller lillebror, ute här och ställer
+      frågor. "Okej," säger han, och väntar för att se vad det här är. Han vet saker. Huruvida han säger
+      det beror på om du är verklig med honom. (Var öppen med honom.)
+    body_variants:
+    - body: Krister har redan berättat vad han hade — bandet, Stilla; numret krasslat på skrapet nu i
+        fickan; Sonny vid skivaffären vid Klostergatan, som vet allt om scenen. "Ta det försiktigt med
+        honom, ja?" säger han, menar Mattias. "Han är inte vad din far säger att han är." Han drar sig
+        inte vidare.
+    title: Krister på trappan
+  letters-reveal:
+    body: Locket går upp. Inuti, hålla tillsammans med ett sprött gummibånd, ligger en bunt — vykort från
+      Lund, tre vecklade brev, allt i Mattias handstil, alla adresserade här, till dig och till mamma,
+      och alla öppnade och lästa och aldrig vidarebefordrade. Frimärkena marscherar månad för månad från
+      veckan han åkte. Han skrev. Han fortsatte att skriva. Han frågade efter dig vid namn, om och om
+      igen, och väntade på ett svar som din far såg till att aldrig kom. Historien var aldrig att Mattias
+      övergav dig. Historien är vad som gjordes för att få dig att tro att han gjorde det.
+    title: Det pappa höll
+  lundcentral:
+    body: Lund äntligen. Kullerstensgatorna slingrar sig mot Stortorget, och domkyrkans grå torn höjer
+      sig över taken, upplysta underifrån. Det är en liten stad men efter Sandby känns det som hela världen.
+      Ned från Klostergatan finns en skivbutik; upp på höjden, domkyrkan och dess krypta; och mot studentkvarteren,
+      studentkorridoren där studenterna bor.
+    body_variants:
+    - body: Lund, och allt annorlunda nu när du vet. Domkyrkan höjer sig fortfarande över taken, lanorna
+        slingrar sig fortfarande mot Stortorget — men Robin har berättat sanningen för dig, och givit
+        dig en adress, och den enda gatan som spelar roll nu är den som leder till din brors dörr.
+    title: Centrala Lund
+  marlpit:
+    body: Märkelgraven ligger stilla och grön mellan sina lerrader, bortom vägens sikte. Du och Mattias
+      kom hit varje sommar — vågade varandra från höga sidan, låg i gräset efteråt, pratade om att ta
+      sig ur Sandby. Han kom bort. Vattnet ser inte ut som mycket. Det gör det aldrig.
+    title: Märkelgraven
+  mixtape:
+    body: Du drar ut inläggskortet. Inget band är namngivet någonstans — bara Mattias blockbokstavsöversikt
+      över låtarna ner längs kortet. Han dolde alltid saker i öppen dager. Det finns en form på det, om
+      du läser det rätt. (Vad är bandets namn?)
+    body_variants:
+    - body: Du läser de första bokstäverna rakt ner och bandets namn hoppar ut ur låtlistan som om det
+        väntade där på dig. Stilla. Nu har du något att fråga om i Lund.
+    title: Mixtapen
+  mum:
+    body: Mamma står vid diskbänken och torkar en yta som redan är ren. Hon vänder sig inte när du kommer
+      in, men hennes axlar förskjuts — hon vet att det är du. Radion maler lågt. Det finns ett helt samtal
+      som huset inte har fått ha. (Prata med henne — försiktigt.)
+    body_variants:
+    - body: Mamma är fortfarande vid diskbänken, men mjukare nu, trasor lagda. Hon tillät sig att minnas
+        honom tillsammans med dig — släppte till och med hans födelsedag, fjortonde mars, året han föddes,
+        sjuttitre. "Säg inte till din far att vi pratade," säger hon, inte okärlöst. Hon säger inte mer
+        i kväll.
+    title: Mamma i köket
+  ostra-torn:
+    body: Fälten slutar helt plötsligt. Där det var häckar och betrader finns plötsligt trottoarkanter,
+      gatlyktor, de bleka betongplattorna på Östra Torns höghus — och den gamla järnvägen matar in dig
+      rakt in i staden som om det alltid var meningen. Bakom dig byn och allt du blev berättat där. Framför
+      dig, domkyrkans torn, och Mattias någonstans under dem. Du är inte en byunge längre. Du går in.
+    title: Östra Torn
+  phonescrap:
+    body: Under gatlyktor glättar du ut snibben som Krister gav dig. Ett Lund-nummer i Mattias handstil
+      — 046, sedan 15 78 — och sedan de två sista siffrorna bortriva, eller förslitna, eller aldrig skrivna.
+      Det saknade paret är något du redan vet, om du tänker på vad som ligger i din ficka och vad mamma
+      lät slinka. (Ge hela numret, eller de två saknade siffrorna.)
+    body_variants:
+    - body: De saknade siffrorna klickar på plats — året han föddes, sjuttiofem. 046 15 78 73. Ett Lund-nummer,
+        helt nu, redo att ringa från telefonkiosken.
+    title: Papperssnibben
+  recordshop:
+    body: En klocka över dörren. Ägaren — Sonny — står bakom disken och omsluter skivorna, och tittar
+      knappt upp. "Kan jag hjälpa till?" Han sysslar med människor som vet vad de talar om. Du måste visa
+      honom att du gör det. (Namnge vad du vet.)
+    body_variants:
+    - body: Sonny har värmt sig till dig nu när du nämnde Stilla — han har berättat att den som betydde
+        något för Mattias är Robin, uppe på universitetet, i studentkorridor. "Säg Sonny hej," lägger
+        han till, och går tillbaka till sina låda. "Och var snäll om det. Killen har haft det kämpigt
+        med sin familj."
+    title: Skivaffären
+  start:
+    body: 'Sommar, 1992. Du är femton år, och huset har varit alltför tyst i sex månader. Sedan Mattias
+      åkte — sedan skrikandet, och sedan dörren — har familjen hållit sig till en platt mening: han flyttade
+      till Lund. Mamma torkar en bänk som redan är ren. Pappa säger inte hans namn. Längre ner i hallen
+      väntar din brors rum med sin dörr stängd, precis som det var. Du tror inte att han bara gick iväg
+      från dig. Ikväll ska du få veta vad som verkligen hände.'
+    title: Det tysta huset
+  trailpath:
+    body: Den gamla järnvägen löper död rak västerut genom fälten, ballast omvandlat till cykelväg under
+      limträden. Ljuset blir bernsteingult och sedan grått. Någonstans framåt korsar väg 11 vägen i mörkret;
+      söderut löper en körväg ner mot den gamla märgelgraven där du brukade bada. Lund är en skugga av
+      ljus på horisonten.
+    title: Hardebergaspåret
+puzzles:
+  cathedral-clock:
+    hint_ladder:
+    - Den spelar vid tolv på dagen och igen på eftermiddagen — men legenden menar den första gången, när
+      kungarna först kommer ut.
+    - Slaget tolv, mitt på dagen.
+    - Tolv — 12:00.
+    on_solve:
+      log: 'Du löste när klockan spelar: tolv, ''när jättarna kommer ut.'''
+    prompt: Kortet vid den astronomiska klockan säger att figurerna processerar bara två gånger om dagen;
+      kryptkällan säger att komma 'när jättarna kommer ut'. Vid vilken timme spelar klockan, för att träffa
+      dina kontakt?
+    solution:
+      set:
+      - tolv
+      - '12'
+      - '12:00'
+      - '12.00'
+      - '1200'
+      - tolv
+      - mittdagstid
+      - klockan 12
+      - kl 12
+      - kl. 12
+  letters-box:
+    hint_ladder:
+    - Inte ett årsdatum. En födelsedag — den som Mamma avslöjade.
+    - 'Fjortonde mars: dag, sedan månad.'
+    - 1403. (14 mars.)
+    on_solve:
+      log: Boxen öppnades på Mattias födelsedag — 1403.
+    prompt: Stålboxen i Pappas skrivbord har ett fyrsiffrigt lås. Det ena datumet han aldrig skulle skriva
+      ner och aldrig skulle glömma. Vilka är de fyra siffrorna?
+    solution:
+      set:
+      - '1403'
+      - 14 03
+      - 14-03
+      - '1403'
+      - '1473'
+      - '140373'
+  mixtape-cipher:
+    hint_ladder:
+    - Han gömmde namnet mitt framför näsan på oss. Se på bokstäverna, inte låtarna.
+    - Ta första bokstaven på varje låt och stapla dem.
+    - S-T-I-L-L-A. Bandet heter Stilla.
+    on_solve:
+      log: 'Spellistan med samma första bokstäver stavade bandets namn: STILLA.'
+    prompt: Mattias mixtape har ingen bandnamn — bara en spellista. Läs första bokstaven på varje låt,
+      uppifrån och ned. Vad heter bandet?
+    solution:
+      set:
+      - STILLA
+      - stilla
+      - Stilla
+  phone-number:
+    hint_ladder:
+    - Det saknade paret är ett år — ett som Mamma nämnde om Mattias.
+    - Han föddes nittiohundra sjuttio... tre.
+    - De två sista siffrorna är 73. Numret är 046 15 78 73.
+    on_solve:
+      log: 'Du kompletterade Lundnumret: 046 15 78 73.'
+    prompt: Kristers lapp visar 046 15 78 __ __ — de två sista siffrorna är bortrivna. Det är ett nummer
+      du redan känner. Vad kompletterar Lundsiffran? (De två siffrorna, eller hela numret.)
+    solution:
+      set:
+      - '73'
+      - 046 15 78 73
+      - 0461578 73
+      - 046157873
+      - 0461 5 78 73
+      - 15 78 73
+      - '157873'

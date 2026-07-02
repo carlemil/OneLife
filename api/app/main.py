@@ -5,6 +5,7 @@ DATA_MODEL.md §players for the real plan). Every mutating endpoint runs inside 
 transaction so a failed action leaves no partial state.
 """
 import os
+import re
 import json
 import uuid
 import traceback
@@ -13,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations
+from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations, i18n
 from .dsl import evaluate
 from .strings import M
 
@@ -25,6 +26,9 @@ SESSION_TTL = "7 days"
 
 # Accounts whose email is listed here can use the /api/admin/* export/import.
 ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ONELIFE_ADMIN_EMAILS", "").split(",") if e.strip()}
+
+# A permissive BCP-47-ish language tag (e.g. 'sv', 'sv-FI', 'pt-BR'). 'en' is the base.
+_LANG_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 
 app = FastAPI(title="OneLife API")
 app.add_middleware(
@@ -103,6 +107,31 @@ async def _startup():
         # The player's free-form clipboard (saved with their profile; never auto-edited).
         await conn.execute(
             "ALTER TABLE players ADD COLUMN IF NOT EXISTS clipboard TEXT NOT NULL DEFAULT ''")
+        # Per-game translations + the player's chosen play language (account default plus
+        # an optional per-(player,game) override). See i18n.py / db/01_schema.sql — additive,
+        # so existing volumes come up to shape here without a reset.
+        await conn.execute(
+            "ALTER TABLE players ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'en'")
+        await conn.execute(
+            "ALTER TABLE player_games ADD COLUMN IF NOT EXISTS language TEXT")
+        # The clipboard is per-(player, game) — notes must not leak between games. (The
+        # old account-level players.clipboard column is left in place but unused.)
+        await conn.execute(
+            "ALTER TABLE player_games ADD COLUMN IF NOT EXISTS clipboard TEXT NOT NULL DEFAULT ''")
+        await conn.execute(
+            """CREATE TABLE IF NOT EXISTS content_translations (
+                   game_id     TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+                   lang        TEXT NOT NULL,
+                   entity_type TEXT NOT NULL,
+                   entity_id   TEXT NOT NULL,
+                   field_path  TEXT NOT NULL,
+                   text        TEXT NOT NULL,
+                   src_hash    TEXT NOT NULL DEFAULT '',
+                   PRIMARY KEY (game_id, lang, entity_type, entity_id, field_path)
+               )""")
+        await conn.execute(
+            """CREATE INDEX IF NOT EXISTS content_translations_lookup
+                   ON content_translations (game_id, lang, entity_type, entity_id)""")
         # Small key/value store for runtime app settings (e.g. the active game).
         await conn.execute(
             "CREATE TABLE IF NOT EXISTS app_settings (key TEXT PRIMARY KEY, value TEXT NOT NULL)")
@@ -131,6 +160,13 @@ async def _startup():
             async with pool.acquire() as conn:
                 await content.register_game(conn, game_id, data.get("game", {}), sort_order=i)
                 await content.seed_content(conn, data, game_id)
+                # Seed any per-language translation sidecars (games/<id>/i18n/<lang>.yaml).
+                for lang in i18n.discover_langs(game_id):
+                    try:
+                        await content.seed_translations(
+                            conn, game_id, lang, i18n.load_sidecar(game_id, lang))
+                    except Exception as te:  # noqa: BLE001
+                        print(f"[content:{game_id}] translation '{lang}' skipped: {te}")
             print(f"[content:{game_id}] seeded {len(data['nodes'])} nodes")
         except Exception as e:  # noqa: BLE001
             print(f"[content:{game_id}] seed skipped: {e}")
@@ -163,7 +199,8 @@ async def _session(authorization: str | None):
         row = await conn.fetchrow(
             """SELECT s.token, s.player_id, p.active_game_id AS game_id,
                       pg.current_node, COALESCE(pg.story_time, 0) AS story_time, pg.log_id,
-                      p.display_name, p.onboarded, p.email
+                      p.display_name, p.onboarded, p.email,
+                      COALESCE(pg.language, p.language, 'en') AS language
                FROM player_sessions s
                JOIN players p ON p.id = s.player_id
                LEFT JOIN player_games pg
@@ -216,6 +253,14 @@ async def _start_game(conn, sess: dict):
         raise HTTPException(500, M.NO_ENTRY_NODE)
     first_summary = await conn.fetchval(
         "SELECT first_summary FROM games WHERE id=$1", gid) or "You wake."
+    lang = sess.get("language", "en")
+    if lang and lang != "en":
+        t = await conn.fetchval(
+            """SELECT text FROM content_translations WHERE game_id=$1 AND lang=$2
+               AND entity_type='game' AND entity_id=$1 AND field_path='first_summary'""",
+            gid, lang)
+        if t:
+            first_summary = t
     log_id = await conn.fetchval(
         "INSERT INTO game_logs (player_id, game_id) VALUES ($1,$2) RETURNING id", pid, gid)
     await conn.execute(
@@ -286,6 +331,10 @@ class GameSwitchBody(BaseModel):
 class GameSelectBody(BaseModel):
     game_id: str
     mode: str = "continue"   # continue | new
+
+class LanguageBody(BaseModel):
+    language: str            # BCP-47 code, or 'en' for the base language
+    scope: str = "account"   # account -> players.language | game -> player_games.language override
 
 class TravelBody(BaseModel):
     cell_id: str
@@ -509,6 +558,19 @@ async def lobby_games(authorization: str | None = Header(default=None)):
     async with pool.acquire() as conn:
         games = await conn.fetch(
             "SELECT id, title, subtitle FROM games ORDER BY sort_order, title")
+        # Languages a player can pick: English (base) plus every language any game has a
+        # translation for. Per-game availability is in `langs_by_game`.
+        lang_rows = await conn.fetch(
+            "SELECT DISTINCT game_id, lang FROM content_translations")
+        # Translated lobby titles/subtitles for the player's language (English fallback).
+        lang = sess.get("language", "en")
+        gtitles: dict = {}
+        if lang and lang != "en":
+            for r in await conn.fetch(
+                    "SELECT game_id, field_path, text FROM content_translations "
+                    "WHERE lang=$1 AND entity_type='game' AND field_path IN ('title','subtitle')",
+                    lang):
+                gtitles[(r["game_id"], r["field_path"])] = r["text"]
         saves = await conn.fetch(
             """SELECT pg.game_id, pg.current_node, pg.last_played_at, pg.log_id,
                       n.title AS node_title,
@@ -519,13 +581,22 @@ async def lobby_games(authorization: str | None = Header(default=None)):
                LEFT JOIN story_nodes n ON n.game_id=pg.game_id AND n.id=pg.current_node
                WHERE pg.player_id=$1""", sess["player_id"])
     by = {r["game_id"]: r for r in saves}
+    langs_by_game: dict[str, set] = {}
+    for r in lang_rows:
+        langs_by_game.setdefault(r["game_id"], set()).add(r["lang"])
+    all_langs = sorted({r["lang"] for r in lang_rows})
     return {
         "active": sess["game_id"],
+        "language": sess.get("language", "en"),
+        "languages": ["en"] + all_langs,
         "games": [{
-            "id": g["id"], "title": g["title"] or g["id"], "subtitle": g["subtitle"],
+            "id": g["id"],
+            "title": gtitles.get((g["id"], "title"), g["title"] or g["id"]),
+            "subtitle": gtitles.get((g["id"], "subtitle"), g["subtitle"]),
             "started": g["id"] in by and by[g["id"]]["log_id"] is not None,
             "node_title": by[g["id"]]["node_title"] if g["id"] in by else None,
             "progress": int(by[g["id"]]["progress"]) if g["id"] in by else 0,
+            "languages": ["en"] + sorted(langs_by_game.get(g["id"], set())),
             "last_played_at": (by[g["id"]]["last_played_at"].isoformat()
                                if g["id"] in by and by[g["id"]]["last_played_at"] else None),
         } for g in games],
@@ -572,6 +643,35 @@ async def leave_game(authorization: str | None = Header(default=None)):
     return {"ok": True}
 
 
+@app.post("/api/language")
+async def set_language(body: LanguageBody, authorization: str | None = Header(default=None)):
+    """Set the player's play language — account-wide (players.language) or as a per-game
+    override (player_games.language). Returns the resulting EFFECTIVE language. Any content
+    without a translation for it falls back to English at render time."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    lang = (body.language or "en").strip()
+    if lang != "en" and not _LANG_RE.match(lang):
+        raise HTTPException(400, M.BAD_LANGUAGE)
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        if body.scope == "game":
+            if not sess.get("game_id"):
+                raise HTTPException(409, M.PICK_GAME)
+            await conn.execute(
+                "UPDATE player_games SET language=$3 WHERE player_id=$1 AND game_id=$2",
+                sess["player_id"], sess["game_id"], lang)
+        else:
+            await conn.execute(
+                "UPDATE players SET language=$2 WHERE id=$1", sess["player_id"], lang)
+        eff = await conn.fetchval(
+            """SELECT COALESCE(pg.language, p.language, 'en')
+               FROM players p
+               LEFT JOIN player_games pg ON pg.player_id=p.id AND pg.game_id=p.active_game_id
+               WHERE p.id=$1""", sess["player_id"])
+    return {"language": eff or "en"}
+
+
 @app.get("/api/state")
 async def state(authorization: str | None = Header(default=None)):
     sess = await _session(authorization)
@@ -590,15 +690,18 @@ async def state(authorization: str | None = Header(default=None)):
 
 @app.post("/api/clipboard")
 async def save_clipboard(body: ClipboardBody, authorization: str | None = Header(default=None)):
-    """Persist the player's free-form clipboard on their profile. Player-controlled
-    only — the game never writes here automatically."""
+    """Persist this game's free-form notes on the player's per-game save. Player-controlled
+    only — the game never writes here automatically. Per-(player, game): notes never leak
+    between games."""
     sess = await _session(authorization)
     _require_onboarded(sess)
+    _require_in_game(sess)
     text = body.text[:100000]   # generous cap to keep a stray paste from bloating the row
     pool = await db.get_pool()
     async with pool.acquire() as conn:
-        await conn.execute("UPDATE players SET clipboard=$2 WHERE id=$1",
-                           sess["player_id"], text)
+        await conn.execute(
+            "UPDATE player_games SET clipboard=$3 WHERE player_id=$1 AND game_id=$2",
+            sess["player_id"], sess["game_id"], text)
     return {"ok": True}
 
 

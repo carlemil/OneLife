@@ -38,6 +38,7 @@ class M:
 
     # --- lobby ---
     NO_SUCH_GAME = "No such game."
+    BAD_LANGUAGE = "That isn't a valid language code."
 
     # --- navigation (edge / walk) ---
     OPTION_UNAVAILABLE = "That option isn't available from where you are right now."

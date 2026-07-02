@@ -23,6 +23,26 @@ CREATE TABLE games (
     created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- Per-game translations of authored player-facing text. English is the base language
+-- (the *.yaml under games/<id>/data/); a row here overrides one English leaf for one
+-- language. Missing row = fall back to the English base column. entity_type/entity_id
+-- name the content row; field_path addresses the (possibly nested JSONB) leaf, e.g.
+-- 'body', 'body_variants[0].body', 'knowledge_boundary.tone', 'solution.set[1]'. Authored
+-- as games/<id>/i18n/<lang>.yaml sidecars and seeded by content.seed_translations. Pure
+-- display data (no player FK), so reseeding just upserts + prunes. See i18n.py.
+CREATE TABLE content_translations (
+    game_id     TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
+    lang        TEXT NOT NULL,                 -- BCP-47: 'sv', 'sv-FI', 'de'
+    entity_type TEXT NOT NULL,                 -- 'game'|'games'|'story_nodes'|'story_edges'|'characters'|'locations'|'world_cells'|'puzzles'|'puzzle_clues'|'dialogue_gates'
+    entity_id   TEXT NOT NULL,                 -- content slug (the game_id itself for 'game'/'games')
+    field_path  TEXT NOT NULL,                 -- dotted + [i] path to the leaf
+    text        TEXT NOT NULL,
+    src_hash    TEXT NOT NULL DEFAULT '',      -- sha1 of the English leaf at translate time (drift detection)
+    PRIMARY KEY (game_id, lang, entity_type, entity_id, field_path)
+);
+CREATE INDEX content_translations_lookup
+    ON content_translations (game_id, lang, entity_type, entity_id);
+
 -- ---------- Players & sessions (auth simplified for the slice: token only) ----------
 CREATE TABLE players (
     id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -34,6 +54,7 @@ CREATE TABLE players (
     onboarded      BOOLEAN NOT NULL DEFAULT FALSE, -- passed manual + quiz (account-level)
     clipboard      TEXT NOT NULL DEFAULT '',       -- player's free-form clipboard (never auto-edited)
     active_game_id TEXT REFERENCES games(id),      -- which save is selected; NULL = in the lobby
+    language       TEXT NOT NULL DEFAULT 'en',     -- account-level play language (BCP-47; 'en' = base)
     created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
@@ -54,6 +75,8 @@ CREATE TABLE player_games (
     current_node   TEXT,
     story_time     BIGINT NOT NULL DEFAULT 0,
     log_id         UUID,
+    language       TEXT,          -- optional per-(player,game) language override (NULL = use players.language)
+    clipboard      TEXT NOT NULL DEFAULT '',  -- this game's free-form notes (per-game; never leaks between games)
     last_played_at TIMESTAMPTZ NOT NULL DEFAULT now(),
     PRIMARY KEY (player_id, game_id)
 );

@@ -40,14 +40,14 @@ def _within_one_edit(a: str, b: str) -> bool:
 
 def _check(solution: dict, answer: str, ctx) -> bool:
     kind = solution.get("kind")
-    a = answer.strip().lower()
+    a = answer.strip().casefold()   # casefold (not lower) so non-ASCII answers fold correctly
     if kind == "assembly":
         # auto-solved elsewhere; treat any submit as solved if clues complete
         return True
     if kind == "set":
-        targets = [str(v).strip().lower() for v in solution.get("set", [])]
+        targets = [str(v).strip().casefold() for v in solution.get("set", [])]
     else:  # 'exact' (and the deferred 'semantic' kind) — single value
-        targets = [str(solution.get("value", "")).strip().lower()]
+        targets = [str(solution.get("value", "")).strip().casefold()]
     for t in targets:
         if a == t:
             return True
@@ -84,6 +84,19 @@ async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict
             conn, player_id, gid, session, node, pz, pp, solution, answer, entry)
 
     ctx = await load_context(conn, player_id, gid, session["story_time"])
+    # In a translated game, accept the UNION of the base English answers and the
+    # target-language answers (English never stops working).
+    lang = session.get("language", "en")
+    if lang and lang != "en" and solution.get("kind") != "crossword":
+        extra = [r["text"] for r in await conn.fetch(
+            """SELECT text FROM content_translations
+               WHERE game_id=$1 AND lang=$2 AND entity_type='puzzles' AND entity_id=$3
+                 AND (field_path='solution.value' OR field_path LIKE 'solution.set[%')""",
+            gid, lang, pz["id"])]
+        if extra:
+            base = (list(solution.get("set", [])) if solution.get("kind") == "set"
+                    else ([solution["value"]] if solution.get("value") else []))
+            solution = {**solution, "kind": "set", "set": base + extra}
     ok = _check(solution, answer, ctx)
 
     attempts = pp["attempts"] + 1
@@ -113,7 +126,15 @@ async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict
             story_time, player_id, gid)
         session["story_time"] = story_time
         await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
-        return {"solved": True, "message": on_solve.get("log", "It opens.")}
+        msg = on_solve.get("log", "It opens.")
+        if lang and lang != "en":
+            t = await conn.fetchval(
+                """SELECT text FROM content_translations WHERE game_id=$1 AND lang=$2
+                   AND entity_type='puzzles' AND entity_id=$3 AND field_path='on_solve.log'""",
+                gid, lang, pz["id"])
+            if t:
+                msg = t
+        return {"solved": True, "message": msg}
 
     # No auto-hint: only count the attempt. Hints are revealed solely when the
     # player asks (request_hint), and only after they've tried at least once.

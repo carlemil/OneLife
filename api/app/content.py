@@ -362,6 +362,31 @@ async def seed_content(conn, data: dict, game_id: str) -> list[str]:
     return skipped
 
 
+async def seed_translations(conn, game_id: str, lang: str, rows: list[tuple]) -> None:
+    """Reconcile one (game, lang)'s translations into content_translations: upsert every
+    row present, then prune this (game, lang)'s rows no longer in the sidecar. Translations
+    are pure display data (no player FK), so pruning is a plain scoped DELETE — no
+    keep-if-referenced dance (unlike seed_content). `rows` come from i18n.load_sidecar:
+    (entity_type, entity_id, field_path, text, src_hash)."""
+    async with conn.transaction():
+        for etype, eid, path, text, src in rows:
+            await conn.execute(
+                """INSERT INTO content_translations
+                       (game_id, lang, entity_type, entity_id, field_path, text, src_hash)
+                   VALUES ($1,$2,$3,$4,$5,$6,$7)
+                   ON CONFLICT (game_id, lang, entity_type, entity_id, field_path)
+                   DO UPDATE SET text=EXCLUDED.text, src_hash=EXCLUDED.src_hash""",
+                game_id, lang, etype, eid, path, text, src)
+        # Prune stale leaves (an empty `rows` clears this game+lang entirely).
+        keep = [f"{etype}\x1f{eid}\x1f{path}" for etype, eid, path, _t, _s in rows]
+        await conn.execute(
+            """DELETE FROM content_translations
+               WHERE game_id=$1 AND lang=$2
+                 AND NOT ((entity_type || '\x1f' || entity_id || '\x1f' || field_path)
+                          = ANY($3::text[]))""",
+            game_id, lang, keep)
+
+
 def _j(v, default):
     """Parse a JSONB column (asyncpg returns it as a str) with a fallback."""
     if v is None:

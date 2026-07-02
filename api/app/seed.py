@@ -6,7 +6,7 @@
 import asyncio
 import sys
 
-from . import content, db, gamestate
+from . import content, db, gamestate, i18n
 
 
 async def run(lint_only: bool) -> int:
@@ -42,6 +42,11 @@ async def run(lint_only: bool) -> int:
             skipped = await content.seed_content(conn, data, game_id)
             for s in skipped or []:
                 print(f"KEPT  [{game_id}] {s}")
+            langs = i18n.discover_langs(game_id)
+            for lang in langs:
+                rows = i18n.load_sidecar(game_id, lang)
+                await content.seed_translations(conn, game_id, lang, rows)
+                print(f"  translations [{game_id}/{lang}]: {len(rows)} leaf(s)")
             print(f"Seeded {game_id}." +
                   (f" ({len(skipped)} row(s) kept — in use by players)" if skipped else ""))
     await db.close_pool()

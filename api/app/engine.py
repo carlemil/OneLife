@@ -5,7 +5,7 @@ import math
 import re
 from collections import deque
 from .dsl import PlayerContext, evaluate
-from . import memory, gameconfig, crossword
+from . import memory, gameconfig, crossword, i18n
 
 
 def _name_tokens(full_name: str, particles: set) -> list[str]:
@@ -741,7 +741,19 @@ async def render_state(conn, player_id, session) -> dict:
     gid = session["game_id"]
     node = await conn.fetchrow(
         "SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2", gid, session["current_node"])
+    if node is None:
+        # The player's current node no longer exists — content was reseeded under a live
+        # save (current_node is plain text, not an FK, so a prune can strand it). Re-anchor
+        # to the entry node so login/state never hard-crashes; log and flags are kept.
+        node = await conn.fetchrow(
+            "SELECT * FROM story_nodes WHERE game_id=$1 AND is_entry LIMIT 1", gid)
+        if node is not None:
+            session["current_node"] = node["id"]
+            await conn.execute(
+                "UPDATE player_games SET current_node=$3 WHERE player_id=$1 AND game_id=$2",
+                player_id, gid, node["id"])
     ctx = await load_context(conn, player_id, gid, session["story_time"])
+    tx = await i18n.translator(conn, gid, session.get("language", "en"))
 
     edges = await conn.fetch(
         "SELECT * FROM story_edges WHERE game_id=$1 AND from_node=$2 ORDER BY sort_order",
@@ -783,26 +795,44 @@ async def render_state(conn, player_id, session) -> dict:
     # examine, the risky force-door) stay as buttons.
     block, on_map_ids = await unified_map_block(
         conn, player_id, node, session["story_time"])
-    visible = [{"id": e["id"], "label": e["label"], "danger": e["danger"],
+    visible = [{"id": e["id"],
+                "label": tx.tr("story_edges", e["id"], "label", e["label"]),
+                "danger": e["danger"],
                 "to": e["to_node"], "on_map": e["to_node"] in on_map_ids} for e in shown]
 
     found = await conn.fetch(
-        """SELECT pc.reveal_text FROM player_clues p
+        """SELECT pc.id, pc.reveal_text FROM player_clues p
            JOIN puzzle_clues pc ON pc.id = p.clue_id AND pc.game_id = p.game_id
            WHERE p.player_id=$1 AND p.game_id=$2 ORDER BY p.found_at_seq""", player_id, gid)
 
-    clipboard = await conn.fetchval("SELECT clipboard FROM players WHERE id=$1", player_id)
+    # Node title/body in the player's language (falls back to English leaf by leaf). The
+    # body picks among body_variants, so translate the base body + each variant body first.
+    n_title = tx.tr("story_nodes", node["id"], "title", node["title"])
+    if tx.active:
+        nrow = dict(node)
+        nrow["body"] = tx.tr("story_nodes", node["id"], "body", node["body"])
+        raw = node["body_variants"]
+        variants = json.loads(raw) if isinstance(raw, str) else (raw or [])
+        nrow["body_variants"] = tx.node_variants(node["id"], variants)
+        n_body = resolve_body(nrow, ctx)
+    else:
+        n_body = resolve_body(node, ctx)
+
+    # Per-game notes (must not leak between games).
+    clipboard = await conn.fetchval(
+        "SELECT clipboard FROM player_games WHERE player_id=$1 AND game_id=$2", player_id, gid)
     state = {
         "node": {
-            "id": node["id"], "type": node["type"], "title": node["title"],
-            "body": resolve_body(node, ctx), "is_death": node["is_death"],
+            "id": node["id"], "type": node["type"], "title": n_title,
+            "body": n_body, "is_death": node["is_death"],
             "world_access": node["world_access"],
             "media": json.loads(node["media"]),
         },
         "edges": visible,
         "map": block,
-        "notes": [r["reveal_text"] for r in found],
+        "notes": [tx.tr("puzzle_clues", r["id"], "reveal_text", r["reveal_text"]) for r in found],
         "clipboard": clipboard or "",
+        "language": tx.lang,
         "story_time": session["story_time"],
         # Current alignment coordinate (the full drift history is on /api/alignment).
         "alignment": {"good_evil": ctx.good_evil, "law_chaos": ctx.law_chaos,
@@ -823,12 +853,17 @@ async def render_state(conn, player_id, session) -> dict:
                WHERE g.game_id=$1 AND g.id=$2""",
             gid, node["gate_id"])
         known = bool(char and char["id"] in ctx.known_names)
-        display_name, true_name, name_known = _resolve_name(char, known)
+        # Translate the public/role name only; the proper reveal_name is never translated.
+        char_t = char
+        if char is not None and tx.active:
+            char_t = dict(char)
+            char_t["name"] = tx.tr("characters", char["id"], "name", char["name"])
+        display_name, true_name, name_known = _resolve_name(char_t, known)
         state["gate"] = {
             "gate_id": node["gate_id"],
             "messages": [{"role": m["role"], "content": m["content"]} for m in msgs],
             "satisfied": bool(ga["satisfied"]) if ga else False,
-            "character_name": char["name"] if char else "NPC",
+            "character_name": char_t["name"] if char_t is not None else "NPC",
             "reveal_name": true_name,
             "display_name": display_name,
             "name_known": name_known,
@@ -843,7 +878,8 @@ async def render_state(conn, player_id, session) -> dict:
         # Hints are never auto-revealed: they're delivered in-character only when the
         # player asks (POST /api/puzzle/hint), as a spoken beat in the flow.
         state["puzzle"] = {
-            "puzzle_id": pz["id"], "prompt": pz["prompt"],
+            "puzzle_id": pz["id"],
+            "prompt": tx.tr("puzzles", pz["id"], "prompt", pz["prompt"]),
             "solved": bool(pp["solved"]) if pp else False,
             "attempts": pp["attempts"] if pp else 0,
         }

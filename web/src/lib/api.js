@@ -98,6 +98,9 @@ export const api = {
   selectGame: (game_id, mode = 'continue') =>
     req('/api/games/select', { method: 'POST', body: { game_id, mode } }),
   leaveGame: () => req('/api/games/leave', { method: 'POST' }),
+  // Set the play language (account-wide, or 'game' override). Returns { language }.
+  setLanguage: (language, scope = 'account') =>
+    req('/api/language', { method: 'POST', body: { language, scope } }),
 
   // world & maps
   travel: (cell_id) => req('/api/travel', { method: 'POST', body: { cell_id } }),

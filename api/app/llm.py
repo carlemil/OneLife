@@ -173,13 +173,34 @@ def _actor_eff_level(spec: dict, hint_level: int, reveal: bool,
     return eff_level, ladder, hint
 
 
+_LANG_NAMES = {
+    "sv": "Swedish", "de": "German", "fr": "French", "es": "Spanish", "it": "Italian",
+    "nl": "Dutch", "da": "Danish", "no": "Norwegian", "nb": "Norwegian Bokmål",
+    "fi": "Finnish", "pt": "Portuguese", "pl": "Polish", "ja": "Japanese",
+}
+
+
+def lang_name(code: str | None) -> str:
+    code = (code or "en").strip()
+    return _LANG_NAMES.get(code, _LANG_NAMES.get(code.split("-")[0], code))
+
+
+def _language_line(language: str | None) -> str:
+    """One system-prompt line telling the model which language to speak. Empty for English."""
+    if not language or language == "en":
+        return ""
+    return (f"\nLANGUAGE: Speak and narrate ENTIRELY in {lang_name(language)}, including the "
+            f"italic stage directions. Stay in character; never translate, gloss, or mention "
+            f"that you are using another language.")
+
+
 def build_actor(spec: dict, history: list[dict], hint_level: int,
                 own_memories: list[str] | None = None,
                 leaked_memories: list[str] | None = None,
                 identity: dict | None = None, reveal: bool = False,
                 alignment: str | None = None,
                 recap: str | None = None, already_helped: bool = False,
-                name_earned: bool = False) -> dict:
+                name_earned: bool = False, language: str = "en") -> dict:
     kb = spec.get("knowledge_boundary", {})
     _, _, hint = _actor_eff_level(spec, hint_level, reveal, already_helped)
     own_memories = own_memories or []
@@ -279,6 +300,7 @@ def build_actor(spec: dict, history: list[dict], hint_level: int,
         f"{reveal_block}"
         f"{helped_block}\n"
         f"CURRENT BEHAVIOUR CUE (how forthcoming to be right now): {hint}"
+        f"{_language_line(language)}"
     )
     msgs = [{"role": "user" if m["role"] == "player" else "assistant",
              "content": m["content"]} for m in history]
@@ -297,12 +319,13 @@ async def actor_reply(spec: dict, history: list[dict], hint_level: int,
                       identity: dict | None = None, reveal: bool = False,
                       alignment: str | None = None,
                       recap: str | None = None, already_helped: bool = False,
-                      name_earned: bool = False) -> str:
+                      name_earned: bool = False, language: str = "en") -> str:
     eff_level, ladder, _ = _actor_eff_level(spec, hint_level, reveal, already_helped)
     if not _USE_ANTHROPIC:
         return _stub_actor(history, eff_level, ladder, leaked_memories or [])
     req = build_actor(spec, history, hint_level, own_memories, leaked_memories,
-                      identity, reveal, alignment, recap, already_helped, name_earned)
+                      identity, reveal, alignment, recap, already_helped, name_earned,
+                      language=language)
     return parse_actor(await _run_text(req))
 
 

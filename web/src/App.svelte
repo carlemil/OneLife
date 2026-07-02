@@ -16,6 +16,8 @@
   // lobby (game picker; independent save per game)
   let lobbyGames = $state([]);
   let lobbyActive = $state(null);
+  let lobbyLanguages = $state(['en']);
+  let lang = $state('en');
   let activeGameTitle = $state('');
   let authMode = $state('login');       // login | register
   let busy = $state(false);
@@ -418,6 +420,7 @@
     try {
       const r = await api.games();
       lobbyGames = r.games; lobbyActive = r.active;
+      lobbyLanguages = r.languages || ['en']; lang = r.language || 'en';
       error = ''; notice = ''; phase = 'lobby';
       startBrowserLLM();   // prefetch the model while the player picks a game
     } catch (e) {
@@ -425,6 +428,18 @@
       else if (e.forbidden) await loadOnboarding();
       else error = e.message;
     }
+  }
+  const LANG_NAMES = { en: 'English', sv: 'Svenska', de: 'Deutsch', fr: 'Français',
+    es: 'Español', it: 'Italiano', nl: 'Nederlands', da: 'Dansk', no: 'Norsk',
+    fi: 'Suomi', pt: 'Português', pl: 'Polski', ja: '日本語' };
+  const langName = (c) => LANG_NAMES[c] || LANG_NAMES[(c || '').split('-')[0]] || c;
+  async function chooseLanguage(code) {
+    if (code === lang) return;
+    try {
+      const r = await api.setLanguage(code, 'account');
+      lang = r.language; localStorage.setItem('onelife_lang', lang);
+      await loadLobby();   // refresh with translated titles/subtitles
+    } catch (e) { error = e.message; }
   }
   async function pickGame(id, mode = 'continue') {
     busy = true; error = '';
@@ -880,6 +895,15 @@
     <div class="panel">
       <h2>{UI.lobby.chooseGame}</h2>
       <p class="sub">Each world keeps its own progress — switch any time.</p>
+      {#if lobbyLanguages.length > 1}
+        <label class="langpick">🌐
+          <select value={lang} onchange={(e) => chooseLanguage(e.currentTarget.value)}>
+            {#each lobbyLanguages as code}
+              <option value={code}>{langName(code)}</option>
+            {/each}
+          </select>
+        </label>
+      {/if}
       {#if error}<div class="error">{error}</div>{/if}
       <div class="lobby">
         {#each lobbyGames as g}

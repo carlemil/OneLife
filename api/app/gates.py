@@ -205,7 +205,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                                       ctx["own_mem"], ctx["leaked_mem"],
                                       identity=ctx["identity"], alignment=align_str,
                                       recap=ctx["recap"], already_helped=True,
-                                      name_earned=ctx["name_earned"])
+                                      name_earned=ctx["name_earned"],
+                                      language=session.get("language", "en"))
         await _say(conn, player_id, gid, gate_id, cur_seq, reply)
         return {"reply": reply, "satisfied": True, "transitioned": False}
 
@@ -223,7 +224,8 @@ async def process_message(conn, player_id, session, text: str) -> dict:
                                   identity=ctx["identity"], reveal=satisfied,
                                   alignment=align_str,
                                   recap=(ctx["recap"] if satisfied else None),
-                                  name_earned=ctx["name_earned"])
+                                  name_earned=ctx["name_earned"],
+                                  language=session.get("language", "en"))
     return await _finalize(conn, player_id, session, ctx, met, satisfied, reply)
 
 
@@ -247,12 +249,14 @@ async def build_turn(conn, player_id, session, text: str) -> dict:
     reqs = [llm.build_align(
         text, context=f"Talking to {char['name'] if char else 'someone'}.")]
 
+    lang = session.get("language", "en")
     already = bool(ctx["ga"]["satisfied"])
     if already:
         req = llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                               ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                               alignment=ctx["align_pre"], recap=ctx["recap"],
-                              already_helped=True, name_earned=ctx["name_earned"])
+                              already_helped=True, name_earned=ctx["name_earned"],
+                              language=lang)
         req["id"] = "actor_helped"
         reqs.append(req)
     else:
@@ -261,11 +265,11 @@ async def build_turn(conn, player_id, session, text: str) -> dict:
         reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                                     ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                                     reveal=False, alignment=ctx["align_pre"],
-                                    recap=None, name_earned=ctx["name_earned"]))
+                                    recap=None, name_earned=ctx["name_earned"], language=lang))
         reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
                                     ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
                                     reveal=True, alignment=ctx["align_pre"],
-                                    recap=ctx["recap"], name_earned=ctx["name_earned"]))
+                                    recap=ctx["recap"], name_earned=ctx["name_earned"], language=lang))
 
     decision = {"already_satisfied": already,
                 "criteria": [c["id"] for c in ctx["spec"].get("criteria", [])],
