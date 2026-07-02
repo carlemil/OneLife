@@ -125,6 +125,22 @@ async def tracks_for(location_id, name, description, theme, setting) -> list[dic
     return resolved
 
 
+# Two-phase (browser mode): build the music-director prompt for the browser to run,
+# then resolve + cache the returned picks. Same cache as tracks_for.
+def tracks_cached(location_id):
+    return _track_cache.get(location_id)
+
+
+def tracks_request(name, description, theme, setting) -> dict:
+    return llm.build_tracks(name, description, theme, setting)
+
+
+async def tracks_apply(location_id, raw_completion: str, n: int = 4) -> list[dict]:
+    resolved = await _spotify_resolve(llm.parse_tracks(raw_completion, n))
+    _track_cache[location_id] = resolved
+    return resolved
+
+
 async def _spotify_token() -> str | None:
     if not SPOTIFY_CONFIGURED:
         return None

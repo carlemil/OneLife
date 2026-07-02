@@ -2,12 +2,14 @@
   import { onMount, tick } from 'svelte';
   import { api, download } from './lib/api.js';
   import * as spotify from './lib/spotify.js';
+  import * as webllm from './lib/webllm.js';
   import { SvelteFlow, Background, Controls } from '@xyflow/svelte';
   import '@xyflow/svelte/dist/style.css';
   import StoryNode from './lib/StoryNode.svelte';
   import StoryEdge from './lib/StoryEdge.svelte';
   import MapOverlay from './lib/MapOverlay.svelte';
   import AlignmentChart from './lib/AlignmentChart.svelte';
+  import Crossword from './lib/Crossword.svelte';
   import { UI } from './lib/strings.js';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | lobby | game
@@ -17,6 +19,15 @@
   let activeGameTitle = $state('');
   let authMode = $state('login');       // login | register
   let busy = $state(false);
+
+  // In-browser LLM (the "browser" provider): the model runs on the player's GPU.
+  let llmProvider = $state(null);       // 'anthropic' | 'browser' | 'stub'
+  let llmModel = '';                    // WebLLM model id from /api/health
+  let modelProgress = $state(null);     // {progress, text} while downloading
+  let modelReady = $state(false);
+  let modelError = $state('');
+  // Player actions that need the LLM are held until the on-device model is ready.
+  let llmBlocked = $derived(llmProvider === 'browser' && !modelReady);
   let error = $state('');
   let notice = $state('');
 
@@ -73,6 +84,25 @@
   let puzzleInput = $state('');
   let gateEl = $state(null);
   let puzzleEl = $state(null);
+  let xwordSelected = $state('');       // crossword: which clue the player is answering
+  // The selected crossword clue (for the input placeholder). Also auto-selects the
+  // first unfilled clue when the grid loads / a selected clue gets filled.
+  const xwordClue = $derived.by(() => {
+    const cw = game?.puzzle?.crossword;
+    return cw ? cw.entries.find((e) => e.id === xwordSelected) || null : null;
+  });
+  $effect(() => {
+    const cw = game?.puzzle?.crossword;
+    if (!cw) return;
+    if (!cw.entries.some((e) => e.id === xwordSelected && !e.filled)) {
+      const first = cw.entries.find((e) => !e.filled);
+      xwordSelected = first ? first.id : '';
+    }
+  });
+  function selectClue(id) {
+    xwordSelected = id; puzzleInput = ''; error = '';
+    tick().then(() => puzzleEl?.focus());
+  }
 
   // The running story flow: every beat (log entries + the NPC dialogue woven in
   // by the backend) in chronological order, oldest first. Paged from the top so
@@ -264,7 +294,25 @@
     }
   });
 
+  // Boot the on-device model (browser provider). Idempotent — safe to call from the
+  // lobby (prefetch, overlapping game selection) and again on entering the game.
+  async function startBrowserLLM() {
+    if (llmProvider !== 'browser' || modelReady || modelError) return;
+    try {
+      await webllm.initEngine(llmModel, (p) => { modelProgress = p; });
+      modelReady = true; modelProgress = null;
+    } catch (e) {
+      modelError = e.noWebGPU
+        ? "This browser can't run the on-device AI (WebGPU unavailable). Use a recent Chrome or Edge on desktop, or ask the host to switch the LLM provider."
+        : `The on-device AI failed to load: ${e.message}`;
+    }
+  }
+
   onMount(async () => {
+    try {
+      const h = await api.health();
+      llmProvider = h.llm_provider; llmModel = h.llm_model;
+    } catch { /* health is best-effort; provider stays null → no browser LLM */ }
     spotifyOn = localStorage.getItem('onelife_spotify') === '1';
     const savedVol = localStorage.getItem('onelife_spotify_vol');
     if (savedVol !== null) setSpotifyVol(savedVol);
@@ -371,6 +419,7 @@
       const r = await api.games();
       lobbyGames = r.games; lobbyActive = r.active;
       error = ''; notice = ''; phase = 'lobby';
+      startBrowserLLM();   // prefetch the model while the player picks a game
     } catch (e) {
       if (e.unauthorized) phase = 'auth';
       else if (e.forbidden) await loadOnboarding();
@@ -404,6 +453,7 @@
     logEntries = (await api.log()).entries;
     myWindow = (await api.leaderboard({ around: 1 })).rows;
     error = ''; notice = ''; phase = 'game';
+    startBrowserLLM();   // ensure the model is loading (e.g. on resume, skipping lobby)
     try {
       const me = await api.adminMe(); isAdmin = me.is_admin; adminGame = me.game || '';
     } catch { isAdmin = false; }
@@ -722,13 +772,17 @@
     finally { busy = false; await tick(); gateEl?.focus(); }   // refocus after re-enable
   }
   async function onPuzzle() {
-    if (!puzzleInput.trim()) return; busy = true;
+    if (!puzzleInput.trim()) return;
+    const isX = !!game?.puzzle?.crossword;
+    if (isX && !xwordSelected) { error = 'Pick a clue first.'; return; }
+    busy = true;
     try {
-      const r = await api.puzzle(puzzleInput.trim());
+      const r = await api.puzzle(puzzleInput.trim(), isX ? xwordSelected : '');
       game = r.state; logEntries = (await api.log()).entries;
       // Echo the outcome by the input. A wrong guess says so but volunteers no
-      // hint — the player must ask for one (askHint), and only after trying.
-      if (r.result.solved) {
+      // hint — the player must ask for one (askHint), and only after trying. For a
+      // crossword, a correct word that doesn't finish the grid is still good news.
+      if (r.result.solved || r.result.correct) {
         puzzleResult = r.result.message || ''; error = '';
       } else {
         puzzleResult = ''; error = r.result.message || 'Nothing happens.';
@@ -864,6 +918,16 @@
       <section class="story">
         <!-- The current moment: where the player acts next. -->
         <div class="scene" bind:this={sceneEl}>
+          {#if llmProvider === 'browser' && !modelReady}
+            <div class="llmload" class:err={modelError}>
+              {#if modelError}
+                <p>⚠ {modelError}</p>
+              {:else}
+                <p>⏳ Loading the on-device AI (a one-time download to your browser){#if modelProgress?.progress != null} — {Math.round(modelProgress.progress * 100)}%{/if}. You can read on; talking, choices, and hints unlock once it's ready.</p>
+                {#if modelProgress?.text}<p class="llmsub">{modelProgress.text}</p>{/if}
+              {/if}
+            </div>
+          {/if}
           <div class="bannerrow">
             {#if atmo?.image_url}
               <div class="banner"><img src={atmo.image_url} alt="" onerror={() => { if (atmo) atmo.image_url = null; }} /><span class="setting">{atmo.setting}</span></div>
@@ -888,21 +952,28 @@
             {#if gateReply}{#each prose(gateReply) as para}<p class="gate-reply">{para}</p>{/each}{/if}
             {#if gatePassed}<p class="gate-passed">✓ You got through to them — the way ahead has opened.</p>{/if}
             <form class="row" onsubmit={(e) => { e.preventDefault(); onGate(); }}>
-              <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy} />
-              <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
+              <input bind:this={gateEl} bind:value={gateInput} placeholder={game.gate.satisfied ? 'Keep talking, or choose a way onward below…' : 'Say something...'} disabled={busy || llmBlocked} />
+              <button type="submit" disabled={busy || llmBlocked}>{#if busy}<span class="spinner"></span>{:else}Say{/if}</button>
             </form>
           {/if}
 
           {#if game.node.type === 'puzzle' && game.puzzle}
             {#each prose(game.puzzle.prompt) as para}<p class="puzzle-prompt">{para}</p>{/each}
             {#if puzzleHintLine}<p class="puzzle-hint">💡 {puzzleHintLine}</p>{/if}
+            {#if game.puzzle.crossword}
+              <Crossword data={game.puzzle.crossword} selected={xwordSelected} onselect={selectClue} />
+            {/if}
             {#if !game.puzzle.solved}
               <form class="row" onsubmit={(e) => { e.preventDefault(); onPuzzle(); }}>
-                <input bind:this={puzzleEl} bind:value={puzzleInput} placeholder="Enter your answer..." disabled={busy} />
-                <button type="submit" disabled={busy}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
+                <input bind:this={puzzleEl} bind:value={puzzleInput}
+                       placeholder={game.puzzle.crossword
+                         ? (xwordClue ? `${xwordClue.number}${xwordClue.dir === 'across' ? 'A' : 'D'} (${xwordClue.len}) — type the word` : 'Pick a clue above…')
+                         : 'Enter your answer...'}
+                       disabled={busy || (game.puzzle.crossword && !xwordSelected)} />
+                <button type="submit" disabled={busy || (game.puzzle.crossword && !xwordSelected)}>{#if busy}<span class="spinner"></span>{:else}Try{/if}</button>
               </form>
               {#if game.puzzle.attempts > 0}
-                <button class="link askhint" onclick={askHint} disabled={busy}>{puzzleHintLine ? 'Ask for another hint 💡' : 'Stuck? Ask for a hint 💡'}</button>
+                <button class="link askhint" onclick={askHint} disabled={busy || llmBlocked}>{puzzleHintLine ? 'Ask for another hint 💡' : 'Stuck? Ask for a hint 💡'}</button>
               {/if}
             {/if}
             {#if puzzleResult}{#each prose(puzzleResult) as para}<p class="gate-reply">{para}</p>{/each}{/if}
@@ -913,7 +984,7 @@
                navigate, not a replacement — so the options are always visible as text. -->
           <div class="edges">
             {#each game.edges as e}
-              <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy}>
+              <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy || llmBlocked}>
                 {e.label}{#if e.danger > 0} ⚠{/if}
               </button>
             {/each}
@@ -1224,6 +1295,9 @@
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
   .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
+  .llmload { background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.6rem .9rem; margin:0 0 1rem; font-size:.92rem; color:#c9cce0; }
+  .llmload.err { border-color:#5a3a3a; color:#e0b0b0; }
+  .llmload .llmsub { font-size:.8rem; color:#8b8fa8; margin:.3rem 0 0; }
   .puzzle-prompt { font-size:1.1rem; line-height:1.6; color:#e8e8f0; background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.7rem .9rem; margin:1rem 0 .5rem; }
   .puzzle-hint { color:#d8c89a; font-size:.95rem; margin:.25rem 0 .5rem; }
   .bannerrow { display:flex; gap:.6rem; align-items:stretch; margin-bottom:1rem; }

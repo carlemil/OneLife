@@ -13,7 +13,7 @@
 | Database | **PostgreSQL + pgvector** | Relational world data **and** vector search for agent memory in one engine. |
 | Cache / queue | **Redis** | Sessions, rate-limits, leaderboard (sorted sets), background-job queue. |
 | Object storage | **MinIO** (S3-compatible) | Stores generated images/audio; swappable for real S3 in prod. |
-| AI dialogue | **Claude API** (`claude-opus-4-8` / `claude-haiku-4-5`) | Drives NPC/agent conversations; Haiku for cheap steps, Opus for hard ones. |
+| AI dialogue | **Pluggable LLM provider** (`LLM_PROVIDER`): Claude API, in-browser **WebGPU/WebLLM**, or offline stub | Drives NPC/agent conversations. Browser mode runs the model on the player's own GPU (no server key/GPU); see AI_DIALOGUE_GATES.md §5b. |
 | Image gen | Pluggable provider behind our own interface | Per-location art; cache aggressively (see design §8). |
 | Audio gen | Pluggable provider + reuse library | Music/SFX reused across similar locations. |
 | Auth | **FastAPI + TOTP 2FA** (`pyotp`) | Email/password + authenticator-app second factor. |
@@ -60,10 +60,11 @@ See [DATA_MODEL.md](DATA_MODEL.md) for the schema.
 
 ## AI / Generation layer
 
-- **Dialogue:** Claude API. Two-tier model use to control cost —
-  - `claude-haiku-4-5` for routine/low-stakes steps,
-  - `claude-opus-4-8` for the "talk your way through" gate steps (design §2).
-- **Structured outputs:** force tool/JSON responses so AI results (e.g. "did the player satisfy this gate?", extracted memories, progress deltas) are machine-checkable and can't derail the authored story tree.
+- **Dialogue:** provider-selectable via `LLM_PROVIDER` —
+  - **anthropic** — Claude API, two-tier (`claude-haiku-4-5` routine, `claude-opus-4-8` for hard gate steps, design §2);
+  - **browser** — the model runs in the player's browser on WebGPU (`@mlc-ai/web-llm`); the server builds prompts and the browser executes them (2-phase inference broker, AI_DIALOGUE_GATES.md §5b);
+  - **stub** — deterministic offline heuristics (zero config).
+- **Structured outputs:** the same JSON schema drives both Anthropic tool-use and WebLLM's grammar-constrained `response_format` json_schema, so AI results (e.g. "did the player satisfy this gate?", progress deltas) are machine-checkable and can't derail the authored story tree — and the server re-validates every verdict regardless of provider.
 - **Image & audio:** wrap each provider behind our own `MediaGenerator` interface so providers are swappable. **Cache by a location/theme key** and reuse across similar locations (design §4, §8). Store artifacts in MinIO; store only the key + metadata in Postgres.
 
 ---

@@ -1,0 +1,19 @@
+# Puzzle nodes host a puzzle (`puzzle:` -> puzzles.yaml).
+nodes:
+  - id: well
+    arc: main
+    type: puzzle
+    location: plaza
+    puzzle: well-riddle
+    title: "The Village Pump"
+    media: {image_theme: old-red-hand-pump, music_theme: wary-quiet}
+    body: >
+      The old hand-pump is dry, its handle rusted upright, a laminated notice zip-tied above
+      it (something about water rationing, stamped and signed by no one). Around the base,
+      older than any of it, a rhyme is chiselled into the stone.
+    edges:
+      - id: e-well-square
+        to: square
+        label: Step back to the torg
+        sort_order: 9
+        effects: {log: "You step back to the torg."}

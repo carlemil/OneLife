@@ -1,0 +1,13 @@
+# Puzzles. A puzzle node references one by id. `solution.kind` is `exact` (case-insensitive
+# single answer) or `set` (any of several accepted). The last hint is ~a giveaway.
+puzzles:
+  - id: well-riddle
+    type: riddle
+    prompt: "Chiselled into the base of the dry pump, older than the notice above it: \"I have a mouth but never eat, a bed but never sleep, and I run without feet — and I left this town first of all. What am I?\""
+    solution: {kind: set, set: [river, a river, the river, kävlingeån, kavlingean]}
+    required_clues: [well-clue]
+    hint_ladder:
+      - "It moves, always, yet never leaves its bed."
+      - "It has banks, but the crisis of '92 never touched them."
+      - "It is a river. Answer: river."
+    on_solve: {progress_points: 30, set_flag: solved_well, log: "\"A river,\" you say — and under the cobbles you hear water move, the first thing to leave Södra Sandby in weeks."}

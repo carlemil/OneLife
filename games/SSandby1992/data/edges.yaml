@@ -1,0 +1,13 @@
+# Standalone edges (with an explicit `from`) attach a route to a node defined in ANY
+# other file. This starter needs none — every edge lives inside its source node — but the
+# file is here as the place to add cross-file routes, e.g.:
+#
+# edges:
+#   - id: e-shortcut
+#     from: square
+#     to: gate-out
+#     label: A shortcut
+#     conditions: {all: []}
+#     effects: {log: "..."}
+#     sort_order: 5
+edges: []

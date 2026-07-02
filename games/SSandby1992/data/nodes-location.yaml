@@ -1,0 +1,38 @@
+# Location (hub) nodes. `world_access: true` marks a travel hub (opens the world map).
+nodes:
+  - id: square
+    map: {x: 0.5564, y: 0.4993}
+    arc: main
+    type: location
+    location: plaza
+    title: "The Torg"
+    world_access: true
+    media: {image_theme: sodra-sandby-torg-grey-dawn, music_theme: uneasy-quiet}
+    body: >
+      The torg is still. The old Falu-red hand-pump waits at the centre, a laminated notice
+      zip-tied to it; an old man watches you from the doorway of the shuttered Systembolaget,
+      not unkindly. Past the war memorial the road out toward Lund is closed by a striped
+      barrier, its little booth empty. Beside it, a level crossing — and the branch line
+      everyone says was shut years ago.
+    edges:
+      - id: e-square-elder
+        to: elder
+        label: Go over to the old man in the doorway
+        effects: {log: "You go over to the old man in the Systembolaget doorway."}
+      - id: e-square-well
+        to: well
+        label: Read the pump and its notice
+        effects: {log: "You lean over the old hand-pump."}
+      # The way out opens once you've won Sixten over OR answered the pump's riddle
+      # (demonstrates conditions — the engine hides this edge until one path is done).
+      - id: e-square-out
+        to: gate-out
+        label: Take the Lund road out of the village
+        conditions: {any: [{flag_set: met_elder}, {puzzle_solved: well-riddle}]}
+        effects: {progress_points: 20, log: "You take the Lund road out of Södra Sandby."}
+      # A tempting, deadly shortcut (danger foreshadows the death; rollback is the escape).
+      - id: e-square-peril
+        to: peril
+        label: Duck under the barrier and cross the tracks
+        danger: 2
+        effects: {log: "You duck under the barrier toward the crossing."}

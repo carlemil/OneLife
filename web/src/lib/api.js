@@ -10,8 +10,26 @@ export const API_BASE = BASE;
 // Build a URL for a content-repo static asset (path like "images/maps/lund.png").
 export const contentAsset = (path) => `${BASE}/content-static/${path}`;
 
+import * as webllm from './webllm.js';
+
 function token() {
   return localStorage.getItem('onelife_token');
+}
+
+// Two-phase inference broker (browser provider). If a response carries a
+// pending_inference, run it on the player's GPU and POST the raw completions to
+// /api/llm/complete; merge its result over any data the phase-1 response already
+// returned (edge/atmosphere return usable data immediately + a background pending).
+async function withInference(p) {
+  const res = await p;
+  if (!res || !res.pending_inference) return res;
+  const { pending_inference, ...rest } = res;
+  const completions = await webllm.runInference(pending_inference);
+  const final = await req('/api/llm/complete', {
+    method: 'POST',
+    body: { turn_token: pending_inference.turn_token, completions },
+  });
+  return { ...rest, ...final };
 }
 
 async function req(path, { method = 'GET', body, auth = true } = {}) {
@@ -47,9 +65,18 @@ async function req(path, { method = 'GET', body, auth = true } = {}) {
   return data;
 }
 
+let _health = null;
+
 export const api = {
   hasToken: () => !!token(),
   logout() { localStorage.removeItem('onelife_token'); },
+
+  // Server config incl. which LLM provider is active (cached). In "browser" mode the
+  // client boots WebLLM and runs inference on-device; otherwise the server does it.
+  async health() {
+    if (!_health) _health = await req('/api/health', { auth: false });
+    return _health;
+  },
 
   // auth
   register: (email, password, display_name, two_factor = true) =>
@@ -87,7 +114,7 @@ export const api = {
     req('/api/admin/map/edge', { method: 'POST', body: { from_node: from, to_node: to, label, bidirectional } }),
 
   // atmosphere
-  atmosphere: (spotify) => req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`),
+  atmosphere: (spotify) => withInference(req(`/api/atmosphere?spotify=${spotify ? 1 : 0}`)),
   spotifyConfig: () => req('/api/spotify/config', { auth: false }),
 
   // game
@@ -97,11 +124,11 @@ export const api = {
   log: () => req('/api/log'),
   leaderboard: ({ offset = 0, limit = 20, q = '', around = 0 } = {}) =>
     req(`/api/leaderboard?offset=${offset}&limit=${limit}&q=${encodeURIComponent(q)}&around=${around}`),
-  takeEdge: (edge_id) => req('/api/edge', { method: 'POST', body: { edge_id } }),
+  takeEdge: (edge_id) => withInference(req('/api/edge', { method: 'POST', body: { edge_id } })),
   walkTo: (node_id) => req('/api/walk', { method: 'POST', body: { node_id } }),
-  gate: (text) => req('/api/gate/message', { method: 'POST', body: { text } }),
-  puzzle: (answer) => req('/api/puzzle/submit', { method: 'POST', body: { answer } }),
-  puzzleHint: () => req('/api/puzzle/hint', { method: 'POST' }),
+  gate: (text) => withInference(req('/api/gate/message', { method: 'POST', body: { text } })),
+  puzzle: (answer, entry = '') => req('/api/puzzle/submit', { method: 'POST', body: { answer, entry } }),
+  puzzleHint: () => withInference(req('/api/puzzle/hint', { method: 'POST' })),
   rollback: (to_seq) => req('/api/rollback', { method: 'POST', body: { to_seq } }),
 
   // admin (export/import) — all require an allowlisted account

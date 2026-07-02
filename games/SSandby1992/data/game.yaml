@@ -1,0 +1,75 @@
+# Game-level metadata + engine configuration for this dataset. Optional; one such
+# `game:` block per dataset (merged across files). The engine is data-agnostic — any key
+# omitted here falls back to a built-in default (see api/app/gameconfig.py), so a minimal
+# dataset still runs. title/subtitle/first_summary are seeded into the `games` registry
+# table; the rest is read at runtime by gameconfig.
+game:
+  title: "S.Sandby 1992"
+  subtitle: "A dark little dystopia in Södra Sandby — scary, and somehow funny."
+  first_summary: "You came to in Södra Sandby. It is 1992, and something is wrong."
+
+  # Place/period the music director and image generator lean on. `region` is the fallback
+  # when a world cell has no `region` of its own; `period` is appended to the atmosphere
+  # setting string. Leave blank to stay place/time-agnostic.
+  setting:
+    region: "Södra Sandby, Skåne"
+    period: "1992"
+
+  # Title/particle tokens that are NOT part of a character's name (so "Farbror Sixten" is
+  # known from "Sixten"). Swedish honorifics/particles for this world.
+  name_particles: [the, herr, fru, farbror, moster, gamle, lilla, den]
+
+  # Forced manual + comprehension quiz shown once before play (account-level). These three
+  # questions cover the engine's core mechanics (the log, cheating death, talking to NPCs),
+  # so they fit any game — reword or replace freely.
+  onboarding:
+    pass_threshold: 3
+    manual: |
+      HOW TO PLAY
+
+      You wake somewhere unfamiliar. Act by choosing what to do and by talking to the
+      people and places you meet. The game keeps a LOG of everything that happens — your
+      log IS your progress.
+
+      Some characters must be TALKED THROUGH: say the right kind of thing and they open
+      up. Puzzles are hidden in the world — pay attention to what people say and what you
+      read.
+
+      You can die or get stuck. When that happens you can CHEAT DEATH: rewind your LOG to
+      an earlier point and carry on — but it erases the progress you made after that point
+      and costs you leaderboard position.
+
+      Read this, then prove you've got the basics.
+    quiz:
+      - id: q-log
+        prompt: "What represents your progress?"
+        options:
+          - "Your inventory of items"
+          - "The log of everything that happens to you"
+          - "Your character's health bar"
+          - "The number of rooms you've unlocked"
+        answer: 1
+      - id: q-rollback
+        prompt: "What happens when you cheat death to escape a bad situation?"
+        options:
+          - "Nothing — it's a free undo"
+          - "You lose progress made after that point and drop on the leaderboard"
+          - "You gain bonus Progress for surviving"
+          - "Your account is reset"
+        answer: 1
+      - id: q-advance
+        prompt: "How do you mainly get past the people you meet?"
+        options:
+          - "By fighting them"
+          - "By paying them coins"
+          - "By talking to them and saying the right kind of thing"
+          - "By ignoring them and walking past"
+        answer: 2
+
+  # Deterministic offline soundtrack used when no LLM/Spotify is configured. Curate to your
+  # game's mood.
+  offline:
+    tracks:
+      - {artist: "Arvo Pärt", title: "Spiegel im Spiegel", why: "patient, glassy dread"}
+      - {artist: "Roxette", title: "Spending My Time", why: "a melancholy 1992 Swedish radio ghost"}
+      - {artist: "Brian Eno", title: "An Ending (Ascent)", why: "grey weightless calm"}

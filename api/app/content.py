@@ -14,7 +14,7 @@ from collections import defaultdict, deque
 import asyncpg
 import yaml
 
-from . import gamestate
+from . import gamestate, crossword
 
 DEFAULT_DIR = os.environ.get("CONTENT_DIR", "/content")
 _LIST_KEYS = ["arcs", "cells", "characters", "locations", "nodes", "gates", "puzzles", "clues", "edges"]
@@ -129,6 +129,12 @@ def validate(data: dict):
         for c in p.get("required_clues", []) or []:
             if c not in ids["clues"]:
                 warnings.append(f"puzzle {p['id']} requires unknown clue {c}")
+        # A crossword's grid must be structurally sound and interlock-consistent, or
+        # the puzzle is unsolvable — a hard error, like the spine lint.
+        sol = p.get("solution", {}) or {}
+        if p.get("type") == "crossword" or sol.get("kind") == "crossword":
+            for msg in crossword.validate(sol):
+                errors.append(f"puzzle {p['id']}: {msg}")
     for c in data["clues"]:
         if c.get("puzzle") and c["puzzle"] not in ids["puzzles"]:
             errors.append(f"clue {c['id']} references unknown puzzle {c['puzzle']}")

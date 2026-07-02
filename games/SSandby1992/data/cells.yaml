@@ -1,0 +1,10 @@
+# World cells: the travel grid. Each cell holds locations and has an `arrival_node` (where
+# you land when you travel here). This starter has one cell.
+cells:
+  - id: home
+    grid_x: 0
+    grid_y: 0
+    name: Södra Sandby
+    kind: town
+    region: "Södra Sandby, Skåne"
+    arrival_node: start

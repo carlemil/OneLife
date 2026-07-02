@@ -1,0 +1,8 @@
+# Clues are woven fragments a puzzle lists in `required_clues`; they surface when their
+# `discover_conditions` hold (same DSL as edges).
+clues:
+  - id: well-clue
+    puzzle: well-riddle
+    placement: {location: plaza}
+    reveal_text: "Beneath the chiselled rhyme, someone's scratched a wavy line — water — and, smaller: \"den tog vägen härifrån\" (it made its way out of here)."
+    discover_conditions: {all: [{node_visited: square}]}

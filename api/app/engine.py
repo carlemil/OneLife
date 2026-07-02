@@ -5,7 +5,7 @@ import math
 import re
 from collections import deque
 from .dsl import PlayerContext, evaluate
-from . import memory, gameconfig
+from . import memory, gameconfig, crossword
 
 
 def _name_tokens(full_name: str, particles: set) -> list[str]:
@@ -847,6 +847,32 @@ async def render_state(conn, player_id, session) -> dict:
             "solved": bool(pp["solved"]) if pp else False,
             "attempts": pp["attempts"] if pp else 0,
         }
+        # A crossword ships its grid (never the answers): black/white cells, standard
+        # numbering, the clue lists, and only the letters revealed by solved entries —
+        # so interlocks fill in as crossing words are cracked. Solved entries come from
+        # the seq-stamped per-entry flags (so this view rolls back for free).
+        solution = json.loads(pz["solution"])
+        if solution.get("kind") == "crossword":
+            parsed = crossword.parse(solution)
+            rows, cols = parsed["rows"], parsed["cols"]
+            solved_ids = [e["id"] for e in parsed["entries"]
+                          if crossword.entry_flag(pz["id"], e["id"]) in ctx.flags]
+            letter_at = crossword.known_letters(solution, solved_ids)
+            white = set()
+            for e in solution.get("entries", []) or []:
+                white.update(crossword.cells_of(e))
+            state["puzzle"]["crossword"] = {
+                "rows": rows, "cols": cols,
+                "cells": [{"row": r, "col": c,
+                           "number": parsed["numbers"].get((r, c)),
+                           "black": (r, c) not in white}
+                          for r in range(rows) for c in range(cols)],
+                "entries": [{**e, "filled": e["id"] in solved_ids}
+                            for e in parsed["entries"]],
+                "letters": [[letter_at.get((r, c)) for c in range(cols)]
+                            for r in range(rows)],
+                "solved": bool(pp["solved"]) if pp else False,
+            }
 
     return state
 

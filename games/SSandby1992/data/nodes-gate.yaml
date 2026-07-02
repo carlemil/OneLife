@@ -1,0 +1,20 @@
+# Gate nodes host an AI-dialogue encounter (`gate:` -> gates.yaml). The player leaves
+# through an ordinary edge when ready.
+nodes:
+  - id: elder
+    arc: main
+    type: gate
+    location: plaza
+    gate: elder-greeting
+    title: "The Man in the Doorway"
+    media: {image_theme: systembolaget-doorway-pensioner, music_theme: wary-quiet}
+    body: >
+      The old man stands in the Systembolaget doorway as if it still opened at ten. He looks
+      you over, unhurried — a flask of coffee at his feet and a spare little cup beside it,
+      which is either a threat or an invitation. He says nothing yet.
+    edges:
+      - id: e-elder-square
+        to: square
+        label: Step back to the torg
+        sort_order: 9
+        effects: {log: "You step back to the torg."}

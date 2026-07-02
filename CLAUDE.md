@@ -94,8 +94,15 @@ The load-bearing AI pattern. When a player talks to a gated NPC: the **Actor** (
 in-character dialogue and the **Referee** (separate LLM call, out-of-band) returns a typed
 verdict on whether authored criteria are met — but **only code (the Applier) mutates game state,
 and only on a validated verdict.** This keeps the LLM on-rails: it influences words, never state,
-and can only transition to authored nodes. `llm.py` uses Claude when configured, else a
-deterministic stub, so the whole loop runs offline. **Preserve this invariant** for any new
+and can only transition to authored nodes. `llm.py` selects a provider via `LLM_PROVIDER`:
+**anthropic** (real Claude), **browser** (the model runs in the player's browser via WebGPU/WebLLM),
+or **stub** (deterministic offline). Every provider shares one source of truth: `build_*()` constructs
+the prompt/JSON-schema, `parse_*()` reads the completion back — so the prompt engineering isn't
+duplicated. In **browser** mode the server never calls a model: endpoints return a `pending_inference`
+envelope, the browser runs it and POSTs raw completions to `/api/llm/complete` (a 2-phase "inference
+broker"; see `gates.build_turn`/`apply_turn`), and **gate verdicts become client-trusted** — the
+Applier still re-validates every verdict (criteria-id filter, ±0.3 delta clamp, `success_rule`), so the
+blast radius is a player cheating their own save. **Preserve the Applier invariant** for any new
 AI-driven feature (the music director and memory-explanation generators follow it). See `AI_DIALOGUE_GATES.md`.
 
 ### Agent memory & cross-player/character leakage (`memory.py`, `embeddings.py`)

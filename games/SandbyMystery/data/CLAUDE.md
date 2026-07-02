@@ -95,6 +95,10 @@ Edge `conditions` use `{all: [...]}` / `{any: [...]}` / `{not: {...}}` over pred
   (`{kind: exact, value}` for case-insensitive match, or `{kind: set, set: [...]}`
   for any accepted answer), an escalating `hint_ladder` (last rung ≈ giveaway), and
   optional `required_clues` resolved against `clues` entries.
+- A **crossword** puzzle (`type: crossword`) uses `solution: {kind: crossword,
+  entries: [{id, dir: across|down, row, col, clue, answer}]}` — answered one word at a
+  time; correct words reveal crossing letters; the lint fails on a bad grid or a
+  crossing-letter conflict. See `../../../AUTHORING.md` → "Crossword puzzles".
 
 ## What the lint enforces (and doesn't)
 

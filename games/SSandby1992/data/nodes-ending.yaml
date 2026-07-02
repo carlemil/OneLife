@@ -1,0 +1,13 @@
+# Ending nodes resolve the spine. At least one is required.
+nodes:
+  - id: gate-out
+    arc: main
+    type: ending
+    location: plaza
+    title: "The Lund Road"
+    media: {image_theme: lund-road-out-of-village-dawn, music_theme: release}
+    body: >
+      The barrier lifts with a tired mechanical sigh and you walk out along the Lund road,
+      grey fields on either side, the loudspeaker fading behind you insisting that everything
+      is under control. You do not look back at the windows. Whatever Södra Sandby is
+      becoming, it is becoming it without you — for now. The story rests here.

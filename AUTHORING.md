@@ -117,6 +117,39 @@ See `content/killebackskolan.yaml` and `content/marta.yaml` for full examples.
 
 ---
 
+## Crossword puzzles
+
+A `puzzle` node can host a **crossword**: an interlocking grid of clued across/down
+words the player answers **one whole word at a time**. Correct words lock into the grid
+and reveal the letters they share with crossing words, so solving one clue helps crack
+its neighbours. Authoring is just coordinates + answers — the engine derives the grid,
+the numbering, and the interlocks.
+
+```yaml
+puzzles:
+  - id: town-crossword
+    type: crossword
+    prompt: "The parish notice-board holds a half-finished crossword."
+    solution:
+      kind: crossword
+      entries:
+        - {id: a1, dir: across, row: 0, col: 0, clue: "Capital of Sweden", answer: STOCKHOLM}
+        - {id: d1, dir: down,   row: 0, col: 2, clue: "Frozen water",      answer: ICE}
+    hint_ladder: ["Start with the longest word."]   # optional, whole-puzzle
+    on_solve: {progress_points: 60, set_flag: solved_crossword, log: "The grid is complete."}
+```
+
+- `row`/`col` are 0-indexed from the top-left; `dir` is `across` or `down`; answers are
+  letters only (matched exact, case-insensitively — no typo forgiveness, so interlocks
+  stay precise).
+- Interlocks are implicit: two entries that cross a cell **must agree** on that letter, or
+  `make lint` fails.
+- Each solved entry is a seq-stamped player flag, so partial progress persists and rolls
+  back with the rest of the run; the whole puzzle solves (firing `on_solve`) once every
+  entry is filled. `hint_ladder` is whole-puzzle (per-entry hints are the clues themselves).
+
+---
+
 ## What the lint guarantees
 
 `make lint` fails the build (errors) on:
@@ -126,6 +159,9 @@ See `content/killebackskolan.yaml` and `content/marta.yaml` for full examples.
 - Not exactly one `entry` node, or no `ending` node.
 - **Traps** — a node reachable from the entry that *cannot reach any ending*
   (death nodes are exempt; rollback is their escape).
+- **Broken crosswords** — a `crossword` puzzle with a malformed grid (duplicate entry
+  ids, bad `dir`, negative/missing `row`/`col`, empty or non-letter answers) or a
+  **crossing-letter conflict** between two entries.
 
 It warns (non-blocking) on:
 

@@ -28,8 +28,17 @@ services:
       # Where the whole games/ tree is mounted in the container (see volumes
       # below). The admin "switch game" control seeds from games/<name>/data.
       GAMES_DIR: /games
-      # Optional: set to use the real Claude API for the dialogue gate.
-      # Leave empty to run the deterministic offline stub (no key required).
+      # Which LLM provider runs inference. Leave empty for the default: "anthropic"
+      # when ANTHROPIC_API_KEY is set, else "stub" (deterministic offline). Set to
+      # "browser" to run the model IN THE PLAYER'S BROWSER via WebGPU (WebLLM) — the
+      # server builds prompts, the browser runs them, gate verdicts become client-
+      # trusted. See AI_DIALOGUE_GATES.md.
+      LLM_PROVIDER: ${LLM_PROVIDER:-}
+      # WebLLM model id loaded in the browser (browser mode). Must be a prebuilt
+      # MLC model id, e.g. Qwen2.5-7B-Instruct-q4f16_1-MLC, Llama-3.1-8B-Instruct-q4f16_1-MLC.
+      LLM_MODEL: ${LLM_MODEL:-Llama-3.2-3B-Instruct-q4f16_1-MLC}
+      # Optional: set to use the real Claude API for the dialogue gate (anthropic
+      # provider). Leave empty to run the deterministic offline stub (no key required).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
       ACTOR_MODEL: claude-haiku-4-5
       REFEREE_MODEL: claude-haiku-4-5

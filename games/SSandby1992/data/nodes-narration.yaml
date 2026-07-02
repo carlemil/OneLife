@@ -1,0 +1,21 @@
+# Narration beats. Exactly ONE node across all files is the entry (`entry: true`).
+nodes:
+  - id: start
+    arc: main
+    type: narration
+    location: plaza
+    title: "You Come To"
+    entry: true
+    media: {image_theme: sodra-sandby-torg-grey-dawn, music_theme: uneasy-quiet}
+    body: >
+      You come to on the cobbles outside the Konsum, cheek cold, a taste of copper in your
+      mouth. Södra Sandby — by the flat grey light, an autumn morning, 1992 — and you do
+      not remember arriving. The village is very quiet. Too quiet: no cars, no dogs, and as
+      you sit up every curtain on the square draws shut at once, politely, as if you'd
+      interrupted something. From a loudspeaker on the community-hall wall, a calm recorded
+      voice repeats that everything is under control.
+    edges:
+      - id: e-start-square
+        to: square
+        label: Get to your feet
+        effects: {progress_points: 5, log: "You got to your feet on the torg."}

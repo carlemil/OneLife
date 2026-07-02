@@ -1,0 +1,16 @@
+# Death nodes end the run; they need no edges (cheat-death/rollback is the escape) and
+# are exempt from the trap lint.
+nodes:
+  - id: peril
+    arc: main
+    type: death
+    location: plaza
+    title: "The Level Crossing"
+    is_death: true
+    media: {image_theme: level-crossing-night, music_theme: sudden-dread}
+    body: >
+      You duck under the barrier and onto the tracks, because the barrier is obviously
+      nonsense — there hasn't been a train through Södra Sandby since the branch line
+      closed. There is a train through Södra Sandby. It is very quiet, and very punctual,
+      and it is not the sort that stops. Your last thought is that at least the timetable
+      held. (Cheat death to rewind.)

@@ -1,0 +1,5 @@
+# Narrative threads. `main` is the spine (is_spine: true).
+arcs:
+  - id: main
+    title: Main
+    is_spine: true

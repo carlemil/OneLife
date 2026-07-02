@@ -46,6 +46,11 @@ class M:
     PATH_CLOSED = "That path is no longer open."
     WAY_BLOCKED = "The way there is blocked."
 
+    # --- crossword puzzle ---
+    XWORD_WRONG = "That word doesn't fit."
+    XWORD_ALREADY = "That answer is already filled in."
+    XWORD_NO_ENTRY = "Pick a clue to answer first."
+
     # --- travel ---
     CANT_TRAVEL_HERE = "You can't travel from here. Find a spot that opens the map first."
     NO_DESTINATION = "There's no such place to travel to."

@@ -267,8 +267,15 @@ class WalkBody(BaseModel):
 class GateBody(BaseModel):
     text: str
 
+class CompleteBody(BaseModel):
+    # Phase 2 of the browser inference broker: the raw completions the player's
+    # browser produced for a phase-1 pending_inference, keyed by request id.
+    turn_token: str
+    completions: dict = {}
+
 class PuzzleBody(BaseModel):
     answer: str
+    entry: str = ""   # crossword: which clue is being answered (ignored by other kinds)
 
 class RollbackBody(BaseModel):
     to_seq: int
@@ -329,7 +336,8 @@ class MapRoadsBody(BaseModel):
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "using_real_llm": llm.USING_REAL_LLM}
+    return {"ok": True, "using_real_llm": llm.USING_REAL_LLM,
+            "llm_provider": llm.PROVIDER, "llm_model": llm.BROWSER_MODEL}
 
 
 # ---------- Auth ----------
@@ -617,29 +625,57 @@ async def take_edge(body: EdgeBody, authorization: str | None = Header(default=N
             # in/out the broken window), in which case it never moves the player's standing.
             edge_effects = json.loads(edge["effects"]) if edge["effects"] else {}
             label = (edge["label"] or "").strip()
+            pending = None
             if label and not edge_effects.get("no_alignment"):
-                v = await _edge_alignment(conn, gid, edge["id"], label)
-                await engine.record_alignment(
-                    conn, sess["player_id"], gid, move_seq, v["good_evil_delta"],
-                    v["law_chaos_delta"], v["reason"], kind="edge")
-        return await engine.render_state(conn, sess["player_id"], sess)
+                cached = await _edge_alignment_lookup(conn, gid, edge["id"])
+                if cached is None and llm.PROVIDER == "browser":
+                    # Take the edge NOW; defer the (uncached) alignment judgement to the
+                    # browser. It POSTs the completion to /api/llm/complete, which caches
+                    # it and records the shift stamped with this move's seq.
+                    req = llm.build_align(label, context="A deliberate story choice.")
+                    token = security.sign({"kind": "edge", "gid": gid,
+                                           "edge_id": edge["id"], "move_seq": move_seq})
+                    pending = {"turn_token": token,
+                               "requests": [llm.to_browser_request(req)]}
+                else:
+                    v = cached if cached is not None else await _edge_alignment(
+                        conn, gid, edge["id"], label)
+                    await engine.record_alignment(
+                        conn, sess["player_id"], gid, move_seq, v["good_evil_delta"],
+                        v["law_chaos_delta"], v["reason"], kind="edge")
+        state = await engine.render_state(conn, sess["player_id"], sess)
+        if pending:
+            state["pending_inference"] = pending
+        return state
 
 
-async def _edge_alignment(conn, game_id: str, edge_id: str, label: str) -> dict:
-    """The alignment shift of taking an edge, judged from its (static) label ONCE
-    and cached per game, so a choice's moral weight is consistent and we don't pay an
-    LLM call on every traversal."""
+async def _edge_alignment_lookup(conn, game_id: str, edge_id: str) -> dict | None:
+    """The cached alignment shift for an edge, or None if not yet judged."""
     row = await conn.fetchrow(
         """SELECT good_evil_delta, law_chaos_delta, reason
            FROM edge_alignment_cache WHERE game_id=$1 AND edge_id=$2""", game_id, edge_id)
     if row:
         return {"good_evil_delta": row["good_evil_delta"],
                 "law_chaos_delta": row["law_chaos_delta"], "reason": row["reason"]}
-    v = await llm.judge_alignment(label, context="A deliberate story choice.")
+    return None
+
+
+async def _edge_alignment_store(conn, game_id: str, edge_id: str, v: dict) -> None:
     await conn.execute(
         """INSERT INTO edge_alignment_cache (game_id, edge_id, good_evil_delta, law_chaos_delta, reason)
            VALUES ($1,$2,$3,$4,$5) ON CONFLICT (game_id, edge_id) DO NOTHING""",
         game_id, edge_id, v["good_evil_delta"], v["law_chaos_delta"], v["reason"])
+
+
+async def _edge_alignment(conn, game_id: str, edge_id: str, label: str) -> dict:
+    """The alignment shift of taking an edge, judged from its (static) label ONCE
+    and cached per game, so a choice's moral weight is consistent and we don't pay an
+    LLM call on every traversal."""
+    cached = await _edge_alignment_lookup(conn, game_id, edge_id)
+    if cached is not None:
+        return cached
+    v = await llm.judge_alignment(label, context="A deliberate story choice.")
+    await _edge_alignment_store(conn, game_id, edge_id, v)
     return v
 
 
@@ -682,10 +718,61 @@ async def gate_message(body: GateBody, authorization: str | None = Header(defaul
     _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
+        # Browser mode: don't run the model server-side — hand the prompts to the
+        # player's browser (phase 1). It POSTs the completions to /api/llm/complete
+        # (phase 2), which parses them and applies effects.
+        if llm.PROVIDER == "browser":
+            async with conn.transaction():
+                pending = await gates.build_turn(conn, sess["player_id"], sess, body.text)
+            return {"pending_inference": pending}
         async with conn.transaction():
             result = await gates.process_message(conn, sess["player_id"], sess, body.text)
         state_after = await engine.render_state(conn, sess["player_id"], sess)
     return {"result": result, "state": state_after}
+
+
+@app.post("/api/llm/complete")
+async def llm_complete(body: CompleteBody, authorization: str | None = Header(default=None)):
+    """Phase 2 of the browser inference broker: the player's browser ran the phase-1
+    prompts on-device and POSTs the raw completions here. We verify the signed token,
+    parse the completions server-side (re-validating verdicts), apply effects, and
+    return the same shape the originating endpoint returns off-browser."""
+    sess = await _session(authorization)
+    _require_onboarded(sess)
+    _require_in_game(sess)
+    try:
+        tok = security.unsign(body.turn_token)
+    except ValueError:
+        raise HTTPException(400, "invalid or expired inference token")
+    if tok.get("gid") != sess["game_id"]:
+        raise HTTPException(400, "inference token does not match the current game")
+    kind = tok.get("kind")
+    comps = body.completions or {}
+    pool = await db.get_pool()
+    async with pool.acquire() as conn:
+        if kind == "gate":
+            async with conn.transaction():
+                result = await gates.apply_turn(conn, sess["player_id"], sess, tok, comps)
+            state_after = await engine.render_state(conn, sess["player_id"], sess)
+            return {"result": result, "state": state_after}
+        if kind == "hint":
+            async with conn.transaction():
+                result = await puzzles.apply_hint(conn, sess["player_id"], sess, tok, comps)
+            state_after = await engine.render_state(conn, sess["player_id"], sess)
+            return {"result": result, "state": state_after}
+        if kind == "edge":
+            async with conn.transaction():
+                v = llm.parse_align(comps.get("align", ""))
+                await _edge_alignment_store(conn, sess["game_id"], tok["edge_id"], v)
+                await engine.record_alignment(
+                    conn, sess["player_id"], sess["game_id"], tok["move_seq"],
+                    v["good_evil_delta"], v["law_chaos_delta"], v["reason"], kind="edge")
+            return await engine.render_state(conn, sess["player_id"], sess)
+        if kind == "tracks":
+            resolved = await atmosphere.tracks_apply(
+                tok["location_id"], comps.get("tracks", ""), tok.get("n", 4))
+            return {"tracks": resolved}
+    raise HTTPException(400, "unknown inference kind")
 
 
 @app.post("/api/puzzle/submit")
@@ -696,7 +783,7 @@ async def puzzle_submit(body: PuzzleBody, authorization: str | None = Header(def
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            result = await puzzles.submit(conn, sess["player_id"], sess, body.answer)
+            result = await puzzles.submit(conn, sess["player_id"], sess, body.answer, body.entry)
         state_after = await engine.render_state(conn, sess["player_id"], sess)
     return {"result": result, "state": state_after}
 
@@ -708,6 +795,13 @@ async def puzzle_hint(authorization: str | None = Header(default=None)):
     _require_in_game(sess)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
+        if llm.PROVIDER == "browser":
+            async with conn.transaction():
+                out = await puzzles.build_hint_request(conn, sess["player_id"], sess)
+            if "pending_inference" in out:
+                return {"pending_inference": out["pending_inference"]}
+            state_after = await engine.render_state(conn, sess["player_id"], sess)
+            return {"result": out["result"], "state": state_after}
         async with conn.transaction():
             result = await puzzles.request_hint(conn, sess["player_id"], sess)
         state_after = await engine.render_state(conn, sess["player_id"], sess)
@@ -968,12 +1062,29 @@ async def get_atmosphere(spotify: int = 0,
             real_place=media.get("real_place"), reference=media.get("reference_image"),
             scene_text=node["body"] if node else None)
     tracks = []
+    pending = None
     if spotify and loc is not None:
-        tracks = await atmosphere.tracks_for(
-            loc["id"], loc["name"], loc["description"], theme, setting)
-    return {"image_svg": atmosphere.image_svg(theme), "image_url": image_url,
-            "setting": setting, "theme": theme, "tracks": tracks,
-            "spotify_configured": atmosphere.SPOTIFY_CONFIGURED}
+        if llm.PROVIDER == "browser":
+            cached = atmosphere.tracks_cached(loc["id"])
+            if cached is not None:
+                tracks = cached
+            else:
+                # Image is ready now; let the browser pick the soundtrack (phase 1) and
+                # POST it to /api/llm/complete (phase 2), which resolves it via Spotify.
+                req = atmosphere.tracks_request(
+                    loc["name"], loc["description"], theme, setting)
+                token = security.sign({"kind": "tracks", "location_id": loc["id"], "n": 4})
+                pending = {"turn_token": token,
+                           "requests": [llm.to_browser_request(req)]}
+        else:
+            tracks = await atmosphere.tracks_for(
+                loc["id"], loc["name"], loc["description"], theme, setting)
+    payload = {"image_svg": atmosphere.image_svg(theme), "image_url": image_url,
+               "setting": setting, "theme": theme, "tracks": tracks,
+               "spotify_configured": atmosphere.SPOTIFY_CONFIGURED}
+    if pending:
+        payload["pending_inference"] = pending
+    return payload
 
 
 # ---------- Admin: export / import (email-allowlisted) ----------

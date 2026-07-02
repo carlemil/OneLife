@@ -1,7 +1,8 @@
 """Puzzle submission handler (STORY_AND_PUZZLES.md §5). Validates the answer in
 code; the 'semantic' kind would reuse the gate referee (deferred for the slice)."""
 import json
-from . import llm
+from . import llm, security, crossword
+from .strings import M
 from .engine import (apply_action, discover_clues, load_context, narrate,
                      narrate_puzzle_prompt, next_seq)
 
@@ -57,7 +58,7 @@ def _check(solution: dict, answer: str, ctx) -> bool:
     return False
 
 
-async def submit(conn, player_id, session, answer: str) -> dict:
+async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict:
     gid = session["game_id"]
     node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
                                gid, session["current_node"])
@@ -77,8 +78,13 @@ async def submit(conn, player_id, session, answer: str) -> dict:
     if pp["solved"]:
         return {"solved": True, "message": "Already open."}
 
+    solution = json.loads(pz["solution"])
+    if solution.get("kind") == "crossword":
+        return await _submit_crossword(
+            conn, player_id, gid, session, node, pz, pp, solution, answer, entry)
+
     ctx = await load_context(conn, player_id, gid, session["story_time"])
-    ok = _check(json.loads(pz["solution"]), answer, ctx)
+    ok = _check(solution, answer, ctx)
 
     attempts = pp["attempts"] + 1
 
@@ -117,6 +123,82 @@ async def submit(conn, player_id, session, answer: str) -> dict:
     return {"solved": False, "message": "Nothing happens."}
 
 
+async def _submit_crossword(conn, player_id, gid, session, node, pz, pp,
+                            solution, answer, entry) -> dict:
+    """One clue at a time: validate the whole typed word (exact, case-insensitive —
+    no typo tolerance, letters must be precise for interlocks). A correct word is
+    recorded as a seq-stamped per-entry flag (so it rolls back); when every entry's
+    flag is set, the shared solve tail fires."""
+    parsed = crossword.parse(solution)
+    emap = {e["id"]: e for e in parsed["entries"]}
+    eid = str(entry or "").strip()
+
+    # A bad/stale entry id is a client glitch, not a real attempt — don't count or
+    # narrate it.
+    if eid not in emap:
+        return {"solved": False, "entry": eid, "correct": False,
+                "message": M.XWORD_NO_ENTRY}
+
+    flag = crossword.entry_flag(pz["id"], eid)
+    flags = {r["flag"] for r in await conn.fetch(
+        "SELECT flag FROM player_flags WHERE player_id=$1 AND game_id=$2", player_id, gid)}
+    if flag in flags:
+        return {"solved": False, "entry": eid, "correct": False,
+                "message": M.XWORD_ALREADY}
+
+    # Record the exchange in the flow (prompt once, deduped; the attempt always), so
+    # it reads as a beat and rolls back with the run.
+    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"])
+    await narrate(conn, session["log_id"], gid, node_id=node["id"],
+                  story_time=session["story_time"],
+                  summary=f'You try "{answer.strip().upper()}" for {eid}.', kind="puzzle")
+
+    attempts = pp["attempts"] + 1
+    correct = answer.strip().upper() == crossword.answer_of(solution, eid)
+    if not correct:
+        await conn.execute(
+            "UPDATE puzzle_progress SET attempts=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+            player_id, gid, pz["id"], attempts)
+        return {"solved": False, "entry": eid, "correct": False, "message": M.XWORD_WRONG}
+
+    ent = emap[eid]
+    d = "A" if ent["dir"] == "across" else "D"
+    fill_log = f"You fill in {ent['number']}{d}: {crossword.answer_of(solution, eid)}."
+    seq, story_time = await apply_action(
+        conn, player_id, gid, session["log_id"], node_id=node["id"],
+        effects={"set_flag": flag, "log": fill_log}, story_time=session["story_time"],
+        kind="puzzle")
+    session["story_time"] = story_time
+    await conn.execute(
+        """UPDATE player_games SET story_time=$1, last_played_at=now()
+           WHERE player_id=$2 AND game_id=$3""", story_time, player_id, gid)
+
+    flags.add(flag)
+    done = all(crossword.entry_flag(pz["id"], i) in flags for i in crossword.entry_ids(solution))
+    if not done:
+        await conn.execute(
+            "UPDATE puzzle_progress SET attempts=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+            player_id, gid, pz["id"], attempts)
+        return {"solved": False, "entry": eid, "correct": True, "message": fill_log}
+
+    # Last entry filled — run the same solve tail as a single-answer puzzle.
+    on_solve = json.loads(pz["on_solve"])
+    seq, story_time = await apply_action(
+        conn, player_id, gid, session["log_id"], node_id=node["id"],
+        effects=on_solve, story_time=session["story_time"], kind="puzzle")
+    await conn.execute(
+        """UPDATE puzzle_progress SET solved=TRUE, solved_at_seq=$4, attempts=$5
+           WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3""",
+        player_id, gid, pz["id"], seq, attempts)
+    await conn.execute(
+        """UPDATE player_games SET story_time=$1, last_played_at=now()
+           WHERE player_id=$2 AND game_id=$3""", story_time, player_id, gid)
+    session["story_time"] = story_time
+    await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
+    return {"solved": True, "entry": eid, "correct": True,
+            "message": on_solve.get("log", "The grid is complete.")}
+
+
 async def request_hint(conn, player_id, session) -> dict:
     """Reveal the next hint for the puzzle the player is on — but only after they
     have actually tried and failed. Each ask climbs one rung of the hint ladder."""
@@ -143,5 +225,63 @@ async def request_hint(conn, player_id, session) -> dict:
     # rest of the conversation (so it persists and can be re-read).
     spoken = await llm.hint_in_character(pz["prompt"], ladder[new_level - 1])
     await narrate(conn, session["log_id"], gid, node_id=node["id"],
+                  story_time=session["story_time"], summary=spoken, kind="puzzle")
+    return {"hint": spoken}
+
+
+# --------------------------------------------------------------------------- #
+#  Two-phase (browser mode) hint: build_hint_request checks preconditions and
+#  either returns a terminal result or a pending_inference; apply_hint narrates
+#  the browser-run completion.
+# --------------------------------------------------------------------------- #
+async def _hint_preconditions(conn, player_id, session):
+    """Shared checks. Returns (terminal_result | None, node, pz, ladder, new_level)."""
+    gid = session["game_id"]
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
+                               gid, session["current_node"])
+    if not node or not node["puzzle_id"]:
+        return {"hint": None}, None, None, None, None
+    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE game_id=$1 AND id=$2",
+                             gid, node["puzzle_id"])
+    ladder = json.loads(pz["hint_ladder"]) if pz else []
+    pp = await conn.fetchrow(
+        "SELECT * FROM puzzle_progress WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"])
+    if not ladder or pp is None or pp["solved"]:
+        return {"hint": None}, None, None, None, None
+    if pp["attempts"] == 0:
+        return {"hint": None, "message": "Try an answer first."}, None, None, None, None
+    new_level = min(pp["hint_level"] + 1, len(ladder))
+    return None, node, pz, ladder, new_level
+
+
+async def build_hint_request(conn, player_id, session) -> dict:
+    """Phase 1: either {"result": {...}} for the terminal (no-hint) cases, or
+    {"pending_inference": {...}} for the browser to voice the next rung."""
+    terminal, node, pz, ladder, new_level = await _hint_preconditions(
+        conn, player_id, session)
+    if terminal is not None:
+        return {"result": terminal}
+    gid = session["game_id"]
+    req = llm.build_hint(pz["prompt"], ladder[new_level - 1])
+    token = security.sign({"kind": "hint", "gid": gid, "node_id": node["id"],
+                           "puzzle_id": pz["id"], "new_level": new_level})
+    return {"pending_inference": {
+        "turn_token": token, "requests": [llm.to_browser_request(req)]}}
+
+
+async def apply_hint(conn, player_id, session, tok: dict, completions: dict) -> dict:
+    """Phase 2: persist the new hint rung and narrate the browser's completion."""
+    gid = tok["gid"]
+    pz = await conn.fetchrow("SELECT * FROM puzzles WHERE game_id=$1 AND id=$2",
+                             gid, tok["puzzle_id"])
+    ladder = json.loads(pz["hint_ladder"]) if pz else []
+    new_level = tok["new_level"]
+    fallback = ladder[new_level - 1] if 0 < new_level <= len(ladder) else ""
+    await conn.execute(
+        "UPDATE puzzle_progress SET hint_level=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
+        player_id, gid, pz["id"], new_level)
+    spoken = llm.parse_hint(completions.get("hint", ""), fallback)
+    await narrate(conn, session["log_id"], gid, node_id=tok["node_id"],
                   story_time=session["story_time"], summary=spoken, kind="puzzle")
     return {"hint": spoken}

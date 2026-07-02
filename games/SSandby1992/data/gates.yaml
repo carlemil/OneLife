@@ -1,0 +1,29 @@
+# AI dialogue gates. A gate node references one by id. The Actor plays the character; a
+# separate Referee judges the criteria; only code applies on_success. `mercy_after_attempts`
+# is a soft-lock safety net. See ../../../AI_DIALOGUE_GATES.md.
+gates:
+  - id: elder-greeting
+    location: plaza
+    character: elder
+    intent: Win old Sixten's trust so he tells you how to get out of Södra Sandby.
+    criteria:
+      - {id: engaged, desc: "The player engages in good faith — is genuinely warm, curious, patient or honest, over more than a bare greeting. A lone 'hi'/'hello', a demand, or filler does NOT count."}
+    success_rule: "engaged"
+    knowledge_boundary:
+      knows:
+        - "the barrier on the Lund road lifts for anyone the village hasn't decided to keep — and lately it keeps almost everyone"
+        - "he has watched the whole village stop trying to leave, one polite morning at a time"
+      refuses:
+        - "who the newcomer really is or how they came to be face-down on his torg"
+        - "what the loudspeaker means when it says everything is 'under control'"
+      tone: "wary, deadpan Skåne pensioner; short dry sentences; gallows humour; softens to real warmth or patience"
+    hint_ladder:
+      - "He pours a second cup of coffee from the flask and does not offer it. Yet."
+      - "\"Folk here don't talk to strangers no more,\" he says. \"Give me a reason.\""
+      - "\"...Ah. You're harmless enough. Take the Lund road — the barrier'll lift for you now. Go, before the village notices I said so.\""
+    mercy_after_attempts: 3
+    on_success:
+      progress_points: 30
+      set_flag: met_elder
+      log: "Old Sixten decided you mean no harm — the barrier on the Lund road will lift for you."
+      announce: "Sixten finally hands you the coffee. \"The barrier'll lift for you now. Go on — and don't look back at the windows.\""

@@ -34,18 +34,26 @@ Then open **http://localhost:5173**.
 - **API** is on http://localhost:8000 (`/api/health`, OpenAPI docs at `/docs`).
 - **Postgres** initializes from `db/01_schema.sql` + `db/02_seed.sql` on first boot.
 
-### Claude API (optional)
+### LLM provider (optional)
 
 The dialogue gate runs a **deterministic offline stub by default**, so it's fully
-playable with no key. To use the real Actor/Referee loop against Claude:
+playable with no key. Pick a provider with `LLM_PROVIDER` in `.env`:
 
-```bash
-cp .env.example .env
-# put your key in .env:  ANTHROPIC_API_KEY=sk-ant-...
-docker compose up --build
-```
+- **anthropic** — the real Actor/Referee loop against Claude. Set a key:
+  ```bash
+  cp .env.example .env
+  # ANTHROPIC_API_KEY=sk-ant-...   (LLM_PROVIDER defaults to anthropic when a key is set)
+  docker compose up --build
+  ```
+- **browser** — the model runs **in each player's browser** on their GPU (WebGPU/WebLLM),
+  no key or server GPU needed. Set `LLM_PROVIDER=browser` and optionally `LLM_MODEL`
+  (a prebuilt MLC id, default a small Llama-3.2-3B). On first play the browser downloads
+  the model once (multi-GB, cached); a progress notice shows while it loads, and talking/
+  choices/hints unlock when it's ready. Needs a recent desktop Chrome/Edge (WebGPU).
+  Note: gate verdicts run client-side and are **not** cheat-proof — see AI_DIALOGUE_GATES.md §5b.
+- **stub** — deterministic offline heuristics (`LLM_PROVIDER=stub` or no key).
 
-`GET /api/health` reports `using_real_llm: true/false`.
+`GET /api/health` reports `using_real_llm`, `llm_provider`, and `llm_model`.
 
 ### How to play the slice
 

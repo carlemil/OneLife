@@ -1,8 +1,19 @@
 """Dialogue-gate turn handler — the Actor/Referee/Applier loop
 (AI_DIALOGUE_GATES.md §2/§5). State is mutated only here, in code, only on a
-validated verdict."""
+validated verdict.
+
+Two entry points, one shared body:
+  * process_message  — single-phase (anthropic / stub providers): the server runs
+    the LLM inline, then applies effects.
+  * build_turn / apply_turn — two-phase (browser provider): build_turn returns the
+    prompts for the browser to run (phase 1); apply_turn takes the raw completions
+    back, parses them, re-derives `satisfied` authoritatively, and applies effects
+    (phase 2). See the inference broker in main.py.
+Both paths share _turn_context (setup), _say, and _finalize (effect application), so
+the load-bearing logic exists once.
+"""
 import json
-from . import llm, memory
+from . import llm, memory, security
 from .engine import (apply_action, discover_clues, next_seq,
                      record_alignment, current_alignment, alignment_label)
 
@@ -16,7 +27,18 @@ def _identity(char) -> dict:
     return {"name": name, "true_name": reveal or name, "withholds": withholds}
 
 
-async def process_message(conn, player_id, session, text: str) -> dict:
+async def _say(conn, player_id, gid, gate_id, seq, line: str):
+    await conn.execute(
+        """INSERT INTO gate_messages (player_id, game_id, gate_id, role, content, seq)
+           VALUES ($1,$2,$3,'agent',$4,$5)""", player_id, gid, gate_id, line, seq)
+
+
+async def _turn_context(conn, player_id, session, text: str) -> dict:
+    """Shared setup for a gate turn: load the gate/spec/character, persist the
+    player's message, rebuild the transcript, compute attempts/hint rung, retrieve
+    NPC memory, and read the PRE-turn alignment standing. Does NOT judge alignment or
+    touch gate_attempts — those happen in the caller / _finalize so both the single-
+    and two-phase paths stay in step."""
     gid = session["game_id"]
     node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
                                gid, session["current_node"])
@@ -49,15 +71,6 @@ async def process_message(conn, player_id, session, text: str) -> dict:
            WHERE player_id=$1 AND game_id=$2 AND gate_id=$3 ORDER BY seq, created_at""",
         player_id, gid, gate_id)]
 
-    # Alignment: every thing the player SAYS shifts their alignment (whether or not
-    # it passes the gate). Stamp with cur_seq, the same seq the message rolls back
-    # with. Then read the (possibly shifted) standing so the NPC's tone reacts to it.
-    verdict_a = await llm.judge_alignment(
-        text, context=f"Talking to {char['name'] if char else 'someone'}.")
-    await record_alignment(conn, player_id, gid, cur_seq, verdict_a["good_evil_delta"],
-                           verdict_a["law_chaos_delta"], verdict_a["reason"], kind="gate")
-    align_str = alignment_label(*await current_alignment(conn, player_id, gid))
-
     # Count this as a real attempt only if it's substantive. A trivial one/two-word
     # message or an exact duplicate of something already said does NOT advance the hint
     # ladder or the mercy counter — so a player can't spam "hi" to trip the auto-pass.
@@ -75,11 +88,6 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         player_id=player_id, story_time=session["story_time"])
     identity = _identity(char) if char else None
 
-    async def _say(line: str):
-        await conn.execute(
-            """INSERT INTO gate_messages (player_id, game_id, gate_id, role, content, seq)
-               VALUES ($1,$2,$3,'agent',$4,$5)""", player_id, gid, gate_id, line, cur_seq)
-
     # A concise recap of what this gate grants on success (its on_success log line) —
     # fed to the Actor so it discloses it clearly on the reveal turn and stays
     # consistent (it has already helped this person) on every turn after.
@@ -89,39 +97,29 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     # itself early.
     name_earned = bool(spec.get("on_success", {}).get("whisper_name"))
 
-    # Already convinced on an earlier turn: keep chatting in character, but never
-    # re-judge or re-apply effects. The player is free to keep talking, or take an
-    # edge to move on — we never force them out of the conversation.
-    if ga["satisfied"]:
-        reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                      identity=identity, alignment=align_str,
-                                      recap=recap, already_helped=True,
-                                      name_earned=name_earned)
-        await _say(reply)
-        return {"reply": reply, "satisfied": True, "transitioned": False}
+    # PRE-turn alignment standing — used by the two-phase (browser) path for the
+    # Actor's tone, since this turn's own delta can't be recorded until phase 2.
+    align_pre = alignment_label(*await current_alignment(conn, player_id, gid))
 
-    # Judge BEFORE the actor speaks this turn, so that on the turn the gate passes
-    # the NPC can relent in character — explaining why it now trusts the player and
-    # disclosing the way forward — instead of staying coy because the hint ladder
-    # (indexed by failed attempts) hasn't reached its reveal rung yet.
-    verdict = await llm.referee_verdict(spec, history, json.loads(ga["criteria_met"]))
-    met = verdict["criteria_met"]
-    # Mercy is a soft-lock safety net, not a spam reward: it only fires after enough
-    # SUBSTANTIVE attempts AND once the player has met at least one criterion (genuine
-    # engagement). A player who never really engages can never trip it.
-    mercy = spec.get("mercy_after_attempts")
-    satisfied = llm.success_rule_met(spec, met) or (
-        mercy is not None and attempts >= mercy and len(met) >= 1)
+    return {"gid": gid, "node": node, "gate_id": gate_id, "gate": gate, "spec": spec,
+            "char": char, "ga": ga, "cur_seq": cur_seq, "history": history,
+            "attempts": attempts, "hint_level": hint_level, "ladder": ladder,
+            "own_mem": own_mem, "leaked_mem": leaked_mem, "identity": identity,
+            "recap": recap, "name_earned": name_earned, "align_pre": align_pre}
 
-    reply = await llm.actor_reply(spec, history, hint_level, own_mem, leaked_mem,
-                                  identity=identity, reveal=satisfied, alignment=align_str,
-                                  recap=(recap if satisfied else None),
-                                  name_earned=name_earned)
+
+async def _finalize(conn, player_id, session, ctx, met, satisfied, reply) -> dict:
+    """Apply a judged turn: persist attempts/criteria, speak the reply (with the
+    guaranteed whisper_name/announce beats on success), and on success apply effects,
+    discover clues, and write leakable memory. Shared by both providers."""
+    gid, gate_id, node, spec, char = (ctx["gid"], ctx["gate_id"], ctx["node"],
+                                      ctx["spec"], ctx["char"])
+    cur_seq = ctx["cur_seq"]
 
     await conn.execute(
         """UPDATE gate_attempts SET criteria_met=$4::jsonb, attempts=$5, hint_level=$6
            WHERE player_id=$1 AND game_id=$2 AND gate_id=$3""",
-        player_id, gid, gate_id, json.dumps(met), attempts, hint_level)
+        player_id, gid, gate_id, json.dumps(met), ctx["attempts"], ctx["hint_level"])
 
     on_success = spec.get("on_success", {}) if satisfied else {}
     # Guaranteed name reveal, FIRST: some encounters must hand the player the NPC's
@@ -133,15 +131,16 @@ async def process_message(conn, player_id, session, text: str) -> dict:
     if on_success.get("whisper_name") and char:
         true_name = _identity(char)["true_name"]
         if true_name:
-            await _say(f'Before anything else, almost too quiet to hear, a name: "{true_name}."')
-    await _say(reply)
+            await _say(conn, player_id, gid, gate_id, cur_seq,
+                       f'Before anything else, almost too quiet to hear, a name: "{true_name}."')
+    await _say(conn, player_id, gid, gate_id, cur_seq, reply)
     # Guaranteed success beat: a fixed, unmissable line on the turn the gate passes —
     # used when something concrete must happen (e.g. the NPC physically hands over a key
     # item), which can't be left to the Actor's phrasing. Appended after the relenting
     # reply, same seq as the turn's messages so it rolls back with them.
     announce = on_success.get("announce")
     if announce:
-        await _say(announce)
+        await _say(conn, player_id, gid, gate_id, cur_seq, announce)
 
     if satisfied:
         # Mark passed BEFORE applying effects so clue discovery sees gate_passed.
@@ -153,10 +152,6 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         # Apply the rewards/flags/memory, but DON'T move the player. They stay with
         # the NPC and leave through an authored edge ("the way ahead has opened")
         # when ready, so a passing line never cuts the conversation off mid-flow.
-        # (Onward routes are unlocked by the flags set here, e.g. has_boiler_handle.)
-        # A narrative outcome beat ("Pippa told you what she saw…"), NOT spoken
-        # dialogue. kind="gate" marks it as a gate-unlock event — the only point a
-        # regular player may cheat-death-rollback to (the UI keys off this kind).
         seq, story_time = await apply_action(
             conn, player_id, gid, session["log_id"], node_id=node["id"],
             effects=on_success, story_time=session["story_time"], kind="gate")
@@ -172,7 +167,153 @@ async def process_message(conn, player_id, session, text: str) -> dict:
         if wm:
             await memory.write_memory(
                 conn, game_id=gid, character_id=wm["owner"], content=wm["content"],
-                location_id=gate["location_id"], story_time=story_time,
+                location_id=ctx["gate"]["location_id"], story_time=story_time,
                 origin_player_id=player_id, seq=seq, source="told")
 
     return {"reply": reply, "satisfied": satisfied, "transitioned": False}
+
+
+def _turn_satisfied(spec: dict, met: list[str], attempts: int) -> bool:
+    """Authoritative pass decision, shared by the server and mirrored in the browser.
+    Mercy is a soft-lock safety net: it only fires after enough SUBSTANTIVE attempts
+    AND once the player has met at least one criterion (genuine engagement)."""
+    mercy = spec.get("mercy_after_attempts")
+    return llm.success_rule_met(spec, met) or (
+        mercy is not None and attempts >= mercy and len(met) >= 1)
+
+
+async def process_message(conn, player_id, session, text: str) -> dict:
+    """Single-phase path (anthropic / stub): run the LLM inline and apply effects."""
+    ctx = await _turn_context(conn, player_id, session, text)
+    gid, gate_id, cur_seq = ctx["gid"], ctx["gate_id"], ctx["cur_seq"]
+    char = ctx["char"]
+
+    # Alignment: every thing the player SAYS shifts their alignment (whether or not
+    # it passes the gate). Stamp with cur_seq, the same seq the message rolls back
+    # with. Then read the (possibly shifted) standing so the NPC's tone reacts to it.
+    verdict_a = await llm.judge_alignment(
+        text, context=f"Talking to {char['name'] if char else 'someone'}.")
+    await record_alignment(conn, player_id, gid, cur_seq, verdict_a["good_evil_delta"],
+                           verdict_a["law_chaos_delta"], verdict_a["reason"], kind="gate")
+    align_str = alignment_label(*await current_alignment(conn, player_id, gid))
+
+    # Already convinced on an earlier turn: keep chatting in character, but never
+    # re-judge or re-apply effects. The player is free to keep talking, or take an
+    # edge to move on — we never force them out of the conversation.
+    if ctx["ga"]["satisfied"]:
+        reply = await llm.actor_reply(ctx["spec"], ctx["history"], ctx["hint_level"],
+                                      ctx["own_mem"], ctx["leaked_mem"],
+                                      identity=ctx["identity"], alignment=align_str,
+                                      recap=ctx["recap"], already_helped=True,
+                                      name_earned=ctx["name_earned"])
+        await _say(conn, player_id, gid, gate_id, cur_seq, reply)
+        return {"reply": reply, "satisfied": True, "transitioned": False}
+
+    # Judge BEFORE the actor speaks this turn, so that on the turn the gate passes
+    # the NPC can relent in character — explaining why it now trusts the player and
+    # disclosing the way forward — instead of staying coy because the hint ladder
+    # (indexed by failed attempts) hasn't reached its reveal rung yet.
+    verdict = await llm.referee_verdict(ctx["spec"], ctx["history"],
+                                        json.loads(ctx["ga"]["criteria_met"]))
+    met = verdict["criteria_met"]
+    satisfied = _turn_satisfied(ctx["spec"], met, ctx["attempts"])
+
+    reply = await llm.actor_reply(ctx["spec"], ctx["history"], ctx["hint_level"],
+                                  ctx["own_mem"], ctx["leaked_mem"],
+                                  identity=ctx["identity"], reveal=satisfied,
+                                  alignment=align_str,
+                                  recap=(ctx["recap"] if satisfied else None),
+                                  name_earned=ctx["name_earned"])
+    return await _finalize(conn, player_id, session, ctx, met, satisfied, reply)
+
+
+# --------------------------------------------------------------------------- #
+#  Two-phase (browser) path. build_turn returns the prompts; apply_turn takes
+#  the raw completions back and applies effects.
+# --------------------------------------------------------------------------- #
+def _gate_token(ctx: dict) -> str:
+    return security.sign({
+        "kind": "gate", "gid": ctx["gid"], "gate_id": ctx["gate_id"],
+        "node_id": ctx["node"]["id"], "cur_seq": ctx["cur_seq"],
+        "attempts": ctx["attempts"], "hint_level": ctx["hint_level"]})
+
+
+async def build_turn(conn, player_id, session, text: str) -> dict:
+    """Phase 1 (browser mode): persist the player's message and return the prompts the
+    browser must run — always the alignment judge, plus either the already-helped
+    Actor (gate already passed) or the Referee + both Actor variants (coy / relenting)."""
+    ctx = await _turn_context(conn, player_id, session, text)
+    char = ctx["char"]
+    reqs = [llm.build_align(
+        text, context=f"Talking to {char['name'] if char else 'someone'}.")]
+
+    already = bool(ctx["ga"]["satisfied"])
+    if already:
+        req = llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
+                              ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
+                              alignment=ctx["align_pre"], recap=ctx["recap"],
+                              already_helped=True, name_earned=ctx["name_earned"])
+        req["id"] = "actor_helped"
+        reqs.append(req)
+    else:
+        reqs.append(llm.build_referee(ctx["spec"], ctx["history"],
+                                      json.loads(ctx["ga"]["criteria_met"])))
+        reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
+                                    ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
+                                    reveal=False, alignment=ctx["align_pre"],
+                                    recap=None, name_earned=ctx["name_earned"]))
+        reqs.append(llm.build_actor(ctx["spec"], ctx["history"], ctx["hint_level"],
+                                    ctx["own_mem"], ctx["leaked_mem"], identity=ctx["identity"],
+                                    reveal=True, alignment=ctx["align_pre"],
+                                    recap=ctx["recap"], name_earned=ctx["name_earned"]))
+
+    decision = {"already_satisfied": already,
+                "criteria": [c["id"] for c in ctx["spec"].get("criteria", [])],
+                "success_rule": ctx["spec"].get("success_rule", ""),
+                "mercy_after_attempts": ctx["spec"].get("mercy_after_attempts"),
+                "attempts": ctx["attempts"],
+                "already_met": json.loads(ctx["ga"]["criteria_met"])}
+    return {"turn_token": _gate_token(ctx),
+            "requests": [llm.to_browser_request(r) for r in reqs],
+            "decision": decision}
+
+
+async def apply_turn(conn, player_id, session, tok: dict, completions: dict) -> dict:
+    """Phase 2 (browser mode): parse the raw completions, re-derive `satisfied`
+    server-side, and apply effects. The verdict is client-run (accepted trade-off),
+    but the server still records alignment within ±0.3, filters criteria to valid
+    ids, and evaluates success_rule itself."""
+    gid, gate_id = tok["gid"], tok["gate_id"]
+    node = await conn.fetchrow("SELECT * FROM story_nodes WHERE game_id=$1 AND id=$2",
+                               gid, tok["node_id"])
+    gate = await conn.fetchrow("SELECT * FROM dialogue_gates WHERE game_id=$1 AND id=$2",
+                               gid, gate_id)
+    spec = json.loads(gate["spec"])
+    char = await conn.fetchrow(
+        "SELECT name, reveal_name FROM characters WHERE game_id=$1 AND id=$2",
+        gid, gate["character_id"])
+    ga = await conn.fetchrow(
+        "SELECT * FROM gate_attempts WHERE player_id=$1 AND game_id=$2 AND gate_id=$3",
+        player_id, gid, gate_id)
+    cur_seq = tok["cur_seq"]
+
+    # Alignment (every turn), clamped ±0.3 by parse_align.
+    va = llm.parse_align(completions.get("align", ""))
+    await record_alignment(conn, player_id, gid, cur_seq, va["good_evil_delta"],
+                           va["law_chaos_delta"], va["reason"], kind="gate")
+
+    if ga["satisfied"]:
+        reply = llm.parse_actor(completions.get("actor_helped", ""))
+        await _say(conn, player_id, gid, gate_id, cur_seq, reply)
+        return {"reply": reply, "satisfied": True, "transitioned": False}
+
+    met = llm.parse_referee(completions.get("referee", ""),
+                            spec.get("criteria", []), json.loads(ga["criteria_met"]))["criteria_met"]
+    satisfied = _turn_satisfied(spec, met, tok["attempts"])
+    reply = llm.parse_actor(completions.get("actor_reveal" if satisfied else "actor")
+                            or completions.get("actor") or completions.get("actor_reveal") or "")
+
+    ctx = {"gid": gid, "gate_id": gate_id, "node": node, "spec": spec, "char": char,
+           "gate": gate, "cur_seq": cur_seq, "attempts": tok["attempts"],
+           "hint_level": tok["hint_level"]}
+    return await _finalize(conn, player_id, session, ctx, met, satisfied, reply)

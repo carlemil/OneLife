@@ -1,0 +1,11 @@
+# Places within cells. Node `location:` fields reference these ids.
+locations:
+  - id: plaza
+    name: The Torg
+    description: >
+      Södra Sandby's little market square in the flat grey light of autumn 1992. An old
+      Falu-red hand-pump stands at the centre, a laminated notice zip-tied to it. The
+      Systembolaget and the Konsum are both shuttered. Past the war memorial the road out
+      toward Lund is closed by a striped barrier no one is manning, and every curtain on
+      the square is very carefully drawn.
+    cell: home

@@ -5,6 +5,7 @@ in-process (fine for the single-instance prototype; use Redis for multi-instance
 """
 import os
 import time
+import json
 import base64
 import hashlib
 
@@ -27,6 +28,22 @@ def decrypt(token: str) -> str:
         return _fernet.decrypt(token.encode()).decode()
     except Exception:  # noqa: BLE001
         return token
+
+
+def sign(payload: dict) -> str:
+    """Opaque, tamper-proof token carrying phase-1 state across the two-phase
+    inference-broker round-trip (llm.py browser mode). Fernet is authenticated
+    encryption, so the client cannot read or forge it."""
+    return _fernet.encrypt(json.dumps(payload).encode()).decode()
+
+
+def unsign(token: str, max_age: int = 3600) -> dict:
+    """Verify + decode a token from sign(). Raises ValueError if forged/expired."""
+    try:
+        raw = _fernet.decrypt(token.encode(), ttl=max_age)
+    except Exception as e:  # noqa: BLE001
+        raise ValueError("invalid or expired token") from e
+    return json.loads(raw)
 
 
 # --------------------------------------------------------------------------- #
