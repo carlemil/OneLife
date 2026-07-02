@@ -1,7 +1,7 @@
 # Location (hub) nodes. `world_access: true` marks a travel hub (opens the world map).
 nodes:
   - id: square
-    map: {x: 0.5564, y: 0.4993}
+    map: {x: 0.5127, y: 0.5084}
     arc: main
     type: location
     location: plaza
