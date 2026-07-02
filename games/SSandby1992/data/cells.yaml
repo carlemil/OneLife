@@ -1,10 +1,27 @@
-# World cells: the travel grid. Each cell holds locations and has an `arrival_node` (where
-# you land when you travel here). This starter has one cell.
+# World cells: the travel grid. Each cell holds locations and has an `arrival_node`
+# (where you land when you travel here). The spine is a road laid out east-to-west:
+# Södra Sandby (home) -> the Hardebergaspåret cycle path -> Lund. Cells carry `region`
+# for the atmosphere/music/image systems. Movement in this game is by explicit story
+# edges, so no node is marked world_access — this is a guided road, not open travel.
 cells:
-  - id: home
-    grid_x: 0
+  - id: sandby
+    grid_x: 2
     grid_y: 0
     name: Södra Sandby
-    kind: town
+    kind: village
     region: "Södra Sandby, Skåne"
-    arrival_node: start
+    arrival_node: home
+  - id: trail
+    grid_x: 1
+    grid_y: 0
+    name: Hardebergaspåret
+    kind: wilderness
+    region: "the old railway path between Sandby and Lund, Skåne"
+    arrival_node: trailpath
+  - id: lund
+    grid_x: 0
+    grid_y: 0
+    name: Lund
+    kind: city
+    region: "Lund, Skåne"
+    arrival_node: lundcentral

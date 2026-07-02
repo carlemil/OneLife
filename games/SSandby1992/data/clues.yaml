@@ -1,8 +1,38 @@
 # Clues are woven fragments a puzzle lists in `required_clues`; they surface when their
 # `discover_conditions` hold (same DSL as edges).
 clues:
-  - id: well-clue
-    puzzle: well-riddle
-    placement: {location: plaza}
-    reveal_text: "Beneath the chiselled rhyme, someone's scratched a wavy line — water — and, smaller: \"den tog vägen härifrån\" (it made its way out of here)."
-    discover_conditions: {all: [{node_visited: square}]}
+
+  # P1 — the mixtape track list (the acrostic itself)
+  - id: mixtape-tracklist
+    puzzle: mixtape-cipher
+    placement: {kind: interaction, location_id: home}
+    reveal_text: "The inlay card, in Mattias's block capitals: 1. SISTER MOON  2. TRAINS I MISSED  3. IN THE UNDERTOW  4. LONG WAY TO LUND  5. LEAVING LIGHT  6. ALL ALONG THE PATH."
+    discover_conditions: {all: [{flag_set: goal_set}]}
+
+  # P2 — the torn scrap (from Krister) ...
+  - id: phone-scrap
+    puzzle: phone-number
+    placement: {kind: dialogue, character_id: krister}
+    reveal_text: "Krister's scrap, in Mattias's hand: \"046 15 78 __ __\" — the last two digits torn away."
+    discover_conditions: {all: [{flag_set: have_scrap}]}
+
+  # P2 — ... and the birth year that completes it (from Mum)
+  - id: mattias-birthyear
+    puzzle: phone-number
+    placement: {kind: dialogue, character_id: ann-marie}
+    reveal_text: "Mum said Mattias was born in nineteen seventy-three — '73."
+    discover_conditions: {all: [{flag_set: mum_birthday}]}
+
+  # P4 — the crypt/clock legend: 'when the giants come out'
+  - id: giants-noon
+    puzzle: cathedral-clock
+    placement: {kind: location_text, location_id: cathedral}
+    reveal_text: "The legend by the crypt: the giant Finn's kings and trumpeters process from the astronomical clock at the stroke of noon — 'when the giants come out' — and again at three."
+    discover_conditions: {all: [{node_visited: cathedral}]}
+
+  # P5 — the birthday as a four-digit date (from Mum)
+  - id: mattias-birthday
+    puzzle: letters-box
+    placement: {kind: dialogue, character_id: ann-marie}
+    reveal_text: "Mum let slip Mattias's birthday: the fourteenth of March — 14/03."
+    discover_conditions: {all: [{flag_set: mum_birthday}]}

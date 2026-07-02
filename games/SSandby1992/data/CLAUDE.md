@@ -1,4 +1,4 @@
-# CLAUDE.md — S.Sandby 1992 game data
+# CLAUDE.md — The Long Way to Lund game data
 
 This folder is a **OneLife game dataset**: authored content as YAML, no code. The engine
 mounts it and seeds it into Postgres; it appears in the in-app lobby as its own game.

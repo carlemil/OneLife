@@ -1,0 +1,85 @@
+Premise
+Summer 1992, Södra Sandby. You're 15. Six months ago your older brother Mattias (19) left after a blow-up with your father. The family line is "he moved to Lund," and since then, silence — Dad won't say his name, Mum has gone quiet with grief. You don't buy that he just walked out on you.
+Clearing a corner of his old room, you find two things: a cassette he made and a photo of him in Lund with people you don't recognise. That's the hook, and within the first few nodes the goal is stated plainly and easy to hold onto for the whole game:
+
+Find out what really happened to Mattias — the trail runs to Lund.
+
+The hidden truth (the payoff)
+Mattias didn't abandon you. He left because of who he is: he'd fallen for Robin, a musician in Lund, and the fight with Dad was really about that. The deeper gut-punch you uncover is that Mattias has been trying to reach you — postcards and letters your father quietly intercepted and hid. The "he abandoned us" story is a lie, and not Mattias's lie.
+Coming-of-age turns on two collisions: the idolised big brother vs. the real, vulnerable person, and the father you trusted vs. what he did. You grow up by choosing understanding over the family's silence.
+The one swappable dial is the reason for the rift — you can reskin it without touching the machinery. Instead of Robin it could be a pregnancy and a kid in Lund you never knew about, or Mattias throwing over his studies (and Dad's plan for him) to chase the band. The structure — estranged brother → intercepted messages → reunion — stays identical.
+Red thread & motifs
+The spine is literally the road: you retrace Mattias's route from Sandby to Lund along the old railway, and the geography is the emotional distance — village childhood at one end, adult city truth at the other. Three motifs recur to keep it tight:
+
+Music as his voice — the mixtape, the band, the record shop. You hear Mattias before you find him.
+Messages that don't get through — the tape, a half-dialled number, the hidden letters. Communication intercepted, all game long.
+The giant in the crypt — the Finn legend under the cathedral. As a kid you're told a fairy tale about the giant who built the church; you go down into the crypt and find cold stone and a sad story instead. The myth you were told vs. the human truth underneath is the whole game in one image.
+
+Locations
+
+N0 – Opening (narration) — June 1992, the quiet house, the hook → L1
+L1 – Home / Mattias's room, Södra Sandby — the discovery (tape + photo); Mum and Dad are here; later, Dad's hidden box. Sets G0.
+L2 – Sandby centrum — kiosk, a payphone, Mattias's mate Krister, local colour.
+L3 – Hardebergaspåret — the old-railway cycle path; the ride toward Lund; branches to the quarry or on to town. Death risk (D1).
+L4 – The märgelgrav (optional) — a flooded marl pit out in the fields; a shared memory and a clue; death risk (D2).
+L5 – Edge of Lund (Östra Torn) — the crossover from village to city (narration beat).
+L6 – Central Lund — hub; branches to the record shop, the cathedral, the university.
+L7 – The record shop, off Klostergatan — Sonny; gated on the band name (G1).
+L8 – Lunds domkyrka + crypt — the astronomical clock (plays 12:00 & 15:00) and Finn the giant; a timing puzzle and the thematic centre.
+L9 – Studentkorridor, university — Robin; the truth is delivered here (G3).
+L10 – Mattias's flat — the reunion; the endings.
+
+Characters
+
+Mattias (L10) — the goal; the brother you're chasing.
+Ann-Marie / Mum (L1) — grief-quiet; nudges you gently and lets slip Mattias's birthday, which you'll need later.
+Bengt / Dad (L1) — won't speak Mattias's name; holds the secret and the locked box. Confronting him is a late beat.
+Krister (L2) — Mattias's village friend; your first real lead (the band, the Lund connection, the phone-number scrap).
+The man at the kiosk (L2) — minor colour and a half-memory.
+Sonny (L7) — record-shop owner and gatekeeper; opens up once you know the band, and points you at Robin.
+Robin (L9) — Mattias's partner; delivers the core truth, reveals the intercepted letters, and sends you to Mattias.
+
+Puzzles (all solved from the log — knowledge, not items)
+
+P1 – The mixtape cipher — the tracklist's first letters spell the band's name. Read it off the log; feeds G1. Pure 1992.
+P2 – The phone number — a scrap holds a half-number; the missing digits come from a date already in your log. Dial it from a payphone to reach Robin's corridor and get a meeting.
+P3 – Earning Sonny (dialogue gate = G1) — he only talks once the band name is in your log.
+P4 – The cathedral clock — a clue points to "when the giants come out" (noon); be at the domkyrka at 12:00 to catch your contact.
+P5 – The hidden letters — a locked box in Dad's desk; combination = Mattias's birthday (from Mum). Opening it delivers the second truth and gates the true ending (G4). Reachable before you leave or after you return.
+
+Gates
+
+G0 – Goal set — found tape + photo (L1) → Lund unlocks.
+G1 – Band known (P1) → Sonny talks (L7).
+G2 – Number known (P2) → the payphone call → the meeting with Robin.
+G3 – Truth known (Robin, L9) → final approach to Mattias (L10).
+G4 – Letters read (P5) → the true ending; without it you land the bittersweet one.
+
+Death nodes
+
+D1 – The main road at night (off L3) — you cut across väg 11 in the dark and a car doesn't see you.
+D2 – The märgelgrav (off L4) — the water's colder and deeper than it looks.
+
+Both are recklessness deaths — gentle "the world has edges" beats that suit a kid out alone. The log survives, so you carry what you learned into the next run.
+Endings
+
+E1 – True reunion (needs G3 + G4) — you find Mattias, you know everything, and Dad's deception is out in the open. Not a tidy bow, but the silence breaks and the family might heal. Coming-of-age earned.
+E2 – Partial reunion (G3, no G4) — you find him and it's real, but you never learned about the letters, so you meet as half-strangers with the old silence still hanging there.
+E3 – Home again (fail the Lund gates or choose to turn back) — you return to Sandby with the truth still buried. The "didn't grow up this summer" ending.
+Plus the two death ends.
+
+Node flow (spine + branches)
+N0 → L1        (find tape + photo ⇒ G0, goal set)
+  L1 ⇄ Mum (birthday)  ·  Dad → locked box → P5 ⇒ G4
+L1 → L2        (Krister ⇒ band lead + phone scrap; P1 solvable ⇒ G1)
+L2 → L3        (the ride)
+  L3 ─▶ D1     (reckless road crossing = death)
+  L3 → L4 ─▶ D2   (quarry = death)   ／   L4 → back to L3
+L3 → L5 → L6   (hub)
+  L6 → L7      (needs G1 ⇒ Sonny → points to Robin, gives the number)
+  L6 → L8      (P4 clock timing; Finn / theme beat)
+  L6 → L9      (P2 dial + Robin ⇒ core truth ⇒ G3, + letters revealed)
+{G3} → L10     (Mattias)
+  L10 + G4 → E1   (true)
+  L10, no G4 → E2 (partial)
+fail gates / turn back → E3  (home)

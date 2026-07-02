@@ -1,38 +1,200 @@
-# Location (hub) nodes. `world_access: true` marks a travel hub (opens the world map).
+# Location (hub) nodes. Movement in this game is by explicit edges, so none are marked
+# world_access — the road is a guided line, not open travel.
 nodes:
-  - id: square
-    map: {x: 0.5127, y: 0.5084}
+
+  # --- Södra Sandby ---
+  - id: home
     arc: main
     type: location
-    location: plaza
-    title: "The Torg"
-    world_access: true
-    media: {image_theme: sodra-sandby-torg-grey-dawn, music_theme: uneasy-quiet}
-    body: >
-      The torg is still. The old Falu-red hand-pump waits at the centre, a laminated notice
-      zip-tied to it; an old man watches you from the doorway of the shuttered Systembolaget,
-      not unkindly. Past the war memorial the road out toward Lund is closed by a striped
-      barrier, its little booth empty. Beside it, a level crossing — and the branch line
-      everyone says was shut years ago.
+    location: home
+    title: "Mattias's Room"
+    media: {image_theme: brothers-bedroom-1992, music_theme: wistful-quiet}
+    body: "Your brother's room, held under six months of dust. Posters, a stack of paperbacks, the corner where his things are still piled. The house breathes around you: Mum somewhere in the kitchen, Dad shut in his study at the end of the hall. Whatever really happened, it started here."
+    body_variants:
+      - when: {all: [{flag_set: goal_set}]}
+        body: "Your brother's room. The mixtape and the Lund photo are in your pocket now, and the room feels different for it — less a shrine, more a first clue. Mum is in the kitchen; Dad's study door is shut at the end of the hall. The way out of the village — and the road to Lund — starts at the door."
     edges:
-      - id: e-square-elder
-        to: elder
-        label: Go over to the old man in the doorway
-        effects: {log: "You go over to the old man in the Systembolaget doorway."}
-      - id: e-square-well
-        to: well
-        label: Read the pump and its notice
-        effects: {log: "You lean over the old hand-pump."}
-      # The way out opens once you've won Sixten over OR answered the pump's riddle
-      # (demonstrates conditions — the engine hides this edge until one path is done).
-      - id: e-square-out
-        to: gate-out
-        label: Take the Lund road out of the village
-        conditions: {any: [{flag_set: met_elder}, {puzzle_solved: well-riddle}]}
-        effects: {progress_points: 20, log: "You take the Lund road out of Södra Sandby."}
-      # A tempting, deadly shortcut (danger foreshadows the death; rollback is the escape).
-      - id: e-square-peril
-        to: peril
-        label: Duck under the barrier and cross the tracks
+      - id: e-home-clear
+        to: discovery
+        label: Clear the corner of Mattias's old room
+        conditions: {all: [{not: {flag_set: goal_set}}]}
+        effects: {progress_points: 10, set_flag: goal_set, log: "You searched Mattias's room."}
+      - id: e-home-mixtape
+        to: mixtape
+        label: Study the mixtape's track list
+        conditions: {all: [{flag_set: goal_set}]}
+        effects: {log: "You turned the mixtape over to read the track list."}
+      - id: e-home-mum
+        to: mum
+        label: Find Mum in the kitchen
+        effects: {log: "You went to find Mum."}
+      - id: e-home-dad
+        to: dad
+        label: Look in on Dad in his study
+        effects: {log: "You went to Dad's study."}
+      - id: e-home-desk
+        to: deskbox
+        label: Go through the drawers of Dad's desk
+        conditions: {all: [{flag_set: goal_set}]}
+        effects: {log: "You started going through Dad's desk."}
+      - id: e-home-centrum
+        to: centrum
+        label: Head out into Sandby centrum
+        conditions: {all: [{flag_set: goal_set}]}
+        effects: {progress_points: 5, log: "You walked down to the village centre."}
+
+  - id: centrum
+    arc: main
+    type: location
+    location: centrum
+    title: "Sandby Centrum"
+    media: {image_theme: village-centre-summer-dusk, music_theme: small-town-evening, real_place: "the small village centre of Södra Sandby, Skåne, Sweden, summer 1992"}
+    body: "The village centre in the long evening light. The kiosk is still open, the racks of evening papers going soft in the warmth. A bus shelter, a glass payphone, and Krister — Mattias's old mate — slouched on the kiosk step like he's been there since school let out."
+    body_variants:
+      - when: {all: [{flag_set: called_robin}]}
+        body: "The village centre, quieter now. The payphone booth still smells of hot plastic and small change from your call to Lund — a voice at a student corridor, a time and a name agreed. Krister's still on the kiosk step. The road west out of the village is waiting."
+    edges:
+      - id: e-centrum-krister
+        to: krister
+        label: Go over to Krister on the kiosk step
+        effects: {log: "You went over to Krister."}
+      - id: e-centrum-kiosk
+        to: centrum
+        label: Ask the man at the kiosk about Mattias
+        conditions: {all: [{not: {flag_set: asked_kiosk}}]}
+        effects: {progress_points: 5, set_flag: asked_kiosk, log: "The kiosk man half-remembered Mattias — a polite boy, always a tape in his walkman, gone to Lund on the early bus one morning and not seen since."}
+      - id: e-centrum-phone
+        to: phonescrap
+        label: Work out the number on Krister's scrap
+        conditions: {all: [{flag_set: have_scrap}]}
+        effects: {log: "You smoothed out Krister's scrap of paper under the streetlight."}
+      - id: e-centrum-dial
+        to: centrum
+        label: Feed coins into the payphone and dial the number
+        conditions: {all: [{flag_set: number_known}, {not: {flag_set: called_robin}}]}
+        effects: {progress_points: 20, set_flag: called_robin, log: "You dialled the Lund number from the payphone. A student corridor answered; you left word for Mattias's people, and a meeting was set."}
+      - id: e-centrum-trail
+        to: trailpath
+        label: Take the Hardebergaspåret west toward Lund
+        conditions: {all: [{flag_set: goal_set}]}
+        effects: {progress_points: 5, log: "You set off west along the old railway path."}
+      - id: e-centrum-home
+        to: home
+        label: Back to the house
+        sort_order: 9
+        effects: {log: "You walked back home."}
+
+  # --- Hardebergaspåret ---
+  - id: trailpath
+    arc: main
+    type: location
+    location: trailpath
+    title: "The Old Railway Path"
+    media: {image_theme: old-railway-cyclepath-dusk, music_theme: long-road-hum, real_place: "the Hardebergaspåret, a straight tree-lined former-railway cycle path through farmland between Södra Sandby and Lund, Sweden"}
+    body: "The old railway runs dead straight west through the fields, ballast turned to cycle-track under the limes. The light is going amber and then grey. Somewhere ahead, väg 11 crosses the path in the dark; off to the south, a rutted track runs down toward the old märgelgrav where you used to swim. Lund is a smudge of light on the horizon."
+    edges:
+      - id: e-trail-road
+        to: death-road
+        label: Cut straight across väg 11 in the dark
         danger: 2
-        effects: {log: "You duck under the barrier toward the crossing."}
+        sort_order: 7
+        effects: {log: "You started across the main road in the dark."}
+      - id: e-trail-marlpit
+        to: marlpit
+        label: Turn off down the track to the märgelgrav
+        effects: {log: "You turned off toward the marl pit."}
+      - id: e-trail-lund
+        to: ostra-torn
+        label: Keep west, toward the lights of Lund
+        effects: {progress_points: 10, log: "You rode on toward Lund."}
+      - id: e-trail-back
+        to: centrum
+        label: Turn back toward Sandby
+        sort_order: 9
+        effects: {log: "You turned back toward the village."}
+
+  - id: marlpit
+    arc: main
+    type: location
+    location: marlpit
+    title: "The Märgelgrav"
+    media: {image_theme: flooded-marlpit-dusk, music_theme: still-water, real_place: "a flooded marl-pit pond in the flat farmland of Skåne, Sweden, at dusk"}
+    body: "The marl pit lies still and green between its clay banks, out of sight of the path. You and Mattias came here every summer — dared each other off the high side, lay in the grass after, talked about getting out of Sandby. He got out. The water doesn't look like much. It never does."
+    edges:
+      - id: e-marlpit-swim
+        to: death-marlpit
+        label: Strip off and swim out to the middle, like you used to
+        danger: 1
+        sort_order: 7
+        effects: {log: "You waded out into the marl pit."}
+      - id: e-marlpit-remember
+        to: marlpit
+        label: Sit on the bank a while
+        conditions: {all: [{not: {flag_set: marlpit_memory}}]}
+        effects: {progress_points: 10, set_flag: marlpit_memory, log: "You sat by the water and let yourself miss him properly for the first time — not the idol, the brother. Whatever's waiting in Lund, you're doing this because you love him."}
+      - id: e-marlpit-back
+        to: trailpath
+        label: Back up to the path
+        sort_order: 9
+        effects: {log: "You climbed back up to the path."}
+
+  # --- Lund ---
+  - id: lundcentral
+    arc: main
+    type: location
+    location: lundcentral
+    title: "Central Lund"
+    media: {image_theme: lund-oldtown-night, music_theme: city-cool, real_place: "the old town of Lund, Sweden, cobbled lanes below the cathedral, summer night"}
+    body: "Lund at last. Cobbled lanes wind off toward Stortorget, and the cathedral's grey towers stand over the roofs, lit from below. It's a small city but after Sandby it feels like the whole world. Off Klostergatan there's a record shop; up the hill, the cathedral and its crypt; and out toward the halls, the studentkorridor where students live."
+    body_variants:
+      - when: {all: [{flag_set: truth_known}]}
+        body: "Lund, and everything different now that you know. The cathedral still stands over the roofs, the lanes still wind toward Stortorget — but Robin has told you the truth, and given you an address, and the only street that matters now is the one that leads to your brother's door."
+    edges:
+      - id: e-lund-record
+        to: recordshop
+        label: Find the record shop off Klostergatan
+        conditions: {all: [{flag_set: band_known}]}
+        effects: {progress_points: 5, log: "You found the record shop off Klostergatan."}
+      - id: e-lund-cathedral
+        to: cathedral
+        label: Walk up to the cathedral
+        effects: {progress_points: 5, log: "You went up to the cathedral."}
+      - id: e-lund-corridor
+        to: corridor
+        label: Go out to the university studentkorridor
+        conditions: {any: [{flag_set: called_robin}, {flag_set: knows_robin}]}
+        effects: {progress_points: 5, log: "You went out to the student corridor."}
+      - id: e-lund-flat
+        to: flat
+        label: Go to the address Robin gave you
+        conditions: {all: [{flag_set: truth_known}]}
+        effects: {progress_points: 20, log: "You went to find Mattias's flat."}
+      - id: e-lund-turnback
+        to: ending-home
+        label: Give up, and turn back for Sandby
+        sort_order: 8
+        effects: {log: "You turned your back on Lund."}
+      - id: e-lund-back-trail
+        to: trailpath
+        label: Head back out along the path toward Sandby
+        sort_order: 9
+        effects: {log: "You started back along the path."}
+
+  - id: flat
+    arc: main
+    type: location
+    location: flat
+    title: "Mattias's Door"
+    media: {image_theme: lund-flat-window-warm, music_theme: heartbeat-quiet}
+    body: "Two flights up, a door with his name on a strip of tape. Behind it, a guitar, a lamp, the smell of coffee — and Mattias, older and realer than the idol in the photo, opening the door to the little sibling who came all the way to Lund to find him. For a moment neither of you can speak. Then: how do you meet him?"
+    edges:
+      - id: e-flat-true
+        to: ending-true
+        label: Tell him what you found in Dad's desk
+        conditions: {all: [{flag_set: letters_read}]}
+        effects: {progress_points: 30, log: "You told Mattias about the letters."}
+      - id: e-flat-partial
+        to: ending-partial
+        label: Just sit down across from him
+        conditions: {all: [{not: {flag_set: letters_read}}]}
+        effects: {progress_points: 20, log: "You sat down across from your brother."}

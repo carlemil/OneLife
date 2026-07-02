@@ -1,21 +1,55 @@
 # Narration beats. Exactly ONE node across all files is the entry (`entry: true`).
 nodes:
+
   - id: start
     arc: main
     type: narration
-    location: plaza
-    title: "You Come To"
+    location: home
+    title: "The Quiet House"
     entry: true
-    media: {image_theme: sodra-sandby-torg-grey-dawn, music_theme: uneasy-quiet}
-    body: >
-      You come to on the cobbles outside the Konsum, cheek cold, a taste of copper in your
-      mouth. Södra Sandby — by the flat grey light, an autumn morning, 1992 — and you do
-      not remember arriving. The village is very quiet. Too quiet: no cars, no dogs, and as
-      you sit up every curtain on the square draws shut at once, politely, as if you'd
-      interrupted something. From a loudspeaker on the community-hall wall, a calm recorded
-      voice repeats that everything is under control.
+    media: {image_theme: quiet-summer-house-1992, music_theme: wistful-quiet, real_place: "a 1970s brick house on the edge of a village in Skåne, southern Sweden, summer evening"}
+    body: "Summer, 1992. You are fifteen, and the house has been too quiet for six months. Since Mattias left — since the shouting, and then the door — the family has held to one flat sentence: he moved to Lund. Mum wipes a counter that is already clean. Dad won't say his name. Down the hall, your brother's room waits with its door shut, exactly as it was. You do not believe he just walked out on you. Tonight you are going to find out."
     edges:
-      - id: e-start-square
-        to: square
-        label: Get to your feet
-        effects: {progress_points: 5, log: "You got to your feet on the torg."}
+      - id: e-start-room
+        to: home
+        label: Open the door to Mattias's room
+        effects: {progress_points: 5, log: "You opened the door to Mattias's room."}
+
+  - id: discovery
+    arc: main
+    type: narration
+    location: home
+    title: "The Tape and the Photo"
+    media: {image_theme: cassette-tape-and-photo, music_theme: revelation-soft}
+    body: "You clear the corner where his things are still stacked, and two things come loose from the pile. A cassette, a mixtape in his own block capitals, no band named — just a track list down the inlay card. And a photograph: Mattias in a Lund square you don't know, laughing, an arm slung around people you have never seen. On the back, in his hand: LUND. He looks happy. He looks like someone with a whole life you were never shown. The quiet sentence — he moved to Lund — cracks open, and underneath it is the only thing that matters now: find out what really happened to Mattias. The trail runs to Lund."
+    edges:
+      - id: e-discovery-home
+        to: home
+        label: Pocket the tape and the photo
+        effects: {progress_points: 10, log: "You pocketed Mattias's mixtape and the Lund photo. Goal: find out what really happened to him — the trail runs to Lund."}
+
+  - id: ostra-torn
+    arc: main
+    type: narration
+    location: lundedge
+    title: "Östra Torn"
+    media: {image_theme: town-edge-dusk, music_theme: crossing-over, real_place: "the eastern edge of Lund, Sweden, where fields meet 1960s apartment blocks"}
+    body: "The fields give out all at once. Where there were hedges and beet-rows there are suddenly kerbs, streetlights, the pale slabs of Östra Torn's tower blocks — and the old railway path feeds you straight into the city like it always meant to. Behind you the village and everything you were told there. Ahead, the towers of the cathedral, and Mattias somewhere under them. You are not a village kid any more. You walk in."
+    edges:
+      - id: e-torn-central
+        to: lundcentral
+        label: Walk on into Lund
+        effects: {progress_points: 15, log: "You crossed into Lund."}
+
+  - id: letters-reveal
+    arc: main
+    type: narration
+    location: home
+    title: "What Dad Kept"
+    media: {image_theme: hidden-letters-box, music_theme: revelation}
+    body: "The lid comes up. Inside, held with a rubber band gone brittle, is a stack of them — postcards from Lund, three folded letters, all in Mattias's hand, all addressed here, to you and to Mum, and every one of them opened and read and never passed on. The postmarks march month by month from the week he left. He wrote. He kept writing. He asked after you by name, over and over, and waited for an answer that your father made sure never came. The story was never that Mattias abandoned you. The story is what was done to keep you believing he did."
+    edges:
+      - id: e-letters-home
+        to: home
+        label: Take the letters
+        effects: {progress_points: 40, log: "You found the hidden letters: Mattias wrote home for months, and Dad intercepted every one. He never abandoned you."}

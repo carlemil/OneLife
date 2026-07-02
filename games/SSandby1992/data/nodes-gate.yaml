@@ -1,20 +1,96 @@
 # Gate nodes host an AI-dialogue encounter (`gate:` -> gates.yaml). The player leaves
 # through an ordinary edge when ready.
 nodes:
-  - id: elder
+
+  # --- Home ---
+  - id: mum
     arc: main
     type: gate
-    location: plaza
-    gate: elder-greeting
-    title: "The Man in the Doorway"
-    media: {image_theme: systembolaget-doorway-pensioner, music_theme: wary-quiet}
-    body: >
-      The old man stands in the Systembolaget doorway as if it still opened at ten. He looks
-      you over, unhurried — a flask of coffee at his feet and a spare little cup beside it,
-      which is either a threat or an invitation. He says nothing yet.
+    location: home
+    gate: mum-birthday
+    title: "Mum in the Kitchen"
+    media: {image_theme: kitchen-evening-light, music_theme: grief-quiet}
+    body: "Mum's at the counter, wiping a surface that's already clean. She doesn't turn when you come in, but her shoulders shift — she knows it's you. The radio murmurs low. There's a whole conversation the house hasn't been allowed to have. (Talk to her — gently.)"
+    body_variants:
+      - when: {all: [{gate_passed: mum-birthday}]}
+        body: "Mum's still at the counter, but softer now, the cloth set down. She let herself remember him with you — even let slip his birthday, the fourteenth of March, the year he was born, seventy-three. \"Don't tell your father we talked,\" she says, not unkindly. She won't say more tonight."
     edges:
-      - id: e-elder-square
-        to: square
-        label: Step back to the torg
+      - id: e-mum-back
+        to: home
+        label: Leave her to it
         sort_order: 9
-        effects: {log: "You step back to the torg."}
+        effects: {log: "You left Mum in the kitchen."}
+
+  - id: dad
+    arc: main
+    type: gate
+    location: home
+    gate: dad-silence
+    title: "Dad's Study"
+    media: {image_theme: closed-study-lamp, music_theme: cold-tension}
+    body: "Dad's at his desk with his back half to the door, a lamp, a ledger, a man made of shut doors. He hasn't said your brother's name in six months. He doesn't say it now. \"You should be in bed,\" is all he offers. (Reach him — if you can.)"
+    body_variants:
+      - when: {all: [{gate_passed: dad-silence}]}
+        body: "Dad sits with his hands flat on the desk, the word he finally gave you — \"Lund\" — still hanging between you like something dropped and not picked up. He won't say the name. He won't say the rest. He's turned back to his ledger, but his jaw is working. Whatever he's carrying, he's not putting it down tonight."
+    edges:
+      - id: e-dad-back
+        to: home
+        label: Step back out of the study
+        sort_order: 9
+        effects: {log: "You stepped out of Dad's study."}
+
+  # --- Sandby Centrum ---
+  - id: krister
+    arc: main
+    type: gate
+    location: centrum
+    gate: krister-lead
+    title: "Krister on the Step"
+    media: {image_theme: village-kiosk-teenager, music_theme: small-town-evening}
+    body: "Krister looks up, a little wary — Mattias's kid sibling, out here asking questions. \"Alright,\" he says, and waits to see what this is. He knows things. Whether he tells you depends on whether you're real with him. (Level with him.)"
+    body_variants:
+      - when: {all: [{gate_passed: krister-lead}]}
+        body: "Krister's already told you what he had — the band, Stilla; the number scrawled on the scrap now in your pocket; Sonny at the record shop off Klostergatan, who knows the whole scene. \"Go easy on him, yeah?\" he says, meaning Mattias. \"He's not what your dad says he is.\" He won't be drawn further."
+    edges:
+      - id: e-krister-back
+        to: centrum
+        label: Leave Krister to his step
+        sort_order: 9
+        effects: {log: "You left Krister at the kiosk."}
+
+  # --- Lund ---
+  - id: recordshop
+    arc: main
+    type: gate
+    location: recordshop
+    gate: sonny-band
+    title: "The Record Shop"
+    media: {image_theme: vinyl-shop-interior, music_theme: dusty-vinyl-hush}
+    body: "A bell over the door. The owner — Sonny — is behind the counter re-sleeving records, and barely looks up. \"Help you?\" He deals in people who know what they're talking about. You'll have to show him you do. (Name what you know.)"
+    body_variants:
+      - when: {all: [{gate_passed: sonny-band}]}
+        body: "Sonny's warmed to you now that you named Stilla — he's told you the one who mattered to Mattias is Robin, up at the university, in the studentkorridor. \"Tell him Sonny says hej,\" he adds, going back to his crates. \"And be kind about it. The kid's had a rough go with his family.\""
+    edges:
+      - id: e-record-back
+        to: lundcentral
+        label: Back out into the lane
+        sort_order: 9
+        effects: {log: "You left the record shop."}
+
+  - id: corridor
+    arc: main
+    type: gate
+    location: corridor
+    gate: robin-truth
+    title: "Robin's Door"
+    media: {image_theme: student-corridor-night, music_theme: truth-approaching}
+    body: "The studentkorridor is summer-empty, one kitchen light on. A door with ROBIN taped to it opens before you knock — a musician about your brother's age, guitar-callused, watchful. \"You're the little sibling,\" Robin says softly. \"He talks about you all the time.\" Something in your chest gives way. (Be honest. Listen.)"
+    body_variants:
+      - when: {all: [{gate_passed: robin-truth}]}
+        body: "Robin has told you everything now — why Mattias really left, and the letters he wrote home that were never answered because your father hid them. It's a lot to hold in a summer-quiet corridor. Robin writes an address on the back of your photo. \"He's a ten-minute walk. Go. He's been waiting a lot longer than tonight.\""
+    edges:
+      - id: e-corridor-back
+        to: lundcentral
+        label: Step back out into the night
+        sort_order: 9
+        effects: {log: "You stepped back out of the corridor."}

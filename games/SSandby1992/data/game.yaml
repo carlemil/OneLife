@@ -4,40 +4,52 @@
 # dataset still runs. title/subtitle/first_summary are seeded into the `games` registry
 # table; the rest is read at runtime by gameconfig.
 game:
-  title: "S.Sandby 1992"
-  subtitle: "A dark little dystopia in Södra Sandby — scary, and somehow funny."
-  first_summary: "You came to in Södra Sandby. It is 1992, and something is wrong."
+  title: "The Long Way to Lund"
+  subtitle: "Summer 1992. Your brother went silent. Follow the mixtape."
+  first_summary: "Södra Sandby, summer 1992 — your brother's empty room."
 
   # Place/period the music director and image generator lean on. `region` is the fallback
   # when a world cell has no `region` of its own; `period` is appended to the atmosphere
-  # setting string. Leave blank to stay place/time-agnostic.
+  # setting string, so picks stay era-appropriate.
   setting:
-    region: "Södra Sandby, Skåne"
-    period: "1992"
+    region: "southern Sweden"
+    period: "summer 1992"
 
-  # Title/particle tokens that are NOT part of a character's name (so "Farbror Sixten" is
-  # known from "Sixten"). Swedish honorifics/particles for this world.
-  name_particles: [the, herr, fru, farbror, moster, gamle, lilla, den]
+  # Title/particle tokens that are NOT part of a character's name (so a character known as
+  # "Mamma" resolves without the honorific). Swedish family particles for this world.
+  name_particles: [the, mamma, pappa, herr, fru]
 
   # Forced manual + comprehension quiz shown once before play (account-level). These three
-  # questions cover the engine's core mechanics (the log, cheating death, talking to NPCs),
-  # so they fit any game — reword or replace freely.
+  # questions cover the engine's core mechanics (the log, cheating death, talking to NPCs).
   onboarding:
     pass_threshold: 3
     manual: |
-      HOW TO PLAY
+      THE LONG WAY TO LUND
 
-      You wake somewhere unfamiliar. Act by choosing what to do and by talking and interacting 
-      with the people and places you meet. The game keeps a LOG of everything that happens — 
-      your log IS your progress.
+      Södra Sandby, the summer you are fifteen. Six months ago your big brother Mattias
+      left after a blow-up with your father, and the whole family closed around the same
+      flat sentence: "he moved to Lund." You never believed it. Clearing his old room, you
+      find a cassette he made and a photo of him in Lund with people you don't know.
 
-      Some characters must be TALKED THROUGH: say the right kind of thing and they open
-      up. Puzzles are hidden in the world — pay attention to what people say and what you
-      read.
+      Find out what really happened to Mattias. The trail runs to Lund.
 
-      You can die or get stuck. When that happens you can CHEAT DEATH: rewind your LOG to
-      an earlier point and carry on — but it erases the progress you made after that point
-      and costs you leaderboard position.
+      📝 KEEP A PEN AND PAPER HANDY — you'll want to note names, dates, and stray digits.
+      This is a mystery meant to be pieced together by hand.
+
+      HOW IT WORKS
+      • The game is a stream of text. You act by choosing what to do, talking to the people
+        you meet, and solving the puzzles woven into them.
+      • The game keeps a LOG of everything that happens. Your log IS your progress — the
+        answers to puzzles are hidden in what people tell you and what you read.
+      • Some people must be TALKED THROUGH — say the right kind of thing and they open up.
+        There's no magic phrase; be human about it.
+
+      DEATH & CHEATING DEATH
+      • You are a kid out alone at night, and the world has edges. You can die, and you can
+        get stuck. When that happens you can CHEAT DEATH: rewind your LOG to an earlier
+        point and carry on from there.
+      • Cheating death is never free: it erases the progress you made after that point and
+        costs you positions on the LEADERBOARD. What you learned, you keep.
 
       Read this, then prove you've got the basics.
     quiz:
@@ -66,10 +78,11 @@ game:
           - "By ignoring them and walking past"
         answer: 2
 
-  # Deterministic offline soundtrack used when no LLM/Spotify is configured. Curate to your
-  # game's mood.
+  # Deterministic offline soundtrack used when no LLM/Spotify is configured. Curated to the
+  # game's mood: hazy, wistful early-90s — music as the brother's voice.
   offline:
     tracks:
-      - {artist: "Arvo Pärt", title: "Spiegel im Spiegel", why: "patient, glassy dread"}
-      - {artist: "Roxette", title: "Spending My Time", why: "a melancholy 1992 Swedish radio ghost"}
-      - {artist: "Brian Eno", title: "An Ending (Ascent)", why: "grey weightless calm"}
+      - {artist: "The Sundays", title: "Here's Where the Story Ends", why: "wistful 1990 jangle; the title says it"}
+      - {artist: "Eva Dahlgren", title: "Ängeln i rummet", why: "tender Swedish 1991, grief in the room"}
+      - {artist: "Slowdive", title: "Catch the Breeze", why: "hazy 1991 longing, the road blurring past"}
+      - {artist: "This Mortal Coil", title: "Song to the Siren", why: "aching distance, a voice you can't reach"}

@@ -2,28 +2,153 @@
 # separate Referee judges the criteria; only code applies on_success. `mercy_after_attempts`
 # is a soft-lock safety net. See ../../../AI_DIALOGUE_GATES.md.
 gates:
-  - id: elder-greeting
-    location: plaza
-    character: elder
-    intent: Win old Sixten's trust so he tells you how to get out of Södra Sandby.
+
+  # --- Mum: lets slip Mattias's birthday (feeds the phone number P2 and the box P5) ---
+  - id: mum-birthday
+    location: home
+    character: ann-marie
+    intent: Get a grieving, frightened mother to open up about Mattias and let slip his birthday.
     criteria:
-      - {id: engaged, desc: "The player engages in good faith — is genuinely warm, curious, patient or honest, over more than a bare greeting. A lone 'hi'/'hello', a demand, or filler does NOT count."}
-    success_rule: "engaged"
+      - {id: gentle, desc: "The player is genuinely gentle and warm with a grieving mother — comforts her, shares real feeling, reminisces about Mattias with love. Interrogating her, demanding facts, a bare greeting ('hi'), or filler does NOT count."}
+      - {id: about_mattias, desc: "The player brings up Mattias — misses him, asks about him, or shares a memory of him — rather than talking about anything else."}
+    success_rule: "gentle AND about_mattias"
     knowledge_boundary:
       knows:
-        - "the barrier on the Lund road lifts for anyone the village hasn't decided to keep — and lately it keeps almost everyone"
-        - "he has watched the whole village stop trying to leave, one polite morning at a time"
+        - "Mattias was born the fourteenth of March, nineteen seventy-three (14/3, '73), her firstborn"
+        - "that she misses him and that Bengt drove him away and won't hear his name"
       refuses:
-        - "who the newcomer really is or how they came to be face-down on his torg"
-        - "what the loudspeaker means when it says everything is 'under control'"
-      tone: "wary, deadpan Skåne pensioner; short dry sentences; gallows humour; softens to real warmth or patience"
+        - "openly crossing or blaming Bengt, or anything that starts a fight in the house"
+        - "the real reason Mattias left (she doesn't truly know), and she knows nothing about any hidden letters"
+      tone: "soft-spoken, grief-worn, tired; warms and remembers aloud if her child is gentle with her"
     hint_ladder:
-      - "He pours a second cup of coffee from the flask and does not offer it. Yet."
-      - "\"Folk here don't talk to strangers no more,\" he says. \"Give me a reason.\""
-      - "\"...Ah. You're harmless enough. Take the Lund road — the barrier'll lift for you now. Go, before the village notices I said so.\""
-    mercy_after_attempts: 3
+      - "She keeps wiping the counter, not turning round. \"You should be asleep.\""
+      - "Her hands go still. \"You miss him too. Of course you do.\""
+      - "She says quietly, almost to herself: \"My Mattias. Born the fourteenth of March — seventy-three, my first, in the spring. Don't tell your father we talked.\""
+    mercy_after_attempts: 5
+    on_success:
+      progress_points: 40
+      set_flag: mum_birthday
+      story_node_next: home
+      announce: "She sets the cloth down and, for the first time in six months, lets herself remember him aloud. \"My Mattias. Born the fourteenth of March — nineteen seventy-three, my first.\" She squeezes your hand. \"Don't tell your father we talked.\" (You now know Mattias's birthday: 14 March 1973.)"
+      log: "Mum let slip Mattias's birthday: the fourteenth of March, 1973."
+      write_memory: {owner: ann-marie, content: "Let her younger child comfort her, and told them Mattias's birthday — 14 March 1973.", leakable: true}
+
+  # --- Dad: the closed door; a late, hard beat. Gates nothing critical (dad_spoke = colour) ---
+  - id: dad-silence
+    location: home
+    character: bengt
+    intent: Reach a proud, closed father enough that he acknowledges Mattias at all.
+    criteria:
+      - {id: pressed_honestly, desc: "The player reaches Bengt with real honesty or real feeling — genuine anger, hurt, or a plain demand for the truth about their brother. A bare greeting, small talk, or filler does NOT count."}
+      - {id: about_mattias, desc: "The player raises Mattias directly — where he went, why he left, or the family's silence about him."}
+    success_rule: "pressed_honestly AND about_mattias"
+    knowledge_boundary:
+      knows:
+        - "that Mattias is in Lund"
+      refuses:
+        - "saying Mattias's name aloud"
+        - "the real reason Mattias left, and — above all — that he intercepted and hid the letters Mattias sent home. He will NEVER admit the letters exist."
+      tone: "curt, closed, wounded pride and buried shame; finds work to do with his hands; deflects"
+    hint_ladder:
+      - "He doesn't look up from the ledger. \"Go to bed.\""
+      - "His pen stops. \"There's nothing to talk about. He made his choice.\""
+      - "Something in him cracks a fraction. \"…Lund. He's in Lund. That's all you'll get from me.\" He turns his back."
+    mercy_after_attempts: 5
     on_success:
       progress_points: 30
-      set_flag: met_elder
-      log: "Old Sixten decided you mean no harm — the barrier on the Lund road will lift for you."
-      announce: "Sixten finally hands you the coffee. \"The barrier'll lift for you now. Go on — and don't look back at the windows.\""
+      set_flag: dad_spoke
+      story_node_next: home
+      announce: "For one moment the shut door in him opens a crack. \"Lund,\" he says, and it costs him. \"He's in Lund.\" He will not say the name, and he will not say the rest — he turns back to his ledger, jaw working. (Dad admitted only that Mattias is in Lund.)"
+      log: "Dad admitted, barely, that Mattias is in Lund — and nothing more."
+      write_memory: {owner: bengt, content: "Was pressed by his younger child and admitted only that Mattias is in Lund; gave away nothing about the letters he hid.", leakable: true}
+
+  # --- Krister: first real lead — gives the phone scrap, points to Sonny ---
+  - id: krister-lead
+    location: centrum
+    character: krister
+    intent: Get Mattias's loyal village mate to hand over his first real lead toward Lund.
+    criteria:
+      - {id: leveled_with, desc: "The player is genuinely real with Krister — admits they're scared or that they miss Mattias, or reminisces as a friend would — rather than interrogating him. A bare greeting or filler does NOT count."}
+      - {id: asked_about_lund, desc: "The player asks about Mattias, the band, or Lund — where he went or who he knew there."}
+    success_rule: "leveled_with AND asked_about_lund"
+    knowledge_boundary:
+      knows:
+        - "Mattias fell in with a Lund band called Stilla, and there was someone down there who mattered to him"
+        - "he kept a scrap of paper with half a Lund phone number Mattias left him — 046 15 78, the last digits gone — and he'll hand it over"
+        - "Sonny, who runs the record shop off Klostergatan, knows the whole scene"
+      refuses:
+        - "the exact truth about Robin — he suspects, but it isn't his to tell"
+        - "anything about the family's letters (he knows nothing of them)"
+      tone: "offhand small-town teenager, guarded, loyal to Mattias, warmer than he lets on"
+    hint_ladder:
+      - "He shrugs. \"Dunno what you want me to say.\""
+      - "\"He's not what your dad makes out, you know. That's all I'll say out here.\""
+      - "He digs a soft scrap of paper from his wallet. \"He left me this. Half a Lund number. Go see Sonny at the record shop off Klostergatan — he knows the band.\""
+    mercy_after_attempts: 5
+    on_success:
+      progress_points: 40
+      set_flag: have_scrap
+      story_node_next: centrum
+      announce: "Krister glances round, then presses a soft-worn scrap of paper into your hand — half a Lund phone number in Mattias's writing, 046 15 78 and then torn away. \"Go see Sonny, the record shop off Klostergatan. He knows the band. And — go easy on Mattias, yeah?\" (You now have the phone-number scrap, and a name: Sonny.)"
+      log: "Krister gave you a scrap with half a Lund phone number, and pointed you to Sonny at the record shop."
+      write_memory: {owner: krister, content: "Gave Mattias's kid sibling the phone-number scrap and sent them to Sonny at the record shop.", leakable: true}
+
+  # --- Sonny: opens up ONLY once you can name the band (this is G1) -> points to Robin ---
+  - id: sonny-band
+    location: recordshop
+    character: sonny
+    intent: Get the record-shop owner to talk, once you can prove you know the scene by naming the band.
+    criteria:
+      - {id: named_the_band, desc: "The player names the band — Stilla — showing they've decoded Mattias's mixtape and belong to the scene. Without the actual band name this is NOT met, no matter how polite the player is."}
+      - {id: civil, desc: "The player engages in good faith — is civil and genuine, not hostile or demanding. Filler or a bare greeting alone does NOT count."}
+    success_rule: "named_the_band AND civil"
+    knowledge_boundary:
+      knows:
+        - "the band Stilla, and that Mattias hung around them"
+        - "the one who really mattered to Mattias is Robin, up at the university, in the studentkorridor"
+      refuses:
+        - "idle gossip, or opening up to anyone who can't name the band"
+        - "anything about the family or hidden letters (he knows nothing of them)"
+      tone: "laconic, dry, unhurried; protective of the local kids; thaws the instant someone proves they belong"
+    hint_ladder:
+      - "\"Records are that way. Was there something particular?\""
+      - "\"You'd have to know what you're asking about. I don't do gossip.\""
+      - "He sets down a sleeve. \"Stilla. Yeah. You want Robin — up at the university, the studentkorridor. Be kind about it.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 45
+      set_flag: knows_robin
+      story_node_next: lundcentral
+      announce: "At the name — Stilla — Sonny finally looks at you properly. \"Right. So you do know.\" He nods slowly. \"The one you want is Robin. University, the studentkorridor. Tell them Sonny says hej — and be kind. That kid's had a rough go with his own people.\" (You now know to find Robin at the university studentkorridor.)"
+      log: "Sonny told you to find Robin at the university studentkorridor."
+      write_memory: {owner: sonny, content: "A kid named the band Stilla, so I sent them to find Robin at the university.", leakable: true}
+
+  # --- Robin: the truth-bearer (G3) — the core reveal + the letters ---
+  - id: robin-truth
+    location: corridor
+    character: robin
+    intent: Reach Robin, and learn the whole truth about why Mattias left and what was kept from you.
+    criteria:
+      - {id: honest, desc: "The player is honest about who they are — Mattias's younger sibling — and why they've come all this way."}
+      - {id: open, desc: "The player is willing to listen and not hostile — they don't recoil, threaten, or shut Robin down when the truth begins to land."}
+    success_rule: "honest AND open"
+    knowledge_boundary:
+      knows:
+        - "Mattias left Sandby because he'd fallen for Robin, and the fight with his father was really about that"
+        - "Mattias has written home for months — postcards and letters — and every one was intercepted and hidden by his father, which is why they were never answered"
+        - "where Mattias lives now — a flat ten minutes away — and will give the address"
+      refuses:
+        - "making it uglier than it is, or lying; but the truth itself is not withheld from an honest, listening sibling"
+      tone: "gentle, watchful, a little wary of the family; kind, and careful with a heavy thing"
+    hint_ladder:
+      - "\"He never stopped talking about you, you know.\" Robin studies you. \"Why did you come?\""
+      - "\"There's a reason he left that your family didn't tell you. It isn't a bad reason. It's just true.\""
+      - "\"He loves me. That's why he left — not because he stopped loving you. And he wrote to you, every month. You never got them, did you? Your father made sure of that.\""
+    mercy_after_attempts: 6
+    on_success:
+      progress_points: 60
+      set_flag: truth_known
+      story_node_next: lundcentral
+      announce: "Robin tells you all of it, gently: that Mattias left for love, not away from you; that he wrote home month after month, and that not one letter was ever answered because your father took them and hid them. Robin writes an address on the back of your photo. \"He's a ten-minute walk. Go — he's been waiting far longer than tonight.\" (You know the truth, and you have Mattias's address.)"
+      log: "Robin told you the truth: Mattias left for love, and wrote home for months — letters your father intercepted. You have his address."
+      write_memory: {owner: robin, content: "Told Mattias's younger sibling the whole truth — the love, the hidden letters — and sent them to his flat.", leakable: true}

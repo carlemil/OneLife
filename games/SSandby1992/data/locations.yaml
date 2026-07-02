@@ -1,11 +1,59 @@
-# Places within cells. Node `location:` fields reference these ids.
+# Places within cells. Node `location:` fields reference these ids. Ten locations along
+# the road: two in Sandby, two on the trail, six in Lund.
 locations:
-  - id: plaza
-    name: The Torg
-    description: >
-      Södra Sandby's little market square in the flat grey light of autumn 1992. An old
-      Falu-red hand-pump stands at the centre, a laminated notice zip-tied to it. The
-      Systembolaget and the Konsum are both shuttered. Past the war memorial the road out
-      toward Lund is closed by a striped barrier no one is manning, and every curtain on
-      the square is very carefully drawn.
-    cell: home
+
+  # --- Södra Sandby ---
+  - id: home
+    name: Home — Mattias's Room
+    cell: sandby
+    description: "A 1970s brick house on the edge of the village. Your brother's room has been left exactly as it was — a door nobody opens."
+    icon_description: "A modest 1970s Swedish yellow-brick single-storey family house with a low-pitched roof, a small front garden and one lit window."
+  - id: centrum
+    name: Sandby Centrum
+    cell: sandby
+    description: "The village centre: a kiosk, a bus shelter, a glass payphone, and the long summer light off the fields."
+    icon_description: "A small Swedish village square with a corner tobacco-and-sweets kiosk, a glass payphone booth and a bus shelter, low whitewashed houses behind."
+
+  # --- Hardebergaspåret (the old railway path) ---
+  - id: trailpath
+    name: The Hardebergaspåret
+    cell: trail
+    description: "The old railway between Sandby and Lund, torn up and laid as a cycle path — straight, flat and long, running west through the fields."
+    icon_description: "A long straight tree-lined gravel cycle path following an old railway embankment through flat farmland, a low signpost at a fork."
+  - id: marlpit
+    name: The Märgelgrav
+    cell: trail
+    description: "A flooded marl pit out in the fields off the path — still green water, steep clay sides, a place you and Mattias used to swim."
+    icon_description: "A small flooded marl-pit pond with steep clay banks and still green water, ringed by reeds and a leaning willow in open farmland."
+
+  # --- Lund ---
+  - id: lundedge
+    name: Östra Torn — The Edge of Lund
+    cell: lund
+    description: "Where the fields give out and the first tower blocks of Lund begin. The village is behind you now."
+    icon_description: "The edge of a town: the last field meeting the first pale 1960s concrete apartment blocks, a road running in between them."
+  - id: lundcentral
+    name: Central Lund
+    cell: lund
+    description: "The old town — cobbled lanes off Stortorget, the cathedral over the roofs, the students gone for the summer."
+    icon_description: "A cobbled old-town square in Lund with the twin grey towers of the Romanesque cathedral rising behind steep-roofed houses."
+  - id: recordshop
+    name: The Record Shop
+    cell: lund
+    description: "A cramped second-hand record shop off Klostergatan, crates of vinyl and a smell of dust and coffee."
+    icon_description: "A narrow second-hand record shop front off a cobbled lane, crates of vinyl in the window and a hand-painted sign above the door."
+  - id: cathedral
+    name: Lund Cathedral & Crypt
+    cell: lund
+    description: "The great Romanesque cathedral — above, the astronomical clock that plays twice a day; below, the crypt and the giant Finn's twisted pillar."
+    icon_description: "The twin-towered Romanesque Lund Cathedral with an inset astronomical clock on its front, and worn steps descending to a crypt below."
+  - id: corridor
+    name: The Studentkorridor
+    cell: lund
+    description: "A student corridor in the university halls — a shared kitchen, a payphone on the wall, a row of doors with names taped to them."
+    icon_description: "A long university student-corridor building with a row of identical doors and small windows, a payphone on the wall by the entrance."
+  - id: flat
+    name: Mattias's Flat
+    cell: lund
+    description: "A one-room flat up two flights, a guitar against the wall, the window open on the Lund rooftops."
+    icon_description: "A small top-floor flat window lit warm above a Lund street, an acoustic guitar silhouette against the light."

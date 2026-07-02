@@ -1,19 +1,103 @@
 # Puzzle nodes host a puzzle (`puzzle:` -> puzzles.yaml).
 nodes:
-  - id: well
+
+  # --- Home: the mixtape cipher (P1 -> band_known / G1) ---
+  - id: mixtape
     arc: main
     type: puzzle
-    location: plaza
-    puzzle: well-riddle
-    title: "The Village Pump"
-    media: {image_theme: old-red-hand-pump, music_theme: wary-quiet}
-    body: >
-      The old hand-pump is dry, its handle rusted upright, a laminated notice zip-tied above
-      it (something about water rationing, stamped and signed by no one). Around the base,
-      older than any of it, a rhyme is chiselled into the stone.
+    location: home
+    puzzle: mixtape-cipher
+    title: "The Mixtape"
+    media: {image_theme: cassette-inlay-card, music_theme: hidden-song}
+    body: "You slide the inlay card out. No band is named anywhere — just Mattias's block-capital track list running down the card. He always hid things in plain sight. There's a shape to it, if you read it right. (What's the band's name?)"
+    body_variants:
+      - when: {all: [{puzzle_solved: mixtape-cipher}]}
+        body: "You read the first letters straight down and the band's name jumps out of the track list like it was waiting there for you. Stilla. Now you have something to ask about in Lund."
     edges:
-      - id: e-well-square
-        to: square
-        label: Step back to the torg
+      - id: e-mixtape-solved
+        to: home
+        label: Pocket the tape — you have the band's name
+        conditions: {all: [{puzzle_solved: mixtape-cipher}]}
+        effects: {progress_points: 10, log: "You cracked the mixtape: the first letters of the tracks spell the band — Stilla."}
+      - id: e-mixtape-back
+        to: home
+        label: Set the tape down for now
         sort_order: 9
-        effects: {log: "You step back to the torg."}
+        effects: {log: "You set the mixtape aside."}
+
+  # --- Sandby Centrum: the phone number (P2 -> number_known / G2) ---
+  - id: phonescrap
+    arc: main
+    type: puzzle
+    location: centrum
+    puzzle: phone-number
+    title: "The Scrap of Paper"
+    media: {image_theme: torn-paper-phone-number, music_theme: small-town-evening}
+    body: "Under the streetlight you smooth out the scrap Krister gave you. A Lund number in Mattias's hand — 046, then 15 78 — and then the last two digits torn away, or worn away, or never written. The missing pair is something you already know, if you think about what's in your pocket and what Mum let slip. (Give the full number, or the two missing digits.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: phone-number}]}
+        body: "The missing digits click into place — the year he was born, seventy-three. 046 15 78 73. A Lund number, whole at last, ready to dial from the payphone."
+    edges:
+      - id: e-phone-solved
+        to: centrum
+        label: You've got the whole number
+        conditions: {all: [{puzzle_solved: phone-number}]}
+        effects: {progress_points: 15, log: "You completed the number: 046 15 78 73. Now to dial it from the payphone."}
+      - id: e-phone-back
+        to: centrum
+        label: Pocket the scrap for now
+        sort_order: 9
+        effects: {log: "You pocketed the scrap."}
+
+  # --- Lund Cathedral: the astronomical clock (P4, thematic centre; optional) ---
+  - id: cathedral
+    arc: main
+    type: puzzle
+    location: cathedral
+    puzzle: cathedral-clock
+    title: "The Clock & the Crypt"
+    media: {image_theme: astronomical-clock-cathedral, music_theme: cathedral-cold, real_place: "the medieval astronomical clock (Horologium mirabile) and the Romanesque crypt with the giant Finn's twisted pillar, Lund Cathedral, Sweden"}
+    body: "Inside, the great astronomical clock waits above the nave, its little figures frozen mid-procession. A card by the rope explains it plays only twice a day — the kings come out, the trumpets sound, In dulci jubilo — and below, worn steps drop into the crypt where the giant Finn is caught in stone forever trying to bring the whole church down. As a kid you were told the fairy tale. Down here it's just cold rock and a sad old story. Your contact will be here when the giants come out. (At what hour?)"
+    body_variants:
+      - when: {all: [{puzzle_solved: cathedral-clock}]}
+        body: "You settle on the hour — noon, when the kings process and the trumpets blow — and the answer sits right. The myth you were told as a child and the human truth underneath it are the same shape as everything this summer. Finn holds his pillar. The crypt keeps its cold. You know when to come back."
+    edges:
+      - id: e-cathedral-crypt
+        to: cathedral
+        label: Go down to the crypt and stand with Finn's pillar
+        conditions: {all: [{not: {flag_set: saw_finn}}]}
+        effects: {progress_points: 10, set_flag: saw_finn, log: "You stood in the crypt at the giant's twisted pillar — the fairy-tale giant who 'built' the cathedral, and the plain sad stone underneath the story."}
+      - id: e-cathedral-solved
+        to: lundcentral
+        label: You know the hour — head back down into Lund
+        conditions: {all: [{puzzle_solved: cathedral-clock}]}
+        effects: {progress_points: 10, log: "You worked out when the clock plays — noon — and when to catch your contact."}
+      - id: e-cathedral-back
+        to: lundcentral
+        label: Back out to the square
+        sort_order: 9
+        effects: {log: "You left the cathedral."}
+
+  # --- Home: the locked box in Dad's desk (P5 -> letters_read / G4) ---
+  - id: deskbox
+    arc: main
+    type: puzzle
+    location: home
+    puzzle: letters-box
+    title: "The Locked Box"
+    media: {image_theme: locked-tin-box-drawer, music_theme: cold-tension}
+    body: "In the bottom drawer of Dad's desk, under the ledgers, there's a small steel cash-box with a four-digit combination lock. It's the kind of thing you hide something in when you don't want it found. Dad would never pick an anniversary. But there's one date he'd never write down and never forget. (Four digits.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: letters-box}]}
+        body: "The little wheels line up on Mattias's birthday and the lock gives. The lid is loose in your hands now, whatever's inside it about to stop being a secret."
+    edges:
+      - id: e-deskbox-open
+        to: letters-reveal
+        label: Open the box
+        conditions: {all: [{puzzle_solved: letters-box}]}
+        effects: {progress_points: 20, log: "The combination — Mattias's birthday — opened the box."}
+      - id: e-deskbox-back
+        to: home
+        label: Ease the drawer shut for now
+        sort_order: 9
+        effects: {log: "You eased the desk drawer shut."}

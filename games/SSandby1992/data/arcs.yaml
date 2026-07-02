@@ -1,5 +1,5 @@
 # Narrative threads. `main` is the spine (is_spine: true).
 arcs:
   - id: main
-    title: Main
+    title: The Long Way to Lund
     is_spine: true

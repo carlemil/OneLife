@@ -1,13 +1,27 @@
-# Ending nodes resolve the spine. At least one is required.
+# Ending nodes resolve the spine. Three of them: the true reunion (needs the letters),
+# the partial reunion (you found him but never learned what Dad did), and turning back.
 nodes:
-  - id: gate-out
+
+  - id: ending-true
     arc: main
     type: ending
-    location: plaza
-    title: "The Lund Road"
-    media: {image_theme: lund-road-out-of-village-dawn, music_theme: release}
-    body: >
-      The barrier lifts with a tired mechanical sigh and you walk out along the Lund road,
-      grey fields on either side, the loudspeaker fading behind you insisting that everything
-      is under control. You do not look back at the windows. Whatever Södra Sandby is
-      becoming, it is becoming it without you — for now. The story rests here.
+    location: flat
+    title: "True Reunion"
+    media: {image_theme: brothers-reunited-warm, music_theme: release-warm}
+    body: "You tell him. About the corner of his room and the mixtape and the long road west; about Mum with her clean counter, and Dad — and the box in the desk, and the letters he wrote that never got past his own father. Mattias goes very still, and then he cries, the way you have never once seen a grown-up cry, because for six months he thought you all read his words and chose the silence. \"I never left you,\" he says. \"I want you to know I never left you.\" You know. You know all of it now — that the big brother in the photo was a real, frightened, hopeful person who fell in love and had to run for it; and that the father you trusted did a small, quiet, unforgivable thing to keep you from the truth. It isn't tidy. Robin puts the kettle on. But the silence is broken, and you brought the pieces of the family to the one place they could be put back together. You grew up this summer — by choosing him, and the truth, over the family's lie. ▒ End. ▒"
+
+  - id: ending-partial
+    arc: main
+    type: ending
+    location: flat
+    title: "Half-Strangers"
+    media: {image_theme: brothers-quiet-lamp, music_theme: bittersweet-quiet}
+    body: "You sit down across from him and it's real — he's here, he's your brother, he came to the door for you. He asks about home in a careful voice and you find you don't know what to tell him, because you never found the letters, and so you don't know what he doesn't know: that he wrote, and wrote, and no answer ever came because your father made sure of it. So the two of you talk around a shape neither of you can see the whole of, warm and awkward and hurting, and under it the old silence sits on unbroken. You found him. It's more than you had this morning. But you meet as half-strangers, and somewhere back in Sandby a steel box in a desk drawer still holds the part of the story that could have made you whole. ▒ End. ▒"
+
+  - id: ending-home
+    arc: main
+    type: ending
+    location: lundedge
+    title: "Home Again"
+    media: {image_theme: bus-window-rain, music_theme: unresolved-quiet}
+    body: "In the end you can't do it — can't cross the last streets, can't knock, can't find out. It's late and you're fifteen and Lund is very big, and the flat sentence the family taught you is easier to carry than whatever's behind that door. You turn around. The long way to Lund becomes the long way home, and the fields close over the city behind you. Maybe next summer. Maybe when you're braver. Mattias stays a photograph and a voice on a tape, an idol you never let become a person, and the truth stays buried where your father put it. You didn't grow up this summer. Not yet. ▒ End. ▒"

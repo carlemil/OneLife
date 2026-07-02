@@ -1,13 +1,64 @@
 # Puzzles. A puzzle node references one by id. `solution.kind` is `exact` (case-insensitive
-# single answer) or `set` (any of several accepted). The last hint is ~a giveaway.
+# single answer) or `set` (any of several accepted). The last hint is ~a giveaway. All four
+# are solved from knowledge already in the log — no items, pure 1992.
 puzzles:
-  - id: well-riddle
-    type: riddle
-    prompt: "Chiselled into the base of the dry pump, older than the notice above it: \"I have a mouth but never eat, a bed but never sleep, and I run without feet — and I left this town first of all. What am I?\""
-    solution: {kind: set, set: [river, a river, the river, kävlingeån, kavlingean]}
-    required_clues: [well-clue]
+
+  # P1 — the mixtape cipher: the track initials spell the band. -> band_known (G1)
+  - id: mixtape-cipher
+    type: cipher
+    prompt: "Mattias's mixtape names no band — only a track list. Read the first letter of each track, top to bottom. What is the band called?"
+    solution: {kind: set, set: [STILLA, stilla, Stilla]}
+    required_clues: [mixtape-tracklist]
     hint_ladder:
-      - "It moves, always, yet never leaves its bed."
-      - "It has banks, but the crisis of '92 never touched them."
-      - "It is a river. Answer: river."
-    on_solve: {progress_points: 30, set_flag: solved_well, log: "\"A river,\" you say — and under the cobbles you hear water move, the first thing to leave Södra Sandby in weeks."}
+      - "He hid the name in plain sight. Look at the letters, not the songs."
+      - "Take the first letter of every track and stack them up."
+      - "S-T-I-L-L-A. The band is Stilla."
+    on_solve:
+      progress_points: 35
+      set_flag: band_known
+      log: "The mixtape's track initials spell the band's name: STILLA."
+
+  # P2 — the phone number: the torn-off digits are Mattias's birth year. -> number_known (G2)
+  - id: phone-number
+    type: combination
+    prompt: "Krister's scrap reads 046 15 78 __ __ — the last two digits torn away. They're a number you already know. What completes the Lund number? (The two digits, or the whole number.)"
+    solution: {kind: set, set: ["73", "046 15 78 73", "0461578 73", "046157873", "0461 5 78 73", "15 78 73", "157873"]}
+    required_clues: [phone-scrap, mattias-birthyear]
+    hint_ladder:
+      - "The missing pair is a year — one Mum gave you about Mattias."
+      - "He was born in nineteen seventy-... three."
+      - "The last two digits are 73. The number is 046 15 78 73."
+    on_solve:
+      progress_points: 40
+      set_flag: number_known
+      log: "You completed the Lund phone number: 046 15 78 73."
+
+  # P4 — the cathedral clock: be there 'when the giants come out'. Thematic centre; optional.
+  - id: cathedral-clock
+    type: riddle
+    prompt: "The card by the astronomical clock says the figures process only twice a day; the crypt legend says to come 'when the giants come out.' At what hour does the clock play, to catch your contact?"
+    solution: {kind: set, set: [noon, "12", "12:00", "12.00", "1200", twelve, midday, "klockan 12", "kl 12", "kl. 12"]}
+    required_clues: [giants-noon]
+    hint_ladder:
+      - "It plays at midday and again in the afternoon — but the legend means the first, when the kings first come out."
+      - "The stroke of twelve, in the middle of the day."
+      - "Noon — 12:00."
+    on_solve:
+      progress_points: 25
+      set_flag: solved_clock
+      log: "You worked out when the clock plays: noon, 'when the giants come out.'"
+
+  # P5 — the locked box: combination is Mattias's birthday. -> letters_read (G4), the true end.
+  - id: letters-box
+    type: combination
+    prompt: "The steel box in Dad's desk has a four-digit lock. The one date he'd never write down and never forget. What are the four digits?"
+    solution: {kind: set, set: ["1403", "14 03", "14-03", "1403", "1473", "140373"]}
+    required_clues: [mattias-birthday]
+    hint_ladder:
+      - "Not an anniversary. A birthday — the one Mum let slip."
+      - "The fourteenth of March: day, then month."
+      - "1403. (14 March.)"
+    on_solve:
+      progress_points: 45
+      set_flag: letters_read
+      log: "The box opened on Mattias's birthday — 1403."

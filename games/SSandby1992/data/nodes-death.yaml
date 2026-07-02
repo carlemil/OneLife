@@ -1,16 +1,23 @@
 # Death nodes end the run; they need no edges (cheat-death/rollback is the escape) and
-# are exempt from the trap lint.
+# are exempt from the trap lint. Both here are recklessness deaths — gentle "the world
+# has edges" beats that suit a kid out alone at night. House style: restrained,
+# present-tense, 1992 Skåne, each closing with the ▒ You have died. ▒ mark.
 nodes:
-  - id: peril
+
+  - id: death-road
     arc: main
     type: death
-    location: plaza
-    title: "The Level Crossing"
+    location: trailpath
+    title: "Väg 11"
     is_death: true
-    media: {image_theme: level-crossing-night, music_theme: sudden-dread}
-    body: >
-      You duck under the barrier and onto the tracks, because the barrier is obviously
-      nonsense — there hasn't been a train through Södra Sandby since the branch line
-      closed. There is a train through Södra Sandby. It is very quiet, and very punctual,
-      and it is not the sort that stops. Your last thought is that at least the timetable
-      held. (Cheat death to rewind.)
+    media: {image_theme: dark-road-headlights, music_theme: sudden-dread}
+    body: "You push out across the main road without dropping your bike, cocky with distance still to cover. The tarmac is warm and the fields are loud with crickets and you don't hear the car until it is already the whole world — no time to be afraid, only surprised. The driver never saw a kid on an unlit bike on a summer night. The trail runs on to Lund without you. ▒ You have died. ▒"
+
+  - id: death-marlpit
+    arc: main
+    type: death
+    location: marlpit
+    title: "Colder Than It Looks"
+    is_death: true
+    media: {image_theme: dark-green-water, music_theme: still-water-dread}
+    body: "You swim out the way you always did, but you're alone this time and the water is deeper and far colder than a summer evening lets on. Ten metres out the cold closes a fist around your chest and the clay banks tilt away and there is no one on the path to hear. The märgelgrav keeps what it's given, the way it always has. ▒ You have died. ▒"
