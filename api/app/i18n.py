@@ -336,6 +336,19 @@ class Translator:
         return out
 
 
+async def tr_one(conn, game_id: str, lang: str, entity_type: str, entity_id: str,
+                 field_path: str, base):
+    """Single-leaf translation lookup with English fallback — for the write path, where a
+    log line is localized at the moment it's stored (one lookup, no bulk load)."""
+    if not lang or lang == "en" or not game_id:
+        return base
+    v = await conn.fetchval(
+        """SELECT text FROM content_translations WHERE game_id=$1 AND lang=$2
+           AND entity_type=$3 AND entity_id=$4 AND field_path=$5""",
+        game_id, lang, entity_type, entity_id, field_path)
+    return v if v is not None else base
+
+
 _EMPTY = Translator("en")
 
 

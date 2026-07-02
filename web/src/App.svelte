@@ -10,14 +10,18 @@
   import MapOverlay from './lib/MapOverlay.svelte';
   import AlignmentChart from './lib/AlignmentChart.svelte';
   import Crossword from './lib/Crossword.svelte';
-  import { UI } from './lib/strings.js';
+  import { uiFor } from './lib/strings.js';
 
   let phase = $state('loading');        // loading | auth | twofa | onboarding | lobby | game
   // lobby (game picker; independent save per game)
   let lobbyGames = $state([]);
   let lobbyActive = $state(null);
   let lobbyLanguages = $state(['en']);
-  let lang = $state('en');
+  // Play language: remembered client-side so even the pre-login chrome is localized;
+  // the server is the source of truth once the player logs in (loadLobby overwrites it).
+  let lang = $state(localStorage.getItem('onelife_lang') || 'en');
+  // UI chrome for the current language (English base, target-language overrides).
+  let UI = $derived(uiFor(lang));
   let activeGameTitle = $state('');
   let authMode = $state('login');       // login | register
   let busy = $state(false);
@@ -885,16 +889,16 @@
         </div>
       {/each}
       {#if quizMsg}<div class="error">{quizMsg}</div>{/if}
-      <button class="primary" onclick={submitQuiz} disabled={busy}>Begin</button>
+      <button class="primary" onclick={submitQuiz} disabled={busy}>{UI.onboarding.begin}</button>
     </div>
 
   {:else if phase === 'lobby'}
     <div class="topbar">
-      <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
+      <button class="link" title={UI.nav.logOut} onclick={confirmLogout}>🚪</button>
     </div>
     <div class="panel">
       <h2>{UI.lobby.chooseGame}</h2>
-      <p class="sub">Each world keeps its own progress — switch any time.</p>
+      <p class="sub">{UI.lobby.subtitle}</p>
       {#if lobbyLanguages.length > 1}
         <label class="langpick">🌐
           <select value={lang} onchange={(e) => chooseLanguage(e.currentTarget.value)}>
@@ -912,31 +916,31 @@
               <h3>{g.title}</h3>
               {#if g.subtitle}<p class="sub">{g.subtitle}</p>{/if}
               {#if g.started}
-                <p class="save">Continue — {g.node_title || 'in progress'} · {g.progress} pts{#if g.id === lobbyActive} · current{/if}</p>
+                <p class="save">{UI.lobby.continue} — {g.node_title || UI.lobby.inProgress} · {g.progress} pts{#if g.id === lobbyActive} · current{/if}</p>
               {:else}
-                <p class="save sub">Not started yet</p>
+                <p class="save sub">{UI.lobby.notStarted}</p>
               {/if}
             </div>
             <div class="gameactions">
               {#if g.started}
-                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>Continue</button>
-                <button onclick={() => pickGame(g.id, 'new')} disabled={busy}>Start over</button>
+                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>{UI.lobby.continue}</button>
+                <button onclick={() => pickGame(g.id, 'new')} disabled={busy}>{UI.lobby.startOver}</button>
               {:else}
-                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>New game</button>
+                <button class="primary" onclick={() => pickGame(g.id, 'continue')} disabled={busy}>{UI.lobby.newGame}</button>
               {/if}
             </div>
           </div>
         {/each}
-        {#if !lobbyGames.length}<p class="sub">No games are available right now.</p>{/if}
+        {#if !lobbyGames.length}<p class="sub">{UI.lobby.none}</p>{/if}
       </div>
     </div>
 
   {:else if phase === 'game' && game}
     <div class="topbar">
-      <button class="link" title="Switch game" onclick={toLobby}>🏠</button>
+      <button class="link" title={UI.nav.switchGame} onclick={toLobby}>🏠</button>
       <button class="link" title={UI.howToPlay} onclick={openHelp}>❓</button>
       {#if isAdmin}<button class="link" title={UI.admin} onclick={openAdmin}>⚙</button>{/if}
-      <button class="link" title="Log out" onclick={confirmLogout}>🚪</button>
+      <button class="link" title={UI.nav.logOut} onclick={confirmLogout}>🚪</button>
     </div>
     <div class="layout">
       <section class="story">

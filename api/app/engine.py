@@ -6,6 +6,7 @@ import re
 from collections import deque
 from .dsl import PlayerContext, evaluate
 from . import memory, gameconfig, crossword, i18n
+from .strings import t as tmpl
 
 
 def _name_tokens(full_name: str, particles: set) -> list[str]:
@@ -96,7 +97,7 @@ async def narrate(conn, log_id, game_id, *, node_id, story_time, summary, kind) 
 
 
 async def reveal_cells_around(conn, player_id, game_id, node_id, seq, log_id, story_time,
-                              *, neighbors: bool = True) -> None:
+                              *, neighbors: bool = True, lang: str = "en") -> None:
     """Fog-of-war: discover the cell `node_id` sits in. With `neighbors=True` (the
     default) also discover the orthogonally adjacent cells and narrate the newly
     revealed ones as one 'travel' beat ("the map opens"). With `neighbors=False`
@@ -127,10 +128,12 @@ async def reveal_cells_around(conn, player_id, game_id, node_id, seq, log_id, st
     fresh = [c for c in near if c["id"] not in have and c["id"] != cell["id"]]
     beat_seq = seq
     if fresh:
-        names = ", ".join(c["name"] for c in fresh)
+        names = ", ".join(
+            await i18n.tr_one(conn, game_id, lang, "world_cells", c["id"], "name", c["name"])
+            for c in fresh)
         beat_seq = await narrate(
             conn, log_id, game_id, node_id=node_id, story_time=story_time,
-            summary=f"New paths open on your map: {names}.", kind="travel")
+            summary=tmpl("paths_open", lang, names=names), kind="travel")
     for c in near:
         if c["id"] in have:
             continue
@@ -237,17 +240,18 @@ def alignment_short(ge: float, lc: float) -> str:
     return "TN" if g == "N" and l == "N" else f"{l}{g}"
 
 
-async def narrate_puzzle_prompt(conn, log_id, game_id, node, story_time):
+async def narrate_puzzle_prompt(conn, log_id, game_id, node, story_time, lang="en"):
     """Record a puzzle's prompt as a beat the first time the player reaches it, so
     the events flow shows what was actually asked — not just that a riddle happened.
     Deduped by the prompt text (re-entering the node won't repeat it); rolls back
-    with the rest since it's a seq-stamped beat."""
+    with the rest since it's a seq-stamped beat. `lang` localizes at write time."""
     if not node["puzzle_id"]:
         return
     prompt = await conn.fetchval("SELECT prompt FROM puzzles WHERE game_id=$1 AND id=$2",
                                  game_id, node["puzzle_id"])
     if not prompt:
         return
+    prompt = await i18n.tr_one(conn, game_id, lang, "puzzles", node["puzzle_id"], "prompt", prompt)
     exists = await conn.fetchval(
         """SELECT 1 FROM log_entries
            WHERE log_id=$1 AND node_id=$2 AND summary=$3 AND NOT rolled_back""",
@@ -257,10 +261,11 @@ async def narrate_puzzle_prompt(conn, log_id, game_id, node, story_time):
                       summary=prompt, kind="puzzle")
 
 
-async def discover_clues(conn, player_id, game_id, log_id, story_time, node_id=None):
+async def discover_clues(conn, player_id, game_id, log_id, story_time, node_id=None, lang="en"):
     """After a state change, discover any clues whose conditions now hold. Each
     newly found clue writes its own 'clue' beat into the narration flow, and the
-    clue is stamped with that beat's seq so the two roll back together."""
+    clue is stamped with that beat's seq so the two roll back together. `lang`
+    localizes the beat at write time (English base fallback)."""
     ctx = await load_context(conn, player_id, game_id, story_time)
     rows = await conn.fetch(
         "SELECT id, reveal_text, discover_conditions FROM puzzle_clues WHERE game_id=$1", game_id)
@@ -268,9 +273,11 @@ async def discover_clues(conn, player_id, game_id, log_id, story_time, node_id=N
         if r["id"] in ctx.found_clues:
             continue
         if evaluate(json.loads(r["discover_conditions"]), ctx):
+            text = await i18n.tr_one(conn, game_id, lang, "puzzle_clues", r["id"],
+                                     "reveal_text", r["reveal_text"])
             seq = await narrate(
                 conn, log_id, game_id, node_id=node_id, story_time=story_time,
-                summary=f"You notice: {r['reveal_text']}", kind="clue")
+                summary=tmpl("you_notice", lang, text=text), kind="clue")
             await conn.execute(
                 """INSERT INTO player_clues (player_id, game_id, clue_id, found_at_seq)
                    VALUES ($1,$2,$3,$4) ON CONFLICT DO NOTHING""",
@@ -642,15 +649,24 @@ async def traverse_edge(conn, sess, edge) -> int:
     (so the /api/edge handler can stamp an alignment event onto it). The caller
     must have already validated the edge is available and its conditions pass."""
     gid = sess["game_id"]
+    lang = sess.get("language", "en")
     effects = json.loads(edge["effects"])
     dest = await conn.fetchrow(
         "SELECT title, is_death, world_access FROM story_nodes WHERE game_id=$1 AND id=$2",
         gid, edge["to_node"])
     kind = "death" if (dest and dest["is_death"]) else "action"
+    # Localize the move's log line at write time (English base fallback).
+    if effects.get("log"):
+        loc = await i18n.tr_one(conn, gid, lang, "story_edges", edge["id"],
+                                "effects.log", effects["log"])
+        effects = {**effects, "log": loc}
     # Name the place when the edge has no authored line, so every move reads as a
     # beat in the flow rather than a blank step.
-    override = None if effects.get("log") else (
-        f"You go to {dest['title']}." if dest else None)
+    override = None
+    if not effects.get("log") and dest:
+        title = await i18n.tr_one(conn, gid, lang, "story_nodes", edge["to_node"],
+                                  "title", dest["title"])
+        override = tmpl("you_go_to", lang, title=title)
     seq, story_time = await apply_action(
         conn, sess["player_id"], gid, sess["log_id"], node_id=edge["to_node"],
         effects=effects, story_time=sess["story_time"], kind=kind,
@@ -665,14 +681,15 @@ async def traverse_edge(conn, sess, edge) -> int:
     # neighbours then (not pre-revealed at game start). Deduped, so revisiting is a no-op.
     if dest and dest["world_access"]:
         await reveal_cells_around(
-            conn, sess["player_id"], gid, sess["current_node"], seq, sess["log_id"], story_time)
+            conn, sess["player_id"], gid, sess["current_node"], seq, sess["log_id"],
+            story_time, lang=lang)
     # Arriving at a puzzle node records the riddle/prompt in the flow, so the
     # events list shows what was actually asked (deduped — see the helper).
     dest_node = await conn.fetchrow(
         "SELECT id, puzzle_id FROM story_nodes WHERE game_id=$1 AND id=$2", gid, sess["current_node"])
-    await narrate_puzzle_prompt(conn, sess["log_id"], gid, dest_node, story_time)
+    await narrate_puzzle_prompt(conn, sess["log_id"], gid, dest_node, story_time, lang=lang)
     await discover_clues(
-        conn, sess["player_id"], gid, sess["log_id"], story_time, sess["current_node"])
+        conn, sess["player_id"], gid, sess["log_id"], story_time, sess["current_node"], lang=lang)
     return seq
 
 

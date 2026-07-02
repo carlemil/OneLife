@@ -16,7 +16,7 @@ from pydantic import BaseModel
 
 from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations, i18n
 from .dsl import evaluate
-from .strings import M
+from .strings import M, t
 
 # Comma-separated list of allowed browser origins (localhost and the 127.0.0.1
 # loopback are different origins, so allow both for local dev).
@@ -276,7 +276,7 @@ async def _start_game(conn, sess: dict):
         pid, gid, entry["id"], log_id)
     sess["current_node"] = entry["id"]
     sess["log_id"] = log_id
-    await engine.discover_clues(conn, pid, gid, log_id, 0, entry["id"])
+    await engine.discover_clues(conn, pid, gid, log_id, 0, entry["id"], lang=sess.get("language", "en"))
     # Discover ONLY the start cell — neighbours stay hidden until the player reaches a
     # world-access node (engine.traverse_edge reveals them then, so "the map opens"
     # in play rather than at the very first instant).
@@ -1108,9 +1108,14 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
             if cur is None or not _adjacent(cur, dest):
                 raise HTTPException(400, M.TOO_FAR)
             arrival = dest["arrival_node"]
+            tname = await conn.fetchval(
+                """SELECT text FROM content_translations WHERE game_id=$1 AND lang=$2
+                   AND entity_type='world_cells' AND entity_id=$3 AND field_path='name'""",
+                gid, sess.get("language", "en"), dest["id"]) or dest["name"]
             seq, story_time = await engine.apply_action(
                 conn, sess["player_id"], gid, sess["log_id"], node_id=arrival,
-                effects={"progress_points": 5, "log": f"You traveled to {dest['name']}."},
+                effects={"progress_points": 5,
+                         "log": t("you_traveled", sess.get("language", "en"), name=tname)},
                 story_time=sess["story_time"], kind="action")
             await conn.execute(
                 """UPDATE player_games SET current_node=$1, story_time=$2, last_played_at=now()
@@ -1119,9 +1124,11 @@ async def travel(body: TravelBody, authorization: str | None = Header(default=No
             sess["current_node"] = arrival
             sess["story_time"] = story_time
             await engine.discover_clues(
-                conn, sess["player_id"], gid, sess["log_id"], story_time, arrival)
+                conn, sess["player_id"], gid, sess["log_id"], story_time, arrival,
+                lang=sess.get("language", "en"))
             await engine.reveal_cells_around(
-                conn, sess["player_id"], gid, arrival, seq, sess["log_id"], story_time)
+                conn, sess["player_id"], gid, arrival, seq, sess["log_id"], story_time,
+                lang=sess.get("language", "en"))
         return await engine.render_state(conn, sess["player_id"], sess)
 
 

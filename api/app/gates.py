@@ -13,7 +13,7 @@ Both paths share _turn_context (setup), _say, and _finalize (effect application)
 the load-bearing logic exists once.
 """
 import json
-from . import llm, memory, security
+from . import llm, memory, security, i18n
 from .engine import (apply_action, discover_clues, next_seq,
                      record_alignment, current_alignment, alignment_label)
 
@@ -122,6 +122,15 @@ async def _finalize(conn, player_id, session, ctx, met, satisfied, reply) -> dic
         player_id, gid, gate_id, json.dumps(met), ctx["attempts"], ctx["hint_level"])
 
     on_success = spec.get("on_success", {}) if satisfied else {}
+    # Localize the scripted success beats (the announce + log lines) at write time.
+    lang = session.get("language", "en")
+    if lang != "en" and on_success:
+        on_success = dict(on_success)
+        for fld in ("announce", "log"):
+            if on_success.get(fld):
+                on_success[fld] = await i18n.tr_one(
+                    conn, gid, lang, "dialogue_gates", gate_id, f"on_success.{fld}",
+                    on_success[fld])
     # Guaranteed name reveal, FIRST: some encounters must hand the player the NPC's
     # name the instant they get through (here it's the answer to a puzzle). It can't
     # be left to the Actor's phrasing or ordering — name_known is derived from what
@@ -160,7 +169,7 @@ async def _finalize(conn, player_id, session, ctx, met, satisfied, reply) -> dic
                WHERE player_id=$2 AND game_id=$3""",
             story_time, player_id, gid)
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
+        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"], lang=session.get("language", "en"))
 
         # Write the NPC's memory of this interaction — becomes leakable to others.
         wm = on_success.get("write_memory")

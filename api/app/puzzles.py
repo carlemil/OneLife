@@ -1,8 +1,8 @@
 """Puzzle submission handler (STORY_AND_PUZZLES.md §5). Validates the answer in
 code; the 'semantic' kind would reuse the gate referee (deferred for the slice)."""
 import json
-from . import llm, security, crossword
-from .strings import M
+from . import llm, security, crossword, i18n
+from .strings import M, t
 from .engine import (apply_action, discover_clues, load_context, narrate,
                      narrate_puzzle_prompt, next_seq)
 
@@ -106,13 +106,17 @@ async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict
     # not just the terse outcome line. The prompt is recorded once (deduped; also
     # shown on arrival at the node); every submitted answer is recorded. Both are
     # seq-stamped beats, so they roll back with the rest of the run.
-    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"])
+    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"], lang=session.get("language", "en"))
     await narrate(conn, session["log_id"], gid, node_id=node["id"],
                   story_time=session["story_time"],
-                  summary=f'You answer: "{answer.strip()}"', kind="puzzle")
+                  summary=t("you_answer", lang, answer=answer.strip()), kind="puzzle")
 
     if ok:
         on_solve = json.loads(pz["on_solve"])
+        # Localize the solve's log line at write time (English base fallback).
+        if lang != "en" and on_solve.get("log"):
+            on_solve = {**on_solve, "log": await i18n.tr_one(
+                conn, gid, lang, "puzzles", pz["id"], "on_solve.log", on_solve["log"])}
         seq, story_time = await apply_action(
             conn, player_id, gid, session["log_id"], node_id=node["id"],
             effects=on_solve, story_time=session["story_time"], kind="puzzle")
@@ -125,16 +129,8 @@ async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict
                WHERE player_id=$2 AND game_id=$3""",
             story_time, player_id, gid)
         session["story_time"] = story_time
-        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
-        msg = on_solve.get("log", "It opens.")
-        if lang and lang != "en":
-            t = await conn.fetchval(
-                """SELECT text FROM content_translations WHERE game_id=$1 AND lang=$2
-                   AND entity_type='puzzles' AND entity_id=$3 AND field_path='on_solve.log'""",
-                gid, lang, pz["id"])
-            if t:
-                msg = t
-        return {"solved": True, "message": msg}
+        await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"], lang=session.get("language", "en"))
+        return {"solved": True, "message": on_solve.get("log", "It opens.")}
 
     # No auto-hint: only count the attempt. Hints are revealed solely when the
     # player asks (request_hint), and only after they've tried at least once.
@@ -169,7 +165,7 @@ async def _submit_crossword(conn, player_id, gid, session, node, pz, pp,
 
     # Record the exchange in the flow (prompt once, deduped; the attempt always), so
     # it reads as a beat and rolls back with the run.
-    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"])
+    await narrate_puzzle_prompt(conn, session["log_id"], gid, node, session["story_time"], lang=session.get("language", "en"))
     await narrate(conn, session["log_id"], gid, node_id=node["id"],
                   story_time=session["story_time"],
                   summary=f'You try "{answer.strip().upper()}" for {eid}.', kind="puzzle")
@@ -215,7 +211,7 @@ async def _submit_crossword(conn, player_id, gid, session, node, pz, pp,
         """UPDATE player_games SET story_time=$1, last_played_at=now()
            WHERE player_id=$2 AND game_id=$3""", story_time, player_id, gid)
     session["story_time"] = story_time
-    await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"])
+    await discover_clues(conn, player_id, gid, session["log_id"], story_time, node["id"], lang=session.get("language", "en"))
     return {"solved": True, "entry": eid, "correct": True,
             "message": on_solve.get("log", "The grid is complete.")}
 

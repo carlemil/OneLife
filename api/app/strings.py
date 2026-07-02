@@ -57,3 +57,32 @@ class M:
     NO_DESTINATION = "There's no such place to travel to."
     DONT_KNOW_WAY = "You don't know the way there yet."
     TOO_FAR = "That's too far to travel in a single step."
+
+
+# Localizable player-facing engine templates (in-flow narration lines that wrap authored,
+# already-translated content). English is the base; t(key, lang) falls back to the English
+# template for any missing key/language. Used where the request language is available.
+_CATALOG = {
+    "en": {
+        "you_answer": 'You answer: "{answer}"',
+        "you_notice": "You notice: {text}",
+        "paths_open": "New paths open on your map: {names}.",
+        "you_go_to": "You go to {title}.",
+        "you_traveled": "You traveled to {name}.",
+    },
+    "sv": {
+        "you_answer": 'Du svarar: "{answer}"',
+        "you_notice": "Du lägger märke till: {text}",
+        "paths_open": "Nya vägar öppnas på din karta: {names}.",
+        "you_go_to": "Du går till {title}.",
+        "you_traveled": "Du reste till {name}.",
+    },
+}
+
+
+def t(key: str, lang: str = "en", **fmt) -> str:
+    """A localized engine template. Falls back to the English template (then the key)
+    when a language or key is missing."""
+    table = _CATALOG.get(lang) or _CATALOG.get((lang or "en").split("-")[0]) or {}
+    s = table.get(key) or _CATALOG["en"].get(key, key)
+    return s.format(**fmt) if fmt else s
