@@ -21,7 +21,7 @@ nodes:
   - id: ending-home
     arc: main
     type: ending
-    location: lundedge
+    location: home
     title: "Home Again"
     media: {image_theme: bus-window-rain, music_theme: unresolved-quiet}
     body: "In the end you can't do it — can't cross the last streets, can't knock, can't find out. It's late and you're fifteen and Lund is very big, and the flat sentence the family taught you is easier to carry than whatever's behind that door. You turn around. The long way to Lund becomes the long way home, and the fields close over the city behind you. Maybe next summer. Maybe when you're braver. Mattias stays a photograph and a voice on a tape, an idol you never let become a person, and the truth stays buried where your father put it. You didn't grow up this summer. Not yet. ▒ End. ▒"

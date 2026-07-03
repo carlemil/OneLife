@@ -4,6 +4,7 @@ nodes:
 
   # --- Södra Sandby ---
   - id: home
+    map: {x: 0.1736, y: 0.5329}
     arc: main
     type: location
     location: home
@@ -38,12 +39,14 @@ nodes:
         conditions: {all: [{flag_set: goal_set}]}
         effects: {log: "You started going through Dad's desk."}
       - id: e-home-centrum
+        road: [[0.2179, 0.5508], [0.2465, 0.5311]]
         to: centrum
         label: Head out into Sandby centrum
         conditions: {all: [{flag_set: goal_set}]}
         effects: {progress_points: 5, log: "You walked down to the village centre."}
 
   - id: centrum
+    map: {x: 0.2873, y: 0.5045}
     arc: main
     type: location
     location: centrum
@@ -74,11 +77,13 @@ nodes:
         conditions: {all: [{flag_set: number_known}, {not: {flag_set: called_robin}}]}
         effects: {progress_points: 20, set_flag: called_robin, log: "You dialled the Lund number from the payphone. A student corridor answered; you left word for Mattias's people, and a meeting was set."}
       - id: e-centrum-trail
+        road: [[0.3006, 0.5513], [0.3262, 0.5914]]
         to: trailpath
         label: Take the Hardebergaspåret west toward Lund
         conditions: {all: [{flag_set: goal_set}]}
         effects: {progress_points: 5, log: "You set off west along the old railway path."}
       - id: e-centrum-home
+        road: [[0.2465, 0.5311], [0.2179, 0.5508]]
         to: home
         label: Back to the house
         sort_order: 9
@@ -86,6 +91,7 @@ nodes:
 
   # --- Hardebergaspåret ---
   - id: trailpath
+    map: {x: 0.3727, y: 0.5871}
     arc: main
     type: location
     location: trailpath
@@ -100,6 +106,7 @@ nodes:
         sort_order: 7
         effects: {log: "You started across the main road in the dark."}
       - id: e-trail-marlpit
+        road: [[0.303, 0.6506], [0.2543, 0.6698]]
         to: marlpit
         label: Turn off down the track to the märgelgrav
         effects: {log: "You turned off toward the marl pit."}
@@ -108,12 +115,14 @@ nodes:
         label: Keep west, toward the lights of Lund
         effects: {progress_points: 10, log: "You rode on toward Lund."}
       - id: e-trail-back
+        road: [[0.3262, 0.5914], [0.3006, 0.5513]]
         to: centrum
         label: Turn back toward Sandby
         sort_order: 9
         effects: {log: "You turned back toward the village."}
 
   - id: marlpit
+    map: {x: 0.2191, y: 0.7342}
     arc: main
     type: location
     location: marlpit
@@ -133,6 +142,7 @@ nodes:
         conditions: {all: [{not: {flag_set: marlpit_memory}}]}
         effects: {progress_points: 10, set_flag: marlpit_memory, log: "You sat by the water and let yourself miss him properly for the first time — not the idol, the brother. Whatever's waiting in Lund, you're doing this because you love him."}
       - id: e-marlpit-back
+        road: [[0.2543, 0.6698], [0.303, 0.6506]]
         to: trailpath
         label: Back up to the path
         sort_order: 9
@@ -140,6 +150,7 @@ nodes:
 
   # --- Lund ---
   - id: lundcentral
+    map: {x: 0.7173, y: 0.5226}
     arc: main
     type: location
     location: lundcentral
@@ -151,6 +162,7 @@ nodes:
         body: "Lund, and everything different now that you know. The cathedral still stands over the roofs, the lanes still wind toward Stortorget — but Robin has told you the truth, and given you an address, and the only street that matters now is the one that leads to your brother's door."
     edges:
       - id: e-lund-record
+        road: [[0.7335, 0.5385], [0.7587, 0.5909]]
         to: recordshop
         label: Find the record shop off Klostergatan
         conditions: {all: [{flag_set: band_known}]}
@@ -160,27 +172,32 @@ nodes:
         label: Walk up to the cathedral
         effects: {progress_points: 5, log: "You went up to the cathedral."}
       - id: e-lund-corridor
+        road: [[0.6972, 0.425], [0.6861, 0.3637]]
         to: corridor
         label: Go out to the university studentkorridor
         conditions: {any: [{flag_set: called_robin}, {flag_set: knows_robin}]}
         effects: {progress_points: 5, log: "You went out to the student corridor."}
       - id: e-lund-flat
+        road: [[0.7405, 0.46], [0.7728, 0.4338]]
         to: flat
         label: Go to the address Robin gave you
         conditions: {all: [{flag_set: truth_known}]}
         effects: {progress_points: 20, log: "You went to find Mattias's flat."}
       - id: e-lund-turnback
+        road: [[0.7693, 0.5043], [0.8298, 0.5227]]
         to: ending-home
         label: Give up, and turn back for Sandby
         sort_order: 8
         effects: {log: "You turned your back on Lund."}
       - id: e-lund-back-trail
+        road: [[0.5895, 0.5346], [0.4706, 0.583]]
         to: trailpath
         label: Head back out along the path toward Sandby
         sort_order: 9
         effects: {log: "You started back along the path."}
 
   - id: flat
+    map: {x: 0.8209, y: 0.4374}
     arc: main
     type: location
     location: flat

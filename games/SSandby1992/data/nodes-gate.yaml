@@ -60,6 +60,7 @@ nodes:
 
   # --- Lund ---
   - id: recordshop
+    map: {x: 0.8073, y: 0.6232}
     arc: main
     type: gate
     location: recordshop
@@ -72,12 +73,14 @@ nodes:
         body: "Sonny's warmed to you now that you named Stilla — he's told you the one who mattered to Mattias is Robin, up at the university, in the studentkorridor. \"Tell him Sonny says hej,\" he adds, going back to his crates. \"And be kind about it. The kid's had a rough go with his family.\""
     edges:
       - id: e-record-back
+        road: [[0.7587, 0.5909], [0.7335, 0.5385]]
         to: lundcentral
         label: Back out into the lane
         sort_order: 9
         effects: {log: "You left the record shop."}
 
   - id: corridor
+    map: {x: 0.6618, y: 0.3174}
     arc: main
     type: gate
     location: corridor
@@ -90,6 +93,7 @@ nodes:
         body: "Robin has told you everything now — why Mattias really left, and the letters he wrote home that were never answered because your father hid them. It's a lot to hold in a summer-quiet corridor. Robin writes an address on the back of your photo. \"He's a ten-minute walk. Go. He's been waiting a lot longer than tonight.\""
     edges:
       - id: e-corridor-back
+        road: [[0.6861, 0.3637], [0.6972, 0.425]]
         to: lundcentral
         label: Step back out into the night
         sort_order: 9
