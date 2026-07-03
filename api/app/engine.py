@@ -677,12 +677,14 @@ async def traverse_edge(conn, sess, edge) -> int:
         edge["to_node"], story_time, sess["player_id"], gid)
     sess["current_node"] = edge["to_node"]
     sess["story_time"] = story_time
-    # Reaching a world-access node is the moment "the map opens" — reveal this cell's
-    # neighbours then (not pre-revealed at game start). Deduped, so revisiting is a no-op.
-    if dest and dest["world_access"]:
-        await reveal_cells_around(
-            conn, sess["player_id"], gid, sess["current_node"], seq, sess["log_id"],
-            story_time, lang=lang)
+    # Discover the cell you just walked into, so the overview map opens up as you go.
+    # Guided-road games (no world_access) move purely by story edges, so without this
+    # only the start cell is ever discovered and the map stays empty. A world-access
+    # node additionally reveals its neighbours — the "the map opens" beat for open
+    # travel (not pre-revealed at game start). Deduped, so revisiting is a no-op.
+    await reveal_cells_around(
+        conn, sess["player_id"], gid, sess["current_node"], seq, sess["log_id"],
+        story_time, neighbors=bool(dest and dest["world_access"]), lang=lang)
     # Arriving at a puzzle node records the riddle/prompt in the flow, so the
     # events list shows what was actually asked (deduped — see the helper).
     dest_node = await conn.fetchrow(
