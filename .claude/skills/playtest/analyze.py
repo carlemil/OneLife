@@ -59,6 +59,29 @@ def evaluate(cond, ctx) -> bool:
     return False   # unknown predicate -> fail closed, like the engine
 
 
+def reach_evaluate(cond, ctx) -> bool:
+    """Optimistic variant of `evaluate`, used ONLY by the monotonic reachability
+    walk. That walk grows one global `progress` set that never shrinks, so a
+    negated precondition like `{not: {flag_set: letters_read}}` would be pinned
+    false forever the instant the flag became obtainable anywhere - falsely
+    marking any node behind it (e.g. a "you didn't do the optional thing" ending)
+    as unreachable. Reachability only asks "could SOME play reach this node", so
+    here a `not` is treated as satisfiable: we assume the player can be in a state
+    where the inner condition is still false. Trade-off: like the seed-time lint's
+    optimism, this can under-report a genuinely dead node hidden behind a negation
+    that is in fact forced true on every path - the precise (node, progress)
+    soft-lock BFS below and a live playthrough remain the rigorous checks."""
+    if not cond:
+        return True
+    if "all" in cond:
+        return all(reach_evaluate(c, ctx) for c in cond["all"])
+    if "any" in cond:
+        return any(reach_evaluate(c, ctx) for c in cond["any"])
+    if "not" in cond:
+        return True   # optimistic: assume the negated precondition can be unmet
+    return evaluate(cond, ctx)   # positive predicates: optimistic vs. the max progress set
+
+
 # --------------------------------------------------------------------------- #
 #  Load + normalize content (mirrors app.content.load_dir / all_edges)
 # --------------------------------------------------------------------------- #
@@ -339,7 +362,7 @@ def main():
                             progress.add(tok); changed = True
                 ctx = ctx_from(progress, reached)
                 for e in out_edges.get(nid, []):
-                    if evaluate(e.get("conditions"), ctx):
+                    if reach_evaluate(e.get("conditions"), ctx):
                         f = (e.get("effects") or {}).get("set_flag")
                         if f and ("flag", f) not in progress:
                             progress.add(("flag", f)); changed = True
