@@ -79,7 +79,7 @@
   // Side-panel accordions: per-panel expanded/collapsed state, persisted.
   let panelOpen = $state(loadPanels());
   function loadPanels() {
-    const def = { atmosphere: true, alignment: true, leaderboard: true, notes: true, log: true };
+    const def = { map: true, atmosphere: true, alignment: true, leaderboard: true, notes: true, log: true };
     try { return { ...def, ...JSON.parse(localStorage.getItem('onelife_panels') || '{}') }; }
     catch { return def; }
   }
@@ -962,13 +962,6 @@
             {:else if atmo?.image_svg}
               <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
             {/if}
-            {#if gameMap && gameMap.nodes.length}
-              <button class="mapthumb" onclick={() => (showMap = true)} disabled={busy}
-                      aria-label="Open map" title="Open map">
-                <img src="/parchment-button.png" alt="" draggable="false" />
-                <span class="maptext">MAP</span>
-              </button>
-            {/if}
           </div>
           <h2>{game.node.title}</h2>
           {#each prose(game.node.body) as para}<p class="body">{para}</p>{/each}
@@ -1041,6 +1034,22 @@
       </section>
 
       <aside class="side">
+        {#if gameMap && gameMap.nodes.length}
+        <div class="panel" class:collapsed={!panelOpen.map}>
+          <h3 class="acc-head">
+            <button class="paneltoggle" aria-expanded={panelOpen.map} onclick={() => togglePanel('map')}>
+              <span class="chev">{panelOpen.map ? '▲' : '▼'}</span> {UI.panels.map}
+            </button>
+          </h3>
+          {#if panelOpen.map}
+          <button class="mapthumb" onclick={() => (showMap = true)} disabled={busy}
+                  aria-label="Open map" title="Open map">
+            <img src="/parchment-button.png" alt="" draggable="false" />
+            <span class="maptext">MAP</span>
+          </button>
+          {/if}
+        </div>
+        {/if}
         <div class="panel" class:collapsed={!panelOpen.atmosphere}>
           <h3 class="acc-head">
             <button class="paneltoggle" aria-expanded={panelOpen.atmosphere} onclick={() => togglePanel('atmosphere')}>
@@ -1335,6 +1344,8 @@
      sized to match the location banner's height. */
   .mapthumb { position:relative; flex:0 0 auto; width:186px; height:140px; padding:0; cursor:pointer;
     border:none; border-radius:8px; overflow:hidden; background:transparent; }
+  /* In the side panel the button fills the column width instead of a fixed thumbnail. */
+  .side .mapthumb { display:block; width:100%; height:auto; aspect-ratio:186 / 140; }
   /* Scale the parchment up so it fills the button: the source PNG has transparent
      margins around the art, which overflow:hidden then crops away. */
   .mapthumb img { display:block; width:100%; height:100%; object-fit:cover; transform:scale(1.12);

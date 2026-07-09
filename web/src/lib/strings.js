@@ -8,6 +8,7 @@ const CATALOG = {
     appTitle: 'OneLife',
     appTagline: '— prototype slice',
     panels: {
+      map: 'Map',
       atmosphere: 'Atmosphere',
       alignment: 'Alignment',
       leaderboard: 'Leaderboard',
@@ -47,6 +48,7 @@ const CATALOG = {
   sv: {
     appTagline: '— prototyp',
     panels: {
+      map: 'Karta',
       atmosphere: 'Atmosfär',
       alignment: 'Sinnelag',
       leaderboard: 'Topplista',
