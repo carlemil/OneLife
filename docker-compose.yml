@@ -44,8 +44,10 @@ services:
       # Optional: set to use the real Claude API for the dialogue gate (anthropic
       # provider). Leave empty to run the deterministic offline stub (no key required).
       ANTHROPIC_API_KEY: ${ANTHROPIC_API_KEY:-}
-      ACTOR_MODEL: claude-haiku-4-5
-      REFEREE_MODEL: claude-haiku-4-5
+      # Claude models for the anthropic provider. The Actor writes the in-character
+      # prose; the Referee returns a small typed verdict, so it can be cheaper.
+      ACTOR_MODEL: ${ACTOR_MODEL:-claude-haiku-4-5}
+      REFEREE_MODEL: ${REFEREE_MODEL:-claude-haiku-4-5}
       CONTENT_DIR: /content
       # Encrypts TOTP secrets at rest; set a strong value in production.
       ONELIFE_SECRET_KEY: ${ONELIFE_SECRET_KEY:-}

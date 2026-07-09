@@ -140,7 +140,10 @@ async def _run_text(req: dict) -> str:
     resp = await _client.messages.create(
         model=req["model"], max_tokens=req["max_tokens"],
         system=req["system"], messages=req["messages"])
-    return resp.content[0].text
+    # Never index content[0]: models with thinking on (Sonnet 5 and later think
+    # adaptively even when unasked) put a thinking block first, which would read
+    # back as an empty line of dialogue. Take the prose, wherever it sits.
+    return "".join(b.text for b in resp.content if b.type == "text")
 
 
 async def _run_json(req: dict) -> str:
