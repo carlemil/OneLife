@@ -10,10 +10,10 @@ nodes:
     location: home
     title: "Mattias's Room"
     media: {image_theme: brothers-bedroom-1992, music_theme: wistful-quiet}
-    body: "Your brother's room, held under six months of dust. Posters, a stack of paperbacks, the corner where his things are still piled. The house breathes around you: Mum somewhere in the kitchen, Dad shut in his study at the end of the hall. Whatever really happened, it started here."
+    body: "Your brother's room, held under six months of dust. Posters, a stack of paperbacks, the corner where his things are still piled. The house breathes around you: Mum somewhere in the kitchen, Dad in the living room with the television murmuring low. His study, down the hall, sits dark and empty. Whatever really happened, it started here."
     body_variants:
       - when: {all: [{flag_set: goal_set}]}
-        body: "Your brother's room. The mixtape and the Lund photo are in your pocket now, and the room feels different for it — less a shrine, more a first clue. Mum is in the kitchen; Dad's study door is shut at the end of the hall. The way out of the village — and the road to Lund — starts at the door."
+        body: "Your brother's room. The mixtape and the Lund photo are in your pocket now, and the room feels different for it — less a shrine, more a first clue. Mum is in the kitchen; Dad's parked in front of the television, his study dark down the hall. The way out of the village — and the road to Lund — starts at the door."
     edges:
       - id: e-home-clear
         to: discovery
@@ -31,8 +31,8 @@ nodes:
         effects: {log: "You went to find Mum."}
       - id: e-home-dad
         to: dad
-        label: Look in on Dad in his study
-        effects: {log: "You went to Dad's study."}
+        label: Look in on Dad in the living room
+        effects: {log: "You went to find Dad in the living room."}
       - id: e-home-desk
         to: deskbox
         label: Go through the drawers of Dad's desk

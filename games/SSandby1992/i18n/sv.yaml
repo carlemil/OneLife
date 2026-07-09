@@ -78,8 +78,8 @@ edges:
     label: Gå tillbaka ut i mörkret
   e-dad-back:
     effects:
-      log: Du gick ut från Pappas studierum.
-    label: Gå ut från studierum
+      log: Du lämnade Pappa framför teven.
+    label: Gå ut ur vardagsrummet
   e-deskbox-back:
     effects:
       log: Du skjöt skrivbordslådan försiktigt igen.
@@ -111,8 +111,8 @@ edges:
     label: Sök igenom Mattias gamla rum
   e-home-dad:
     effects:
-      log: Du gick till Pappas studierum.
-    label: Titta in på Pappa i hans studierum
+      log: Du gick för att hitta Pappa i vardagsrummet.
+    label: Titta in på Pappa i vardagsrummet
   e-home-desk:
     effects:
       log: Du började gå igenom Pappas skrivbord.
@@ -262,10 +262,10 @@ game:
 gates:
   dad-silence:
     hint_ladder:
-    - Han tittar inte upp från huvudboken. "Gå och lägg dig."
-    - Hans penna stannar. "Det finns inget att prata om. Han gjorde sitt val."
+    - Han tittar inte bort från skärmen. "Gå och lägg dig."
+    - Han skruvar ner ljudet ett snäpp till. "Det finns inget att prata om. Han gjorde sitt val."
     - Något i honom sprickor en bråkdel. "…Lund. Han är i Lund. Det är allt du får från mig." Han vänder
-      ryggen till.
+      sig tillbaka till teven.
     knowledge_boundary:
       knows:
       - att Mattias är i Lund
@@ -273,11 +273,11 @@ gates:
       - att säga Mattias namn högt
       - den verkliga anledningen till att Mattias lämnade, och — framför allt — att han fångade och dolde
         breven som Mattias skickade hem. Han kommer ALDRIG att erkänna att breven finns.
-      tone: lakonisk, stängd, sårad stolthet och begravad skam; hittar på arbete för sina händer; avleder
+      tone: lakonisk, stängd, sårad stolthet och begravad skam; håller blicken på teven; avleder
     on_success:
       announce: En kort stund öppnas den stängda dörren i honom en springa. "Lund," säger han, och det
         kostar honom. "Han är i Lund." Han säger inte namnet, och han säger inte resten — han vänder sig
-        tillbaka till sin huvudbok, käken arbetande. (Pappa erkände bara att Mattias är i Lund.)
+        tillbaka till teven, käken arbetande. (Pappa erkände bara att Mattias är i Lund.)
       log: Pappa erkände, knappast, att Mattias är i Lund — och ingenting mer.
       write_memory:
         content: Pressades av sitt yngre barn och erkände bara att Mattias är i Lund; avslöjade ingenting
@@ -457,15 +457,15 @@ nodes:
         har väntat mycket längre än i kväll."
     title: Robins dörr
   dad:
-    body: Pappa sitter vid sitt skrivbord med ryggen halvvänd mot dörren, en lampa, en huvudbok, en man
-      gjord av stängda dörrar. Han har inte sagt din brors namn på sex månader. Han säger det inte nu.
-      "Du borde vara i sängen," är allt han erbjuder. (Nå honom — om du kan.)
+    body: Pappa sitter i soffan i teverutans blå flimmer, ljudet nedskruvat, en man gjord av stängda
+      dörrar. Han vänder inte på huvudet. Han har inte sagt din brors namn på sex månader. Han säger
+      det inte nu. "Du borde vara i sängen," är allt han erbjuder, med blicken på skärmen. (Nå honom — om du kan.)
     body_variants:
-    - body: Pappa sitter med händerna platta på skrivbordet, ordet han slutligen gav dig — "Lund" — hänger
+    - body: Pappa sitter med händerna platta mot knäna, ordet han slutligen gav dig — "Lund" — hänger
         fortfarande mellan er som något som tappats och inte plockas upp. Han säger inte namnet. Han säger
-        inte resten. Han har vänt tillbaka till sin huvudbok, men hans käke arbetar. Vad han än bär på,
+        inte resten. Han har vänt tillbaka till teven, men hans käke arbetar. Vad han än bär på,
         han lägger det inte ner i kväll.
-    title: Pappas arbetsrum
+    title: Pappa framför teven
   death-marlpit:
     body: Du simmar ut på samma sätt som alltid, men den här gången är du ensam och vattnet är djupare
       och mycket kallare än en sommarkväll säger. Tio meter ut sluter kylan en näve om ditt bröst och
@@ -479,10 +479,10 @@ nodes:
       Vägen fortsätter till Lund utan dig. ▒ Du är död. ▒
     title: Väg 11
   deskbox:
-    body: I den nedersta lådan på Pappas skrivbord, under huvudböckerna, finns en liten stålkassa med
-      ett fyrsiffrigt kombinationslås. Det här är det slag av sak man döljer när man inte vill att den
-      ska hittas. Pappa skulle aldrig välja ett årtal. Men det finns ett datum han aldrig skulle skriva
-      ner och aldrig glömma. (Fyra siffror.)
+    body: Arbetsrummet är mörkt; nere i hallen mullrar teven på och Pappa med den. I den nedersta lådan
+      på hans skrivbord, under huvudböckerna, finns en liten stålkassa med ett fyrsiffrigt kombinationslås.
+      Det här är det slag av sak man döljer när man inte vill att den ska hittas. Pappa skulle aldrig välja
+      ett årtal. Men det finns ett datum han aldrig skulle skriva ner och aldrig glömma. (Fyra siffror.)
     body_variants:
     - body: De små hjulen ställs in på Mattias födelsedag och låset ger vika. Locket sitter löst i dina
         händer nu, vad som än ligger där inne är på väg att sluta vara en hemlighet.
@@ -536,11 +536,12 @@ nodes:
   home:
     body: 'Din brors rum, begravet under sex månaders damm. Affischer, en bunt pocketböcker, hörnet där
       hans saker fortfarande ligger staplade. Huset andas omkring dig: mamma någonstans i köket, pappa
-      instängd på sitt arbetsrum längst ner i hallen. Vad som än verkligen hände, det började här.'
+      i vardagsrummet med teven mumlande lågt. Hans arbetsrum, längst ner i hallen, ligger mörkt och tomt.
+      Vad som än verkligen hände, det började här.'
     body_variants:
     - body: Din brors rum. Kassetten och Lund-fotot ligger i din ficka nu, och rummet känns annorlunda
-        för det — mindre ett helgon, mer en första ledtråd. Mamma är i köket; pappas arbetsrumsdörr är
-        stängd längst ner i hallen. Vägen ut ur byn — och vägen till Lund — börjar vid dörren.
+        för det — mindre ett helgon, mer en första ledtråd. Mamma är i köket; pappa sitter framför teven,
+        hans arbetsrum mörkt längst ner i hallen. Vägen ut ur byn — och vägen till Lund — börjar vid dörren.
     title: Mattias rum
   krister:
     body: Krister tittar upp, lite försiktig — Mattias lillasyster eller lillebror, ute här och ställer

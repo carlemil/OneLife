@@ -26,18 +26,18 @@ nodes:
     type: gate
     location: home
     gate: dad-silence
-    title: "Dad's Study"
-    media: {image_theme: closed-study-lamp, music_theme: cold-tension}
-    body: "Dad's at his desk with his back half to the door, a lamp, a ledger, a man made of shut doors. He hasn't said your brother's name in six months. He doesn't say it now. \"You should be in bed,\" is all he offers. (Reach him — if you can.)"
+    title: "Dad at the Television"
+    media: {image_theme: living-room-tv-glow-1992, music_theme: cold-tension}
+    body: "Dad's on the sofa in the blue flicker of the television, sound turned low, a man made of shut doors. He doesn't turn his head. He hasn't said your brother's name in six months. He doesn't say it now. \"You should be in bed,\" is all he offers, eyes on the screen. (Reach him — if you can.)"
     body_variants:
       - when: {all: [{gate_passed: dad-silence}]}
-        body: "Dad sits with his hands flat on the desk, the word he finally gave you — \"Lund\" — still hanging between you like something dropped and not picked up. He won't say the name. He won't say the rest. He's turned back to his ledger, but his jaw is working. Whatever he's carrying, he's not putting it down tonight."
+        body: "Dad sits with his hands flat on his knees, the word he finally gave you — \"Lund\" — still hanging between you like something dropped and not picked up. He won't say the name. He won't say the rest. He's turned back to the television, but his jaw is working. Whatever he's carrying, he's not putting it down tonight."
     edges:
       - id: e-dad-back
         to: home
-        label: Step back out of the study
+        label: Step back out of the living room
         sort_order: 9
-        effects: {log: "You stepped out of Dad's study."}
+        effects: {log: "You left Dad in front of the television."}
 
   # --- Sandby Centrum ---
   - id: krister

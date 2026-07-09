@@ -1,6 +1,9 @@
 services:
   db:
     image: pgvector/pgvector:pg16
+    # Auto-restart when the Docker engine starts (e.g. after a Windows reboot) and
+    # after a crash, but NOT after a manual `docker compose down`.
+    restart: unless-stopped
     environment:
       POSTGRES_USER: onelife
       POSTGRES_PASSWORD: onelife
@@ -20,6 +23,7 @@ services:
 
   api:
     build: ./api
+    restart: unless-stopped
     environment:
       DATABASE_URL: postgresql://onelife:onelife@db:5432/onelife
       # Game data lives in-repo under games/<Game>/data, mounted at /content. The
@@ -90,6 +94,7 @@ services:
 
   web:
     build: ./web
+    restart: unless-stopped
     environment:
       # Local dev: the browser talks to the API directly on localhost:8000.
       # The production overlay (docker-compose.prod.yml) overrides this to "" so the

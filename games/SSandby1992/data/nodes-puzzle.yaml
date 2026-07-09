@@ -86,7 +86,7 @@ nodes:
     puzzle: letters-box
     title: "The Locked Box"
     media: {image_theme: locked-tin-box-drawer, music_theme: cold-tension}
-    body: "In the bottom drawer of Dad's desk, under the ledgers, there's a small steel cash-box with a four-digit combination lock. It's the kind of thing you hide something in when you don't want it found. Dad would never pick an anniversary. But there's one date he'd never write down and never forget. (Four digits.)"
+    body: "The study is dark; down the hall the television drones on and Dad with it. In the bottom drawer of his desk, under the ledgers, there's a small steel cash-box with a four-digit combination lock. It's the kind of thing you hide something in when you don't want it found. Dad would never pick an anniversary. But there's one date he'd never write down and never forget. (Four digits.)"
     body_variants:
       - when: {all: [{puzzle_solved: letters-box}]}
         body: "The little wheels line up on Mattias's birthday and the lock gives. The lid is loose in your hands now, whatever's inside it about to stop being a secret."

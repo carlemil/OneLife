@@ -48,17 +48,17 @@ gates:
       refuses:
         - "saying Mattias's name aloud"
         - "the real reason Mattias left, and — above all — that he intercepted and hid the letters Mattias sent home. He will NEVER admit the letters exist."
-      tone: "curt, closed, wounded pride and buried shame; finds work to do with his hands; deflects"
+      tone: "curt, closed, wounded pride and buried shame; keeps his eyes on the television; deflects"
     hint_ladder:
-      - "He doesn't look up from the ledger. \"Go to bed.\""
-      - "His pen stops. \"There's nothing to talk about. He made his choice.\""
-      - "Something in him cracks a fraction. \"…Lund. He's in Lund. That's all you'll get from me.\" He turns his back."
+      - "He doesn't look away from the screen. \"Go to bed.\""
+      - "He turns the sound down another notch. \"There's nothing to talk about. He made his choice.\""
+      - "Something in him cracks a fraction. \"…Lund. He's in Lund. That's all you'll get from me.\" He turns back to the television."
     mercy_after_attempts: 5
     on_success:
       progress_points: 30
       set_flag: dad_spoke
       story_node_next: home
-      announce: "For one moment the shut door in him opens a crack. \"Lund,\" he says, and it costs him. \"He's in Lund.\" He will not say the name, and he will not say the rest — he turns back to his ledger, jaw working. (Dad admitted only that Mattias is in Lund.)"
+      announce: "For one moment the shut door in him opens a crack. \"Lund,\" he says, and it costs him. \"He's in Lund.\" He will not say the name, and he will not say the rest — he turns back to the television, jaw working. (Dad admitted only that Mattias is in Lund.)"
       log: "Dad admitted, barely, that Mattias is in Lund — and nothing more."
       write_memory: {owner: bengt, content: "Was pressed by his younger child and admitted only that Mattias is in Lund; gave away nothing about the letters he hid.", leakable: true}
 
