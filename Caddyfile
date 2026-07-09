@@ -5,6 +5,16 @@
 #   docker-compose.prod.yml -> SITE_ADDRESS="<domain>"       (auto Let's Encrypt HTTPS)
 # With a domain, Caddy auto-provisions/renews the cert via ACME (needs ports 80/443
 # reachable and the domain resolving here) and adds the HTTP->HTTPS redirect + HSTS.
+{
+	servers {
+		# The Mac mini owns the router's 80/443 and terminates TLS for the public
+		# domain, then proxies here. Naming it trusted lets Caddy read the real client
+		# address out of its X-Forwarded-For (and honour its X-Forwarded-Proto: https)
+		# instead of seeing every visitor as the Mac. Nothing else is trusted, so a
+		# direct client still cannot forge either header.
+		trusted_proxies static 192.168.1.191/32
+	}
+}
 
 {$SITE_ADDRESS} {
 	encode gzip
@@ -12,10 +22,13 @@
 	# API: keep the /api prefix intact (FastAPI routes are already /api/...).
 	handle /api/* {
 		reverse_proxy api:8000 {
-			# Overwrite (not append) X-Forwarded-For with the address Caddy actually
-			# observed, so a client cannot forge it to dodge the per-IP rate limiter.
+			# Overwrite (not append) X-Forwarded-For with the client address Caddy
+			# resolves, so a client cannot forge it to dodge the per-IP rate limiter.
+			# client_ip is the real visitor: the peer address, except behind a
+			# trusted_proxies hop, where it is read from that hop's X-Forwarded-For.
+			# Using remote_host here would key every visitor to the Mac's address.
 			# The API trusts this header only from Caddy (TRUSTED_PROXY_CIDRS).
-			header_up X-Forwarded-For {remote_host}
+			header_up X-Forwarded-For {http.request.client_ip}
 		}
 	}
 

@@ -3,8 +3,9 @@
 #   docker compose -f docker-compose.yml -f docker-compose.prod.yml up -d --build
 #
 # Requires DOMAIN (and the hardening secrets) set in .env. See PLAN / README.
-# The base file already binds db/api/web to 127.0.0.1, so the only ports reaching
-# the network are Caddy's 80/443 — forward exactly those two on the router.
+# The base file already binds db/api/web to 127.0.0.1, so the only port reaching the
+# network is Caddy's 8082. The router forwards 80/443 to the Mac mini, which terminates
+# TLS for ${DOMAIN} and proxies here; forward nothing to this host.
 services:
   api:
     environment:
@@ -34,10 +35,12 @@ services:
       - api
       - web
     environment:
-      SITE_ADDRESS: ${DOMAIN}   # a bare domain -> Caddy serves HTTPS with an auto cert
+      # A port-only address -> plain HTTP, no ACME. TLS for ${DOMAIN} is terminated by
+      # the Caddy on the Mac mini (192.168.1.191), which owns the router's 80/443 and
+      # reverse-proxies this host on 8082. See Caddyfile's trusted_proxies block.
+      SITE_ADDRESS: ":8082"
     ports:
-      - "80:80"
-      - "443:443"
+      - "8082:8082"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data       # persists issued certificates across restarts
