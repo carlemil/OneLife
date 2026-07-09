@@ -13,6 +13,11 @@ services:
       # match the browser origin exactly.
       WEB_ORIGIN: https://${DOMAIN}
       SPOTIFY_REDIRECT_URI: https://${DOMAIN}/
+      # Caddy is the only thing that reaches the api container from the network, so
+      # its X-Forwarded-For is the one we trust to key rate limits per client. This
+      # is Docker's default address pool, where the compose bridge lives. Leave it
+      # unset anywhere Caddy isn't in front: then XFF is ignored and cannot be spoofed.
+      TRUSTED_PROXY_CIDRS: 172.16.0.0/12
 
   web:
     environment:

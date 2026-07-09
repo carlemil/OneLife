@@ -8,6 +8,7 @@ import time
 import json
 import base64
 import hashlib
+import ipaddress
 
 from cryptography.fernet import Fernet
 
@@ -44,6 +45,50 @@ def unsign(token: str, max_age: int = 3600) -> dict:
     except Exception as e:  # noqa: BLE001
         raise ValueError("invalid or expired token") from e
     return json.loads(raw)
+
+
+# --------------------------------------------------------------------------- #
+#  Client IP behind a reverse proxy
+# --------------------------------------------------------------------------- #
+# Behind Caddy every request's socket peer is Caddy itself, so an IP-keyed rate
+# limit would degenerate into one bucket shared by the whole internet. To recover
+# the real client we must read X-Forwarded-For — but only when the peer is a proxy
+# we actually run, otherwise anyone could spoof the header and evade the limiter.
+# TRUSTED_PROXY_CIDRS is empty by default: no proxy, no XFF, no spoofing.
+_TRUSTED_PROXIES = [
+    ipaddress.ip_network(c.strip(), strict=False)
+    for c in os.environ.get("TRUSTED_PROXY_CIDRS", "").split(",") if c.strip()
+]
+
+
+def _trusted_proxy(ip: str) -> bool:
+    try:
+        return any(ipaddress.ip_address(ip) in net for net in _TRUSTED_PROXIES)
+    except ValueError:
+        return False
+
+
+def client_ip(peer: str | None, forwarded_for: str | None) -> str:
+    """The real client address, or `peer` when we can't trust the header.
+
+    X-Forwarded-For is `client, proxy1, proxy2` — appended left-to-right, so only
+    the rightmost entries are written by infrastructure we control. We walk from
+    the right, skip our own proxies, and take the first hop that isn't one: that
+    is the furthest address our own proxies actually observed. Everything left of
+    it was supplied by the client and is forgeable.
+    """
+    peer = peer or "unknown"
+    if not _TRUSTED_PROXIES or not forwarded_for or not _trusted_proxy(peer):
+        return peer
+    for hop in reversed([h.strip() for h in forwarded_for.split(",") if h.strip()]):
+        if _trusted_proxy(hop):
+            continue
+        try:
+            ipaddress.ip_address(hop)
+        except ValueError:
+            return peer  # garbage in the header — fall back to the socket peer
+        return hop
+    return peer
 
 
 # --------------------------------------------------------------------------- #

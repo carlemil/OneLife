@@ -72,7 +72,10 @@ async def _security_headers(request: Request, call_next):
 
 
 def _client_ip(request: Request) -> str:
-    return request.client.host if request and request.client else "unknown"
+    if not request or not request.client:
+        return "unknown"
+    return security.client_ip(request.client.host,
+                              request.headers.get("x-forwarded-for"))
 
 
 @app.on_event("startup")
@@ -199,7 +202,7 @@ async def _session(authorization: str | None):
         row = await conn.fetchrow(
             """SELECT s.token, s.player_id, p.active_game_id AS game_id,
                       pg.current_node, COALESCE(pg.story_time, 0) AS story_time, pg.log_id,
-                      p.display_name, p.onboarded, p.email,
+                      p.display_name, p.onboarded, p.email, p.totp_enabled,
                       COALESCE(pg.language, p.language, 'en') AS language
                FROM player_sessions s
                JOIN players p ON p.id = s.player_id
@@ -236,6 +239,11 @@ def _game_name() -> str:
 def _require_admin(sess: dict):
     if not _is_admin(sess):
         raise HTTPException(403, M.ADMIN_ONLY)
+    # Admin can export the whole database — password hashes, encrypted TOTP secrets
+    # and recovery codes included — so a guessed password must never be enough.
+    # Enrol with `python -m app.enroll_2fa <email> --begin|--confirm <code>`.
+    if not sess.get("totp_enabled"):
+        raise HTTPException(403, M.ADMIN_NEEDS_2FA)
 
 
 async def _start_game(conn, sess: dict):
@@ -405,6 +413,12 @@ async def register(body: RegisterBody, request: Request):
     # handle the player logs in with.
     login_name = body.email.strip() or name
     email = login_name.lower()
+    # The login handle is self-chosen and never verified, and admin rights are keyed
+    # off it — so an allowlisted handle that nobody has claimed yet is a free admin
+    # account for whoever registers it first. Admin accounts are provisioned by the
+    # operator (see `python -m app.enroll_2fa`), never through self-service signup.
+    if email in ADMIN_EMAILS:
+        raise HTTPException(409, M.EMAIL_TAKEN)
     want_2fa = bool(body.two_factor)
     secret = auth.new_totp_secret() if want_2fa else None
     enc_secret = security.encrypt(secret) if want_2fa else None
@@ -1206,7 +1220,13 @@ async def _admin_session(authorization):
 
 @app.get("/api/admin/me")
 async def admin_me(authorization: str | None = Header(default=None)):
-    return {"is_admin": _is_admin(await _session(authorization)), "game": _game_name()}
+    sess = await _session(authorization)
+    allowlisted = _is_admin(sess)
+    # `is_admin` mirrors what the admin routes actually allow, so the ⚙ panel never
+    # shows up only to 403 on every call. `needs_2fa` explains a withheld panel.
+    return {"is_admin": allowlisted and bool(sess.get("totp_enabled")),
+            "needs_2fa": allowlisted and not sess.get("totp_enabled"),
+            "game": _game_name()}
 
 
 # ---------- Admin: switch the active game (re-seed from another games/<G>/data) ----------

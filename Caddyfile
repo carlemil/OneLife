@@ -11,7 +11,12 @@
 
 	# API: keep the /api prefix intact (FastAPI routes are already /api/...).
 	handle /api/* {
-		reverse_proxy api:8000
+		reverse_proxy api:8000 {
+			# Overwrite (not append) X-Forwarded-For with the address Caddy actually
+			# observed, so a client cannot forge it to dodge the per-IP rate limiter.
+			# The API trusts this header only from Caddy (TRUSTED_PROXY_CIDRS).
+			header_up X-Forwarded-For {remote_host}
+		}
 	}
 
 	# Content assets (map background, icons, banners) are served by the API from the

@@ -16,6 +16,8 @@ class M:
     ONBOARD_FIRST = "Please finish onboarding before you start playing."
     PICK_GAME = "Pick a game from the lobby first."
     ADMIN_ONLY = "This area is for administrators only."
+    ADMIN_NEEDS_2FA = ("Admin access requires two-factor authentication. "
+                       "Enrol this account, then sign in again.")
     NO_ENTRY_NODE = "This game has no entry node."
 
     # --- register ---
