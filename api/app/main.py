@@ -426,40 +426,26 @@ async def register(body: RegisterBody, request: Request):
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         async with conn.transaction():
-            existing = await conn.fetchrow(
-                """SELECT id, totp_secret, totp_enabled FROM players WHERE email=$1""",
-                email)
-            # An account is only reclaimable if it's a half-finished 2FA setup —
-            # a secret was issued but never confirmed, so it can never be logged
-            # into. (A password-only account has no secret; a finished account is
-            # totp_enabled.) Re-registering that dead account heals it instead of
-            # leaving the user stuck between a 409 and a 403.
-            reclaimable = existing is not None \
-                and existing["totp_secret"] is not None and not existing["totp_enabled"]
-            if existing is not None and not reclaimable:
+            # A taken handle is always taken. (There used to be a "reclaim" path for
+            # accounts stuck with an unconfirmed 2FA secret — re-registering reset
+            # their password. Those accounts can now log in with their password alone,
+            # so that path would be an account-takeover hole, and the dead-end it
+            # healed no longer exists.)
+            if await conn.fetchval("SELECT 1 FROM players WHERE email=$1", email):
                 raise HTTPException(409, M.EMAIL_TAKEN)
-            if await conn.fetchval(
-                    "SELECT 1 FROM players WHERE display_name=$1 AND email<>$2", name, email):
+            if await conn.fetchval("SELECT 1 FROM players WHERE display_name=$1", name):
                 raise HTTPException(409, M.CHARACTER_NAME_TAKEN)
-            if reclaimable:
-                await conn.execute(
-                    "DELETE FROM recovery_codes WHERE player_id=$1", existing["id"])
-                await conn.execute(
-                    "DELETE FROM player_sessions WHERE player_id=$1", existing["id"])
-                await conn.execute(
-                    """UPDATE players SET password_hash=$2, display_name=$3,
-                       totp_secret=$4, totp_enabled=FALSE WHERE id=$1""",
-                    existing["id"], pwd, name, enc_secret)
-            else:
-                await conn.execute(
-                    """INSERT INTO players (email, password_hash, display_name, totp_secret)
-                       VALUES ($1,$2,$3,$4)""",
-                    email, pwd, name, enc_secret)
+            await conn.execute(
+                """INSERT INTO players (email, password_hash, display_name, totp_secret)
+                   VALUES ($1,$2,$3,$4)""",
+                email, pwd, name, enc_secret)
     if not want_2fa:
         # Password-only account — ready to log in immediately.
         return {"two_factor": False, "login_name": login_name}
     uri = auth.totp_uri(secret, email)
-    # 2FA must be set up before login; hand back the QR.
+    # Hand back the QR. The account is already usable with its password alone —
+    # the secret only goes live once /api/auth/totp/enable confirms a code — so the
+    # player can finish 2FA now or skip it without getting stranded.
     return {"two_factor": True, "otpauth_uri": uri, "secret": secret,
             "qr_svg": auth.qr_svg(uri), "login_name": login_name}
 
@@ -516,11 +502,13 @@ async def login(body: LoginBody, request: Request):
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
             security.record_fail(f"loginfail:{email}")
             raise HTTPException(401, M.BAD_CREDENTIALS)
-        if p["totp_secret"] is None:
-            pass  # password-only account (2FA opted out) — password is enough
-        elif not p["totp_enabled"]:
-            raise HTTPException(403, M.TWOFA_INCOMPLETE)
-        else:
+        # A code is only demanded once 2FA is actually *confirmed* (`totp_enabled`).
+        # An account with no secret opted out at registration; one with an unconfirmed
+        # secret (registration abandoned at the QR step, or a pending
+        # `python -m app.enroll_2fa --begin`) stays password-only until it is
+        # confirmed — so a half-finished setup never locks anyone out. The `code`
+        # field may simply be left empty in both cases.
+        if p["totp_enabled"]:
             code = auth.normalize_code(body.code)
             ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
                 or await _check_recovery(conn, p["id"], code)

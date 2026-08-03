@@ -8,19 +8,27 @@ Implements real authentication and the forced onboarding from
 ## Flow
 
 ```
-Register (email + password + display name)
-   └─► account created, TOTP secret issued  → QR returned
-Set up 2FA (scan QR, enter a code)
+Register (email + password + display name, 2FA opt-in checkbox)
+   └─► account created; with 2FA: TOTP secret issued → QR returned
+Set up 2FA (scan QR, enter a code)      ← optional; skippable
    └─► totp_enabled = true
-Log in (email + password + TOTP code)
+Log in (email + password + TOTP code if 2FA is enabled)
    └─► session token issued
 Onboarding (read the manual, pass a 3-question quiz)
    └─► onboarded = true, game starts at Killebäckskolan
 Play
 ```
 
-2FA is **mandatory**: login is refused until TOTP is enabled, and the game is
-refused until onboarding passes.
+2FA is **optional** for players (on by default at registration, opt out with the
+checkbox) and **required for admins** (`/api/admin/*` needs `totp_enabled`; enrol
+with `python -m app.enroll_2fa`). The game is refused until onboarding passes.
+
+**A code is only ever demanded once 2FA is confirmed** (`totp_enabled`). An account
+with no secret, or with a secret that was issued but never confirmed — registration
+abandoned at the QR step, or a pending `enroll_2fa --begin` — logs in with its
+password alone and may leave `code` empty. A half-finished setup never locks anyone
+out. Correspondingly, registration **never** reclaims an existing handle: a taken
+login name or character name is always a 409.
 
 ---
 
@@ -37,9 +45,9 @@ refused until onboarding passes.
 ### Endpoints
 | Method | Path | Body | Notes |
 |---|---|---|---|
-| POST | `/api/auth/register` | email, password, display_name | → `{otpauth_uri, secret, qr_svg}` |
+| POST | `/api/auth/register` | email, password, display_name, two_factor | → `{two_factor, login_name}` (+ `{otpauth_uri, secret, qr_svg}` when `two_factor`) |
 | POST | `/api/auth/totp/enable` | email, password, code | verifies code → enables 2FA |
-| POST | `/api/auth/login` | email, password, code | → `{token, onboarded}` |
+| POST | `/api/auth/login` | email, password, code | → `{token, onboarded}`; `code` may be empty unless 2FA is enabled |
 | GET | `/api/onboarding` | — (auth) | → `{manual, questions}` (no answers) |
 | POST | `/api/onboarding/submit` | answers `{qid: index}` | grades; on pass starts the game |
 

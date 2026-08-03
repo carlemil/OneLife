@@ -115,7 +115,8 @@ embeddings provider wired). See `MEMORY_AND_LEAKAGE.md`.
 
 ### Other subsystems
 - **Auth/onboarding** (`auth.py`, `security.py`, `onboarding.py`): email/password (bcrypt) +
-  mandatory TOTP 2FA (QR via segno, PKCE Web Playback flow on the client) + one-time recovery
+  optional TOTP 2FA (on by default at registration, opt out or skip; required for admins;
+  a code is only demanded once `totp_enabled`) (QR via segno, PKCE Web Playback flow) + one-time recovery
   codes; session = one row per player, token rotates on login (7-day TTL). Rate-limit + lockout
   + TOTP encryption at rest in `security.py`. A forced manual + quiz gates play — **game
   endpoints return 403 until `onboarded`**.

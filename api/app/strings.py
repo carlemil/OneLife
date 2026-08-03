@@ -35,7 +35,6 @@ class M:
     BAD_CREDENTIALS = "Incorrect email or password."
     LOGIN_RATE = "Too many requests. Please slow down and try again."
     LOGIN_LOCKED = "Too many failed login attempts. Please wait 5 minutes and try again."
-    TWOFA_INCOMPLETE = "Your two-factor setup isn't finished yet. Please register again to complete it."
     BAD_AUTH_OR_RECOVERY = "That authenticator or recovery code isn't right. Please try again."
 
     # --- lobby ---

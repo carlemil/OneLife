@@ -353,7 +353,7 @@
       if (r.two_factor) {
         qrSvg = r.qr_svg; secret = r.secret;
         phase = 'twofa';
-        notice = `${loginMsg} Scan the QR with an authenticator app, then enter a code to finish setup.`;
+        notice = `${loginMsg} Scan the QR with an authenticator app, then enter a code to finish setup — or skip it and use your password alone.`;
       } else {
         // Password-only account: log straight in, no code needed.
         notice = loginMsg;
@@ -372,6 +372,18 @@
       code = '';
       phase = 'recovery';   // show backup codes once before continuing
     } catch (e) { error = e.message; }
+    finally { busy = false; }
+  }
+
+  // Leaving 2FA unconfirmed is not a dead-end: the account works with its password
+  // alone until a live code confirms the secret, so we can just log straight in.
+  async function skipTwofa() {
+    error = ''; busy = true;
+    try {
+      qrSvg = ''; secret = ''; code = '';
+      const lr = await api.login(email.trim(), password, '');
+      if (lr.onboarded) await loadGame(); else await loadOnboarding();
+    } catch (e) { error = e.message; phase = 'auth'; authMode = 'login'; }
     finally { busy = false; }
   }
 
@@ -862,6 +874,7 @@
       <p class="sub">Can't scan? Secret: <code>{secret}</code></p>
       <input bind:value={code} placeholder="6-digit code" inputmode="numeric" onkeydown={(e) => e.key === 'Enter' && doEnable()} />
       <button class="primary" onclick={doEnable} disabled={busy}>Enable 2FA &amp; continue</button>
+      <p class="switch">Rather not? <button class="link" onclick={skipTwofa} disabled={busy}>Skip — use my password only</button></p>
     </div>
 
   {:else if phase === 'recovery'}

@@ -157,7 +157,7 @@ edges:
   e-lund-turnback:
     effects:
       log: Du vände ryggen till Lund.
-    label: Ge upp och vend tillbaka mot Sandby
+    label: Ge upp och vänd tillbaka mot Sandby
   e-marlpit-back:
     effects:
       log: Du klättrade tillbaka upp till vägen.
