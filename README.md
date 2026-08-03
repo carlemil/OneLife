@@ -95,6 +95,26 @@ the firewall — do *not* forward 5173/8000/5432. For Spotify, register
 player's browser via their own Premium account; the server only resolves track
 metadata, so non-Premium players get 30s previews + text.
 
+### Surviving a reboot (Windows host)
+
+The compose `restart: unless-stopped` policies only help once the Docker engine is
+running — and on Windows, **Docker Desktop only runs inside a signed-in user
+session**. So a reboot leaves the site down until someone logs in and starts Docker.
+`scripts/` closes both gaps:
+
+| File | What it does |
+|---|---|
+| `scripts/start-onelife.ps1` | Starts Docker Desktop, waits for the engine, `compose up -d` **with the prod overlay**, then checks `http://127.0.0.1:8082/api/health`. Idempotent — safe to run any time to bring the site back. |
+| `scripts/lock-after-autologon.ps1` | Locks the workstation after an *automatic* sign-in (skipped if you signed in deliberately, i.e. >5 min after boot). |
+| `scripts/install-autostart.ps1` | Registers both as at-logon scheduled tasks (`OneLife Autostart`, `OneLife Lock After Autologon`). Re-run to update them. |
+
+For unattended reboots (nightly Windows Update), also enable automatic sign-in —
+[Sysinternals Autologon](https://learn.microsoft.com/sysinternals/downloads/autologon)
+stores the password as an LSA secret rather than plaintext in the registry. The lock
+task then puts the machine straight back behind the lock screen.
+
+Logs land in `%LOCALAPPDATA%\OneLife\autostart.log`.
+
 ## Notes / deferred
 
 This slice intentionally defers (see docs for the full design): 2FA + real auth,
