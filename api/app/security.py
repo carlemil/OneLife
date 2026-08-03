@@ -12,11 +12,37 @@ import ipaddress
 
 from cryptography.fernet import Fernet
 
+# Deployment posture. `dev` (the default) keeps the app bootable with no config at
+# all — stubs, fallbacks, auto-docs. `prod` is set by docker-compose.prod.yml and
+# turns those conveniences off wherever one would be a hole on the open internet.
+ENV = os.environ.get("ONELIFE_ENV", "dev").strip().lower()
+IS_PROD = ENV in ("prod", "production")
+
 _secret = os.environ.get("ONELIFE_SECRET_KEY", "").strip()
 INSECURE_DEFAULT = not _secret
 if INSECURE_DEFAULT:
+    # The fallback key is in the repo, so anything it protects (TOTP secrets at
+    # rest, the signed inference-broker envelope) is protected by nothing. That is
+    # an acceptable trade for a keyless dev boot and unacceptable in production —
+    # refuse to start rather than serve with a public key nobody notices.
+    if IS_PROD:
+        raise RuntimeError(
+            "ONELIFE_SECRET_KEY must be set when ONELIFE_ENV=prod — the dev fallback "
+            "key is published in this repo and would leave TOTP secrets readable by "
+            "anyone with the database. Set it in .env and restart.")
     _secret = "dev-insecure-onelife-key"
 _fernet = Fernet(base64.urlsafe_b64encode(hashlib.sha256(_secret.encode()).digest()))
+
+
+def hash_token(token: str) -> str:
+    """One-way digest of a session token, for storage.
+
+    Session tokens are high-entropy UUIDs, so a plain SHA-256 is enough (no salt,
+    no KDF — there is nothing to brute-force) and it stays a single indexed
+    equality lookup. The point is only that a leaked database dump — an admin
+    export, a stray backup — hands over no live sessions.
+    """
+    return hashlib.sha256(token.encode()).hexdigest()
 
 
 def encrypt(plaintext: str) -> str:

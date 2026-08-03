@@ -41,7 +41,11 @@ All optional — without them the app still boots using deterministic stubs/fall
 - `ANTHROPIC_API_KEY` — real Claude for dialogue gates / music director; unset → offline keyword stub.
 - `IMAGE_PROVIDER` — `pollinations` (free, keyless; `POLLINATIONS_TOKEN` adds real-photo image-to-image) or `openai` (needs `IMAGE_API_KEY`+`IMAGE_API_BASE`/`IMAGE_MODEL`). Unset/neither → procedural SVG.
 - `SPOTIFY_CLIENT_ID`/`SECRET`/`REDIRECT_URI` — track resolution + Web Playback SDK; unset → text-only picks.
-- `ONELIFE_SECRET_KEY` — encrypts TOTP secrets at rest (dev default + warning if unset).
+- `ONELIFE_SECRET_KEY` — encrypts TOTP secrets at rest (dev default + warning if unset;
+  **fatal** if unset when `ONELIFE_ENV=prod`).
+- `ONELIFE_ENV` — `dev` (default) or `prod`. `docker-compose.prod.yml` sets `prod`, which
+  turns off the FastAPI auto-docs and makes the dev-key fallback above fail fast. Every
+  prod-only difference hangs off `security.IS_PROD`.
 - `ONELIFE_ADMIN_EMAILS` — comma-separated emails allowed into the in-UI content editor (the ⚙ panel).
 - `WEB_ORIGIN` — comma-separated CORS allow-list (default allows both `localhost` and `127.0.0.1` on :5173). **The browser origin must be in this list and, for Spotify, match the registered redirect URI exactly.**
 
@@ -117,9 +121,11 @@ embeddings provider wired). See `MEMORY_AND_LEAKAGE.md`.
 - **Auth/onboarding** (`auth.py`, `security.py`, `onboarding.py`): email/password (bcrypt) +
   optional TOTP 2FA (on by default at registration, opt out or skip; required for admins;
   a code is only demanded once `totp_enabled`) (QR via segno, PKCE Web Playback flow) + one-time recovery
-  codes; session = one row per player, token rotates on login (7-day TTL). Rate-limit + lockout
-  + TOTP encryption at rest in `security.py`. A forced manual + quiz gates play — **game
-  endpoints return 403 until `onboarded`**.
+  codes; session = one row per player, token rotates on login (7-day TTL) and is stored
+  **only as a SHA-256 digest**. Rate-limit + lockout + TOTP encryption at rest in
+  `security.py`; TOTP codes are single-use (`players.totp_last_step` blocks replay inside
+  the ~90s validity window). A forced manual + quiz gates play — **game endpoints return
+  403 until `onboarded`**.
 - **World/maps**: `world_cells` grid; `locations.cell_id`; nodes flagged `world_access` open the
   map. Travel is adjacency-gated with per-player fog-of-war (`player_cells`). See `WORLD_AND_MAPS.md`.
 - **Atmosphere** (`atmosphere.py`, `imagegen.py`, `gen_images.py`): per-location banner image +

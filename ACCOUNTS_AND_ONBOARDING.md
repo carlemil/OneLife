@@ -39,8 +39,12 @@ login name or character name is always a 409.
   generates a secret and returns an `otpauth://` URI plus a server-rendered
   **QR SVG** (`segno`) so the client renders it with no JS QR dependency.
 - **Sessions**: one row per player (`player_sessions.player_id` is the PK). Login
-  rotates the bearer `token` in place, so game state (current node, log) persists
+  rotates the bearer token in place, so game state (current node, log) persists
   across logins. A 401 anywhere makes the client drop the token and return to login.
+  Only the **SHA-256 of the token** is stored (`token_hash`) — the token itself
+  exists in the clear exactly once, in the login response — so a database dump
+  hands over no live session. Plain SHA-256, no KDF: the token is a random UUID,
+  so there is nothing to brute-force.
 
 ### Endpoints
 | Method | Path | Body | Notes |
@@ -77,13 +81,27 @@ the YAML content pipeline, since it isn't story-graph content).
 - **Recovery codes** — 8 one-time backup codes issued at 2FA setup (shown once,
   stored bcrypt-hashed). Login accepts a recovery code in place of a TOTP code;
   each is single-use.
+- **Single-use TOTP codes** — pyotp accepts a code for its own 30s step ±1, so a
+  code someone observes stays valid for ~90s after its owner used it. The spent
+  step is recorded (`players.totp_last_step`) and a code is refused the second
+  time (`main._consume_totp`), via a compare-and-set so two racing logins can't
+  both claim it.
 - **CORS + headers** — CORS restricted to `WEB_ORIGIN`; `X-Content-Type-Options`,
-  `X-Frame-Options`, `Referrer-Policy` set on every response.
+  `X-Frame-Options`, `Referrer-Policy` set on every response. The deployed site
+  adds HSTS and a CSP at the Caddy layer, which also covers the web app's HTML
+  (the API middleware only sees `/api`).
+- **Production posture** — with `ONELIFE_ENV=prod` (set by the prod overlay) the
+  FastAPI auto-docs are off and an unset `ONELIFE_SECRET_KEY` is fatal rather than
+  a warning.
 
 ## Still deferred
 
 - Email verification and password reset (need outbound email).
 - Token **refresh** (today login re-issues), httpOnly cookies + CSRF (today it's a
   bearer token in localStorage).
-- Rate-limit state is in-process — use Redis for multi-instance.
-- User-enumeration: registration still distinguishes "email taken".
+- Rate-limit state is in-process — use Redis for multi-instance. (And on a Docker
+  Desktop for Windows host the source address is NAT'd, so per-IP limits collapse
+  into one bucket regardless.)
+- User-enumeration: registration still distinguishes "email taken" from "character
+  name taken". Kept deliberately — the login name *is* the handle, and a player who
+  can't tell which of the two fields collided can't finish registering.

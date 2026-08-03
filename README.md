@@ -117,12 +117,26 @@ Logs land in `%LOCALAPPDATA%\OneLife\autostart.log`.
 
 ## Notes / deferred
 
-This slice intentionally defers (see docs for the full design): 2FA + real auth,
-pgvector agent-memory embeddings & cross-player leakage, image/audio generation,
-Redis, MinIO, the onboarding manual/quiz, and the world/city maps. The pieces it
-*does* prove: the story graph engine, the condition/effect DSL, the AI dialogue
-gate (Actor/Referee/Applier), the woven-clue puzzle system, progress scoring, the
-leaderboard, and the uniform seq-stamped **rollback** across all runtime state.
+What the original vertical slice deferred has since landed: real auth with optional
+TOTP 2FA and the forced manual/quiz onboarding, pgvector agent memory with
+cross-player leakage, image generation and the Spotify music director, the world
+and city maps, multi-game hosting with a lobby and per-game saves, and
+translations. Alongside the pieces the slice first proved — the story-graph engine,
+the condition/effect DSL, the AI dialogue gate (Actor/Referee/Applier), the
+woven-clue puzzle system, progress scoring, the leaderboard, and the uniform
+seq-stamped **rollback** across all runtime state.
+
+Still deferred: Redis (rate limiting is in-process, so it is per-container and
+resets on restart) and MinIO (generated images live in Postgres). Real embeddings
+are not wired either — `embeddings.py` is a local hashed stand-in, so semantic
+memory retrieval is approximate.
+
+Known limits of *this* deployment, rather than of the code: Docker Desktop for
+Windows NATs the source address, so the per-client rate limiter collapses into one
+shared bucket here — real per-client limiting needs a Linux host. And
+`LLM_PROVIDER=browser` makes gate verdicts client-trusted (the Applier still
+re-validates, so the blast radius is a player cheating their own save, but their
+leaderboard points become untrustworthy); the deployed instance runs `anthropic`.
 
 ## Layout
 

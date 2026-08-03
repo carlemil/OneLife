@@ -35,6 +35,10 @@ POLLINATIONS_EDIT_MODEL = os.environ.get("POLLINATIONS_EDIT_MODEL", "kontext")
 POLLINATIONS_TOKEN = os.environ.get("POLLINATIONS_TOKEN", "").strip()
 _BW, _BH = (int(x) for x in os.environ.get("IMAGE_BANNER_SIZE", "1024x384").split("x"))
 
+# Ceiling on a fetched image-to-image response (see _pollinations_i2i). A banner is
+# ~1024x384 — a few hundred KB — so 16 MB is generous and still bounded.
+_I2I_MAX_BYTES = int(os.environ.get("IMAGE_MAX_BYTES", str(16 * 1024 * 1024)))
+
 CONFIGURED = PROVIDER == "pollinations" or bool(API_KEY)
 # image-to-image (real-photo grounding) needs an authenticated token
 I2I_ENABLED = PROVIDER == "pollinations" and bool(POLLINATIONS_TOKEN)
@@ -62,14 +66,27 @@ async def _pollinations_i2i(prompt: str, reference: str) -> str | None:
            f"?model={POLLINATIONS_EDIT_MODEL}&image={r}"
            f"&width={_BW}&height={_BH}&seed={_seed(prompt + reference)}&nologo=true")
     try:
-        async with httpx.AsyncClient(timeout=180, follow_redirects=True) as c:
-            resp = await c.get(url, headers={"Authorization": f"Bearer {POLLINATIONS_TOKEN}"})
-        ct = resp.headers.get("content-type", "")
-        if resp.status_code == 200 and ct.startswith("image/"):
-            return f"data:{ct.split(';')[0]};base64," + base64.b64encode(resp.content).decode()
+        # Stream, and stop at the cap. The body is base64'd into a database row and
+        # then into every page that shows the banner, so an unbounded response is a
+        # memory-and-storage problem long before it is anything else — and how big a
+        # reply an upstream image service sends is not ours to assume. Redirects are
+        # still followed, but bounded, so a redirect loop can't spin here either.
+        async with httpx.AsyncClient(timeout=180, follow_redirects=True,
+                                     max_redirects=3) as c:
+            async with c.stream(
+                    "GET", url,
+                    headers={"Authorization": f"Bearer {POLLINATIONS_TOKEN}"}) as resp:
+                ct = resp.headers.get("content-type", "")
+                if resp.status_code != 200 or not ct.startswith("image/"):
+                    return None
+                buf = bytearray()
+                async for chunk in resp.aiter_bytes():
+                    buf += chunk
+                    if len(buf) > _I2I_MAX_BYTES:
+                        return None
+        return f"data:{ct.split(';')[0]};base64," + base64.b64encode(bytes(buf)).decode()
     except Exception:  # noqa: BLE001 — best-effort; fall back to text-to-image
         return None
-    return None
 
 
 async def generate(prompt: str, reference: str | None = None) -> str | None:

@@ -30,7 +30,13 @@ ADMIN_EMAILS = {e.strip().lower() for e in os.environ.get("ONELIFE_ADMIN_EMAILS"
 # A permissive BCP-47-ish language tag (e.g. 'sv', 'sv-FI', 'pt-BR'). 'en' is the base.
 _LANG_RE = re.compile(r"^[A-Za-z]{2,3}(-[A-Za-z0-9]{2,8})*$")
 
-app = FastAPI(title="OneLife API")
+# The auto-docs describe every endpoint, including the admin and auth surface, to
+# anyone who asks. Useful locally, pure reconnaissance once the app is on the open
+# internet — so they exist in dev only. (The Caddyfile no longer routes them either;
+# this is the half that holds if something else ever fronts the API.)
+_docs = {} if not security.IS_PROD else {
+    "docs_url": None, "redoc_url": None, "openapi_url": None}
+app = FastAPI(title="OneLife API", **_docs)
 app.add_middleware(
     CORSMiddleware, allow_origins=_origins, allow_methods=["*"], allow_headers=["*"],
 )
@@ -121,6 +127,29 @@ async def _startup():
         # old account-level players.clipboard column is left in place but unused.)
         await conn.execute(
             "ALTER TABLE player_games ADD COLUMN IF NOT EXISTS clipboard TEXT NOT NULL DEFAULT ''")
+        # Which TOTP time-step this player last spent, so a code can't be replayed
+        # inside its ~90s validity window (see _consume_totp).
+        await conn.execute(
+            "ALTER TABLE players ADD COLUMN IF NOT EXISTS totp_last_step BIGINT")
+        # Session tokens are stored as a SHA-256 digest, never in the clear: a
+        # database dump (an admin export, a stray backup) must not hand over live
+        # sessions. Existing rows are re-keyed to their own digest in place — the
+        # same hash the API will compute from the bearer token — so this rolls out
+        # without logging anybody out, and then the plaintext column goes away.
+        await conn.execute(
+            "ALTER TABLE player_sessions ADD COLUMN IF NOT EXISTS token_hash TEXT")
+        if await conn.fetchval(
+                """SELECT 1 FROM information_schema.columns
+                   WHERE table_name='player_sessions' AND column_name='token'"""):
+            await conn.execute(
+                """UPDATE player_sessions
+                      SET token_hash = encode(sha256(token::text::bytea), 'hex')
+                    WHERE token_hash IS NULL AND token IS NOT NULL""")
+            await conn.execute("ALTER TABLE player_sessions DROP COLUMN token")
+            print("[migrate] hashed existing session tokens")
+        await conn.execute(
+            """CREATE UNIQUE INDEX IF NOT EXISTS player_sessions_token_hash
+                   ON player_sessions (token_hash)""")
         await conn.execute(
             """CREATE TABLE IF NOT EXISTS content_translations (
                    game_id     TEXT NOT NULL REFERENCES games(id) ON DELETE CASCADE,
@@ -194,13 +223,18 @@ async def _session(authorization: str | None):
         raise HTTPException(401, M.NOT_SIGNED_IN)
     token = authorization.split(" ", 1)[1].strip()
     try:
-        uuid.UUID(token)  # malformed token → 401, not a 500 from the UUID column
+        # Malformed token → 401 without touching the database. Canonicalising here
+        # also settles the hash's one sharp edge: the digest is over the exact bytes,
+        # so an equivalent-but-differently-cased UUID has to normalise to the same
+        # spelling we hashed at login (and that the migration backfilled from
+        # Postgres's own lowercase rendering).
+        token = str(uuid.UUID(token))
     except ValueError:
         raise HTTPException(401, M.SESSION_INVALID)
     pool = await db.get_pool()
     async with pool.acquire() as conn:
         row = await conn.fetchrow(
-            """SELECT s.token, s.player_id, p.active_game_id AS game_id,
+            """SELECT s.player_id, p.active_game_id AS game_id,
                       pg.current_node, COALESCE(pg.story_time, 0) AS story_time, pg.log_id,
                       p.display_name, p.onboarded, p.email, p.totp_enabled,
                       COALESCE(pg.language, p.language, 'en') AS language
@@ -208,8 +242,8 @@ async def _session(authorization: str | None):
                JOIN players p ON p.id = s.player_id
                LEFT JOIN player_games pg
                       ON pg.player_id = p.id AND pg.game_id = p.active_game_id
-               WHERE s.token=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
-            token)
+               WHERE s.token_hash=$1 AND (s.expires_at IS NULL OR s.expires_at > now())""",
+            security.hash_token(token))
     if row is None:
         raise HTTPException(401, M.SESSION_EXPIRED)
     return dict(row)
@@ -394,7 +428,7 @@ class MapRoadsBody(BaseModel):
 @app.get("/api/health")
 async def health():
     return {"ok": True, "using_real_llm": llm.USING_REAL_LLM,
-            "llm_provider": llm.PROVIDER, "llm_model": llm.BROWSER_MODEL}
+            "llm_provider": llm.PROVIDER, "llm_model": llm.active_model()}
 
 
 # ---------- Auth ----------
@@ -461,7 +495,7 @@ async def totp_enable(body: TotpBody, request: Request):
             "SELECT id, password_hash, totp_secret FROM players WHERE email=$1", email)
         if p is None or not auth.verify_password(body.password, p["password_hash"]):
             raise HTTPException(401, M.BAD_CREDENTIALS)
-        if not auth.verify_totp(security.decrypt(p["totp_secret"]), body.code):
+        if not await _consume_totp(conn, p["id"], security.decrypt(p["totp_secret"]), body.code):
             raise HTTPException(400, M.BAD_AUTH_CODE)
         # Issue one-time recovery codes (shown once, stored hashed).
         codes = auth.generate_recovery_codes()
@@ -473,6 +507,25 @@ async def totp_enable(body: TotpBody, request: Request):
                     "INSERT INTO recovery_codes (player_id, code_hash) VALUES ($1,$2)",
                     p["id"], auth.hash_password(c))
     return {"ok": True, "recovery_codes": codes}
+
+
+async def _consume_totp(conn, player_id, secret: str, code: str) -> bool:
+    """Verify a TOTP code *and burn it*, so each one works exactly once.
+
+    pyotp accepts a code for its own 30s step plus one either side, so a code
+    someone else observes — over a shoulder, through a phishing proxy, in a log —
+    stays replayable for ~90s after the owner used it. Recording the consumed step
+    closes that window. The compare-and-set is a single statement so two logins
+    racing with the same code cannot both win it.
+    """
+    step = auth.totp_step(secret, code)
+    if step is None:
+        return False
+    won = await conn.fetchval(
+        """UPDATE players SET totp_last_step=$2
+           WHERE id=$1 AND (totp_last_step IS NULL OR totp_last_step < $2)
+           RETURNING 1""", player_id, step)
+    return won is not None
 
 
 async def _check_recovery(conn, player_id, code: str) -> bool:
@@ -510,21 +563,24 @@ async def login(body: LoginBody, request: Request):
         # field may simply be left empty in both cases.
         if p["totp_enabled"]:
             code = auth.normalize_code(body.code)
-            ok = auth.verify_totp(security.decrypt(p["totp_secret"]), code) \
+            ok = await _consume_totp(conn, p["id"], security.decrypt(p["totp_secret"]), code) \
                 or await _check_recovery(conn, p["id"], code)
             if not ok:
                 security.record_fail(f"loginfail:{email}")
                 raise HTTPException(401, M.BAD_AUTH_OR_RECOVERY)
         security.clear_fails(f"loginfail:{email}")
         # One session per player: rotate the token + TTL, preserve game state.
-        token = await conn.fetchval(
-            f"""INSERT INTO player_sessions (player_id, expires_at)
-                VALUES ($1, now() + interval '{SESSION_TTL}')
+        # The token is minted here and only its digest is stored — this is the one
+        # moment it exists in the clear, so a database dump yields no live session.
+        token = str(uuid.uuid4())
+        await conn.execute(
+            f"""INSERT INTO player_sessions (player_id, token_hash, expires_at)
+                VALUES ($1, $2, now() + interval '{SESSION_TTL}')
                 ON CONFLICT (player_id)
-                DO UPDATE SET token=gen_random_uuid(), created_at=now(),
-                  expires_at=now() + interval '{SESSION_TTL}'
-                RETURNING token""", p["id"])
-    return {"token": str(token), "onboarded": p["onboarded"]}
+                DO UPDATE SET token_hash=EXCLUDED.token_hash, created_at=now(),
+                  expires_at=now() + interval '{SESSION_TTL}'""",
+            p["id"], security.hash_token(token))
+    return {"token": token, "onboarded": p["onboarded"]}
 
 
 # ---------- Onboarding (forced manual + quiz) ----------
@@ -996,8 +1052,15 @@ async def get_alignment(authorization: str | None = Header(default=None)):
 @app.get("/api/memories")
 async def memories(character: str = "the-janitor",
                    authorization: str | None = Header(default=None)):
-    """Debug/demo view of what an NPC remembers, across all players."""
+    """Debug/demo view of what an NPC remembers, across all players.
+
+    Admin-only: it deliberately crosses the player boundary — every memory with the
+    display name of whoever caused it — which is the one thing the leakage design is
+    careful *not* to expose in play (the Actor sees leaked memories as rumour, never
+    attributed). No UI calls this; it exists to inspect the mechanism.
+    """
     sess = await _session(authorization)
+    _require_admin(sess)
     _require_in_game(sess)
     gid = sess["game_id"]
     pool = await db.get_pool()

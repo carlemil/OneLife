@@ -1,5 +1,6 @@
 """Password hashing + TOTP 2FA helpers (ACCOUNTS_AND_ONBOARDING.md)."""
 import io
+import time
 import secrets
 
 import bcrypt
@@ -34,6 +35,27 @@ def verify_totp(secret: str, code: str) -> bool:
         return False
     # valid_window=1 tolerates a little clock skew / a code that just rolled.
     return pyotp.TOTP(secret).verify(code.strip().replace(" ", ""), valid_window=1)
+
+
+def totp_step(secret: str, code: str) -> int | None:
+    """Which 30s time-step `code` belongs to, or None if it isn't valid.
+
+    A code stays valid for ~90s (its own step ±1 for clock skew), so verifying it
+    is not enough on its own: whoever observes it — shoulder-surfing, a phishing
+    proxy, a logged request — can replay it within that window. Returning the step
+    lets the caller record it and refuse to consume the same one twice. Steps are
+    checked newest-first so the recorded value is the highest one that matched.
+    """
+    if not code:
+        return None
+    t = pyotp.TOTP(secret)
+    code = code.strip().replace(" ", "")
+    now = int(time.time())
+    for offset in (1, 0, -1):
+        step = now // t.interval + offset
+        if secrets.compare_digest(t.at(step * t.interval), code):
+            return step
+    return None
 
 
 def qr_svg(uri: str) -> str:

@@ -19,6 +19,32 @@
 {$SITE_ADDRESS} {
 	encode gzip
 
+	# Security headers for EVERY response. The API sets its own on /api/*, but the
+	# web app's HTML got none — and the HTML is what actually runs code in a browser.
+	# Setting them here covers both (Caddy replaces rather than appends, so the API's
+	# copies don't double up).
+	header {
+		# We are plain HTTP here on purpose: the Mac mini terminates TLS for the public
+		# domain and proxies in. The client's connection is HTTPS, so HSTS is honest —
+		# and it must be sent from behind the proxy because that is where the response
+		# is built. Two years, subdomains included.
+		Strict-Transport-Security "max-age=63072000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		Referrer-Policy "no-referrer"
+		# frame-ancestors is the modern spelling; X-Frame-Options is for the browsers
+		# that never learned it.
+		X-Frame-Options "DENY"
+		# The allow-lists are exactly what the app loads, no more:
+		#   sdk.scdn.co        Spotify Web Playback SDK (script + the iframe it injects)
+		#   accounts/api.spotify.com  PKCE token exchange + playback control
+		#   open.spotify.com   the embedded track player
+		#   huggingface.co / raw.githubusercontent.com  WebLLM weights + wasm, fetched
+		#                      by the browser in LLM_PROVIDER=browser mode
+		# wasm-unsafe-eval and worker-src blob: are likewise WebLLM's (it compiles wasm
+		# and spawns its engine worker from a blob). Scripts stay 'self' — no inline.
+		Content-Security-Policy "default-src 'self'; script-src 'self' 'wasm-unsafe-eval' https://sdk.scdn.co; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https:; media-src 'self' data: blob: https:; font-src 'self' data:; connect-src 'self' https://accounts.spotify.com https://api.spotify.com https://*.spotify.com https://huggingface.co https://*.huggingface.co https://*.hf.co https://raw.githubusercontent.com; frame-src https://sdk.scdn.co https://open.spotify.com; object-src 'none'; base-uri 'self'; form-action 'self'; frame-ancestors 'none'"
+	}
+
 	# API: keep the /api prefix intact (FastAPI routes are already /api/...).
 	handle /api/* {
 		reverse_proxy api:8000 {
@@ -39,17 +65,10 @@
 		reverse_proxy api:8000
 	}
 
-	# FastAPI auto-docs live at the root (not under /api): the Swagger UI at /docs and
-	# ReDoc at /redoc both load the schema from /openapi.json. Route all three to the API.
-	handle /docs* {
-		reverse_proxy api:8000
-	}
-	handle /redoc* {
-		reverse_proxy api:8000
-	}
-	handle /openapi.json {
-		reverse_proxy api:8000
-	}
+	# NOTE: the FastAPI auto-docs (/docs, /redoc, /openapi.json) are deliberately NOT
+	# routed. They enumerate every endpoint — auth and admin included — which is free
+	# reconnaissance on the open internet. The API also switches them off entirely when
+	# ONELIFE_ENV=prod; this is the belt to that pair of braces. Read them locally.
 
 	# Everything else: the production web app (vite preview serving the built bundle).
 	reverse_proxy web:5173

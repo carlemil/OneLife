@@ -40,9 +40,14 @@ export function disconnect() {
 export async function connect(clientId, redirect) {
   const verifier = rand(48);
   sessionStorage.setItem('sp_verifier', verifier);
+  // `state` ties the redirect back to the request WE started. Without it, any page
+  // can send the player to /?code=<attacker's code> and we would dutifully exchange
+  // it — connecting the player's session to the attacker's Spotify account.
+  const state = rand(16);
+  sessionStorage.setItem('sp_state', state);
   const challenge = await s256(verifier);
   const p = new URLSearchParams({
-    response_type: 'code', client_id: clientId, scope: SCOPES,
+    response_type: 'code', client_id: clientId, scope: SCOPES, state,
     code_challenge_method: 'S256', code_challenge: challenge, redirect_uri: redirectUri(redirect),
   });
   location.href = `${AUTH}?${p}`;
@@ -53,6 +58,14 @@ export async function handleRedirect(clientId, redirect) {
   const u = new URL(location.href);
   const code = u.searchParams.get('code');
   if (!code) return false;
+  // One-shot: consume the expected state whatever happens next, so a stale value
+  // can't be reused, and drop the params from the URL even when we reject the code.
+  const expected = sessionStorage.getItem('sp_state');
+  sessionStorage.removeItem('sp_state');
+  if (!expected || u.searchParams.get('state') !== expected) {
+    history.replaceState({}, '', location.origin + location.pathname);
+    return false;
+  }
   const verifier = sessionStorage.getItem('sp_verifier');
   const body = new URLSearchParams({
     grant_type: 'authorization_code', code, redirect_uri: redirectUri(redirect),

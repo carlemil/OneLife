@@ -9,6 +9,10 @@
 services:
   api:
     environment:
+      # Production posture: no auto-docs (/docs, /redoc, /openapi.json return 404),
+      # and the app refuses to boot on the repo's dev ONELIFE_SECRET_KEY. See
+      # security.IS_PROD for everything this switches.
+      ONELIFE_ENV: prod
       # Same-origin in production: the browser calls https://DOMAIN/api/... so the
       # only allowed CORS origin is the domain. Spotify's redirect must be HTTPS and
       # match the browser origin exactly.

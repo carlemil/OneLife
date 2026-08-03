@@ -57,6 +57,20 @@ _USE_ANTHROPIC = _client is not None
 USING_REAL_LLM = _USE_ANTHROPIC or PROVIDER == "browser"
 
 
+def active_model() -> str:
+    """The model actually answering right now, for /api/health.
+
+    In browser mode this is the WebLLM id the client must load, so the frontend
+    reads it straight out of the health payload — which is why it must stay exactly
+    BROWSER_MODEL there, and must NOT be reported when some other provider is live.
+    """
+    if PROVIDER == "browser":
+        return BROWSER_MODEL
+    if _USE_ANTHROPIC:
+        return _ACTOR_MODEL
+    return "stub"
+
+
 # --------------------------------------------------------------------------- #
 #  JSON schemas — shared by the browser (response_format json_schema) and the
 #  anthropic path (native tool-use). One schema, two serializations.

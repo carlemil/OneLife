@@ -51,6 +51,7 @@ CREATE TABLE players (
     display_name   TEXT UNIQUE NOT NULL,
     totp_secret    TEXT,                         -- 2FA shared secret
     totp_enabled   BOOLEAN NOT NULL DEFAULT FALSE,
+    totp_last_step BIGINT,                       -- last spent TOTP step (blocks replay)
     onboarded      BOOLEAN NOT NULL DEFAULT FALSE, -- passed manual + quiz (account-level)
     clipboard      TEXT NOT NULL DEFAULT '',       -- player's free-form clipboard (never auto-edited)
     active_game_id TEXT REFERENCES games(id),      -- which save is selected; NULL = in the lobby
@@ -60,8 +61,10 @@ CREATE TABLE players (
 
 -- One session row per player; token rotates on login. Auth ONLY — the game
 -- position lives per-game in player_games (a player has many saves, one login).
+-- Only the SHA-256 of the bearer token is stored, so a dump of this table (an
+-- admin export, a backup) contains no usable session.
 CREATE TABLE player_sessions (
-    token        UUID UNIQUE NOT NULL DEFAULT gen_random_uuid(),
+    token_hash   TEXT UNIQUE NOT NULL,
     player_id    UUID PRIMARY KEY REFERENCES players(id) ON DELETE CASCADE,
     expires_at   TIMESTAMPTZ,                 -- session TTL; null = never (legacy)
     created_at   TIMESTAMPTZ NOT NULL DEFAULT now()
