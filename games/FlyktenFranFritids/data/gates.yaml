@@ -29,7 +29,7 @@ gates:
       progress_points: 40
       set_flag: dan_at_board
       advance_story_time: 2
-      announce: "Tystnad. Dans stol skrapar. Han reser sig, tar en whiteboardpenna och börjar skriva: \"Låt x vara talet…\" Han har glömt att ni finns. Nyckelknippan ligger kvar bredvid datorn. Oliver viskar: \"Sexton. Det är sexton.\" Arthur viskar: \"Säg inte det till honom.\""
+      announce: "Tystnad. Dans stol skrapar. Han reser sig, tar en whiteboardpenna och börjar skriva: \"Låt x vara talet…\" Han har glömt att ni finns. Nyckelknippan ligger kvar bredvid datorn. Oliver viskar: \"Femton. Det är femton.\" Arthur viskar: \"Säg inte det till honom.\""
       log: "Ni gav Dan en gåta. Han står vid whiteboarden nu – nycklarna ligger kvar på bordet."
       write_memory: {owner: dan, content: "Två barn från trean, Arthur och Oliver, gav mig en riktigt bra gåta. Jag stod vid tavlan länge.", leakable: true}
 
