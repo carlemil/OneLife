@@ -48,6 +48,10 @@ def _check(solution: dict, answer: str, ctx) -> bool:
         targets = [str(v).strip().casefold() for v in solution.get("set", [])]
     else:  # 'exact' (and the deferred 'semantic' kind) — single value
         targets = [str(solution.get("value", "")).strip().casefold()]
+    # `match: contains` — the answer only has to mention one of the targets
+    # ("nyckeln med den blå tejpen" → "blå"). Default is a whole-answer match.
+    if solution.get("match") == "contains":
+        return any(t and t in a for t in targets)
     for t in targets:
         if a == t:
             return True

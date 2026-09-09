@@ -124,6 +124,8 @@ The design wants **story puzzles woven into the world, with hints embedded in te
   "type": "combination",                 // combination | riddle | assembly | semantic
   "prompt": "A rusted cabinet in the boiler room has a 4-digit padlock.",
   "solution": { "kind": "exact", "value": "1998" },
+  // or { "kind": "set", "set": ["blå", "blue"] } for several whole-answer spellings;
+  // add "match": "contains" to accept any answer that merely mentions one of them
   "required_clues": ["year-1998-graffiti", "janitor-said-98", "plaque-1998"],
   "hint_ladder": [
     "The number feels like a year.",
