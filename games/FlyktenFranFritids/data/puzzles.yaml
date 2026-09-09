@@ -25,7 +25,7 @@ puzzles:
   - id: ratt-nyckel
     type: combination
     prompt: "Knippan har fem nycklar: en stor gammal, en med röd tejp, en med blå tejp, en liten (postlådan?) och en med en plastbricka där det står \"Gymnastik\". På dörren till klassrum 3 sitter en blå klisterlapp. Vilken nyckel provar du?"
-    solution: {kind: set, set: ["blå", "bla", "blåa", "den blå", "den blåa", "blå nyckel", "blå nyckeln", "blåa nyckeln", "den blå nyckeln", "den blåa nyckeln", "blå tejp", "den med blå tejp", "nyckeln med blå tejp", "nyckeln med blå tejp på"]}
+    solution: {kind: set, set: ["blå", "bla", "blåa", "den blå", "den blåa", "blå nyckel", "blå nyckeln", "blåa nyckeln", "den blå nyckeln", "den blåa nyckeln", "blå tejp", "blå tejpen", "den med blå tejp", "den med blå tejpen", "en med blå tejp", "en med blå tejp på", "en med blå tejpen", "den med blå tejp på", "nyckeln med blå tejp", "nyckeln med blå tejp på", "nyckeln med blå tejpen", "en blå", "en blå nyckel"]}
     hint_ladder:
       - "Oliver: \"Titta på dörren.\""
       - "Oliver: \"Blå lapp. Dan är ordentlig.\""
