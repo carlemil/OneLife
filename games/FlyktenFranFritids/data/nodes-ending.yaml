@@ -1,0 +1,42 @@
+# Ending nodes. Three, chosen by `tillbaka`'s edge conditions (see nodes-narration.yaml):
+#   ending-kompis        — Emilia came along (always wins)
+#   ending-upptackta     — home after 17:15, OR Sigrid never covered (two missed counts),
+#                          OR Margit called mum
+#   ending-ingen-markte  — everything else
+# All are anchored at fritidsrummet so the map draws one icon for the place.
+nodes:
+
+  - id: ending-ingen-markte
+    arc: main
+    type: ending
+    location: fritidsrummet
+    title: "Ingen märkte något"
+    media: {image_theme: bead-table-two-boys-secret-smile}
+    body: "Pojkarna sitter vid pärlplattebordet när mamma kommer. Lena säger: \"De har varit så lugna i dag.\" Oliver håller plåtburken under bordet. Mässingsnyckeln ligger i Arthurs ficka bredvid tuggummipaketet – nej, tuggummit är slut, Sigrid har det. Arthur ler på det sätt som betyder i morgon igen.\n\nPå brickan står KVARNEN. Kom när det är mörkt. Ta med en kompis. ▒ Slut. ▒"
+    body_variants:
+      - when: {all: [{flag_set: keys_returned}, {flag_set: have_treasure}]}
+        body: "Pojkarna sitter vid pärlplattebordet när mamma kommer. Lena säger: \"De har varit så lugna i dag.\" Oliver håller plåtburken under bordet. I dörren till korridoren står Dan och hälsar glatt: \"Jag löste den där gåtan er. Det blev sextiosju.\" Han märkte aldrig att nycklarna var borta. Arthur ler på det sätt som betyder i morgon igen.\n\nPå brickan står KVARNEN. Kom när det är mörkt. Ta med en kompis. ▒ Slut. ▒"
+      - when: {all: [{not: {flag_set: have_treasure}}]}
+        body: "Pojkarna sitter vid pärlplattebordet när mamma kommer. Lena säger: \"De har varit så lugna i dag.\" Ingen märkte något. Men plåtburken ligger kvar under en sten i kojan, och Oliver tittar ut genom fönstret mot dalen. \"I morgon,\" säger Arthur. \"I morgon regnar det,\" säger Oliver. \"Då tar vi regnkläder.\" ▒ Slut. ▒"
+
+  - id: ending-upptackta
+    arc: main
+    type: ending
+    location: fritidsrummet
+    title: "Upptäckta"
+    media: {image_theme: mum-in-doorway-arms-crossed-dusk}
+    body: "Mamma står i dörren med armarna i kors. Lena har ringt. Ingen är arg på riktigt, men det blir ett långt samtal i bilen, och skattkartan blir beslagtagen till helgen. Plåtburken får de behålla. Oliver sitter tyst i baksätet och håller den i knät. På brickan står KVARNEN. Kom när det är mörkt.\n\nArthur tittar ut genom bilfönstret och tänker att det finns kvarnar i Sandby. Minst en. ▒ Slut. ▒"
+    body_variants:
+      - when: {all: [{not: {flag_set: have_treasure}}]}
+        body: "Mamma står i dörren med armarna i kors. Lena har ringt. Ingen är arg på riktigt, men det blir ett långt samtal i bilen. Ingen skatt, blöta skor, och en Oliver som säger \"sa jag ju\" exakt en gång och sen är tyst. Plåtburken ligger kvar i kojan. Arthur tittar ut genom bilfönstret mot dalen. Det blir en annan dag. ▒ Slut. ▒"
+
+  - id: ending-kompis
+    arc: main
+    type: ending
+    location: fritidsrummet
+    title: "Kompisslutet"
+    media: {image_theme: little-sister-reflective-vest-announcing}
+    body: "De hinner tillbaka. Allt är lugnt. Lena räknar, mamma kommer, Oliver har plåtburken under bordet. Sen säger Emilia, högt, till Lena, till mamma och till hela fritids:\n\n\"VI HITTADE EN SKATT I SKOGEN OCH EN HUND ÅT UPP BULLEN.\"\n\nTystnad. Sen skrattar alla, utom Arthur. Mamma tar mässingsnyckeln, läser brickan – KVARNEN – och tittar länge på Arthur. \"Vi pratar om det här hemma.\" Bästa slutet enligt Emilia. ▒ Slut. ▒"
+    body_variants:
+      - when: {all: [{not: {flag_set: have_treasure}}]}
+        body: "De hinner tillbaka. Allt är lugnt. Lena räknar, mamma kommer. Sen säger Emilia, högt, till Lena, till mamma och till hela fritids:\n\n\"VI VAR I SKOGEN OCH LETADE SKATT OCH OLIVER BLEV BLÖT.\"\n\nTystnad. Sen skrattar alla, utom Arthur. Oliver tittar ner i bordet. Skatten ligger kvar i kojan. Bästa slutet enligt Emilia. ▒ Slut. ▒"

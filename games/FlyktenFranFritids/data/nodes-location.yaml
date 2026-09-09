@@ -1,0 +1,285 @@
+# Location (hub) nodes. Movement is by explicit edges only (no map, no world_access). Every edge
+# carries `advance_story_time` (minutes). Labels are written as commands: Gå, Ta, Ge, Hjälp.
+nodes:
+
+  # ============================ Uggleskolan ============================
+  - id: fritidsrummet
+    arc: main
+    type: location
+    location: fritidsrummet
+    title: "Fritidsrummet"
+    media: {image_theme: fritids-room-bead-table-afternoon}
+    body: "Bord med pärlplattor, den sjunkna soffan, mellanmålsvagnen med frukt ingen tar. Lena står vid diskbänken och har koll på allt utan att se ut som om hon har det. Sigrid sitter i soffan med benen uppdragna och tittar på er. Dörren till korridoren i norr. Dörren till förskoleavdelningen i öster – därifrån hörs en väldigt hög liten röst."
+    body_variants:
+      - when: {all: [{flag_set: have_backpacks}, {flag_set: sigrid_covers}]}
+        body: "Fritidsrummet. Ni har ryggsäckarna på och Sigrid har tuggummit i munnen. Hon tittar demonstrativt åt ett annat håll. Lena diskar. Dörren till korridoren står på glänt – och bortom korridoren ligger skolgården och grinden."
+      - when: {all: [{flag_set: sigrid_covers}]}
+        body: "Fritidsrummet. Sigrid tuggar och låtsas inte om er. Lena diskar. Vid nästa räkning är ni \"på toa\". Nu: nycklarna, klassrummet, ryggsäckarna."
+      - when: {all: [{flag_set: have_backpacks}]}
+        body: "Fritidsrummet, med ryggsäckarna på. Sigrid i soffan följer er med blicken. \"Vart ska ni med väskorna?\" Lena räknar snart igen. Någon behöver täcka för er – eller så tar ni chansen."
+    edges:
+      - id: e-fritids-sigrid
+        to: sigrid
+        label: Prata med Sigrid i soffan
+        effects: {advance_story_time: 1, log: "Ni gick fram till Sigrid i soffan."}
+      - id: e-fritids-korridor
+        to: korridoren
+        label: Gå norr ut i korridoren
+        effects: {advance_story_time: 1, log: "Ni gick ut i korridoren."}
+      - id: e-fritids-forskola
+        to: forskolan
+        label: Gå öster in på förskoleavdelningen
+        conditions: {all: [{not: {flag_set: emilia_along}}, {not: {flag_set: emilia_promised}}]}
+        effects: {advance_story_time: 1, log: "Ni kikade in på förskoleavdelningen."}
+
+  - id: korridoren
+    arc: main
+    type: location
+    location: korridoren
+    title: "Korridoren"
+    media: {image_theme: school-corridor-coat-hooks-maths-poster}
+    body: "Korridoren är tom och luktar skola. Klasskrokar längs väggen, en toalett, och på väggen Dans matteaffisch: \"Veckans klurighet\". Ingen har löst den den här veckan. Personalrummet ligger i väster – därifrån hörs tangentbord. Klassrum 3 i norr, med en blå klisterlapp på dörren. Ytterdörren mot skolgården i öster."
+    body_variants:
+      - when: {all: [{flag_set: have_backpacks}]}
+        body: "Korridoren, med ryggsäckarna på. Ytterdörren i öster leder ut på skolgården. Söderut ligger fritidsrummet – och Sigrid, om ni behöver någon som täcker för er."
+      - when: {all: [{flag_set: have_keys}]}
+        body: "Korridoren. Nyckelknippan tynger i Arthurs ficka. Klassrum 3 ligger i norr, dörren med den blå lappen. Från personalrummet hörs en whiteboardpenna som gnisslar."
+    edges:
+      - id: e-korridor-affisch
+        to: affischen
+        label: Läs matteaffischen "Veckans klurighet"
+        effects: {advance_story_time: 1, log: "Ni ställde er framför matteaffischen."}
+      - id: e-korridor-dan
+        to: dan
+        label: Gå väster in i personalrummet till Dan
+        conditions: {any: [{not: {flag_set: have_keys}}, {all: [{flag_set: have_backpacks}, {not: {flag_set: keys_returned}}]}]}
+        effects: {advance_story_time: 1, keep_when_finished: true, log: "Ni gick in i personalrummet."}
+      - id: e-korridor-klassrum-last
+        to: korridoren
+        label: Försök öppna dörren till klassrum 3
+        conditions: {all: [{not: {flag_set: have_keys}}, {not: {flag_set: have_backpacks}}]}
+        effects: {advance_story_time: 1, log: "Dörren till klassrum 3 rör sig inte. Låst. Oliver: \"Sa jag ju.\""}
+      - id: e-korridor-klassrum
+        to: klassrum3
+        label: Gå norr till klassrum 3 med nycklarna
+        conditions: {all: [{flag_set: have_keys}, {not: {flag_set: have_backpacks}}]}
+        effects: {advance_story_time: 1, log: "Ni gick till dörren till klassrum 3 med nyckelknippan."}
+      - id: e-korridor-skolgard
+        to: skolgarden
+        label: Gå öster ut genom ytterdörren till skolgården
+        effects: {advance_story_time: 1, log: "Ni gick ut på skolgården."}
+      - id: e-korridor-fritids
+        to: fritidsrummet
+        label: Gå söder tillbaka till fritidsrummet
+        sort_order: 9
+        effects: {advance_story_time: 1, log: "Ni gick tillbaka till fritidsrummet."}
+
+  - id: forskolan
+    arc: main
+    type: location
+    location: forskolan
+    title: "Förskoleavdelningen"
+    media: {image_theme: preschool-room-colourful-chaos}
+    body: "Färgglatt, lite kaotiskt, ingen vuxen ser vem som kommer in. Emilia ser Arthur på en sekund.\n\nEmilia: ARTHUR! Vart ska du? Jag ska med!\nArthur: Shh. Vi ska ingenstans.\nEmilia: Ni har väskor. Jag har väst.\n\nHon håller upp reflexvästen. Den är gul och väldigt synlig. Emilia är fyra år, går långsamt och har en väldigt hög röst. Oliver ser ut som om han räknar minuter."
+    edges:
+      - id: e-forskola-ta-med
+        to: fritidsrummet
+        label: Ta med Emilia (och reflexvästen)
+        effects: {progress_points: 10, advance_story_time: 2, set_flag: [emilia_along, have_vest], log: "Emilia följer med. Ni fick reflexvästen – och en lillasyster som går långsamt och pratar högt."}
+      - id: e-forskola-lova
+        to: fritidsrummet
+        label: Lova att leka med henne i morgon
+        effects: {advance_story_time: 1, set_flag: emilia_promised, log: "Ni lovade Emilia att leka i morgon. Hon skrek inte. Ingen väst."}
+
+  - id: skolgarden
+    arc: main
+    type: location
+    location: skolgarden
+    title: "Skolgården"
+    media: {image_theme: schoolyard-compost-wheelbarrow-gravel, real_place: "a Swedish primary school yard with a wooden climbing frame and a compost bin, Södra Sandby, Skåne"}
+    body: "Klätterställningen, komposten, gruset. Bosse står vid komposten med en skottkärra som sjunkit ner i gruset och tittar på klockan. \"Ska ni hem? Grinden går igen halv fem, sen får ni gå runt.\" Cykelställen och bakgrinden ligger söderut."
+    body_variants:
+      - when: {all: [{flag_set: bosse_helped}]}
+        body: "Skolgården. Skottkärran står på fast mark igen och Bosse ser nästan glad ut. \"Grinden är öppen en stund till. Jag har inte sett er.\" Cykelställen och bakgrinden ligger söderut."
+    edges:
+      - id: e-skolgard-bosse
+        to: skolgarden
+        label: Hjälp Bosse att få loss skottkärran
+        conditions: {all: [{not: {flag_set: bosse_helped}}]}
+        effects: {progress_points: 15, advance_story_time: 3, set_flag: bosse_helped, log: "Ni hjälpte Bosse med kärran. \"Två små, det är nästan en stor. Ta i.\" Han lämnar grinden öppen en stund till och säger inget till någon."}
+      - id: e-skolgard-cykel
+        to: cykelstallen
+        label: Gå söder till cykelställen och bakgrinden
+        effects: {advance_story_time: 1, log: "Ni gick ner till cykelställen."}
+      - id: e-skolgard-korridor
+        to: korridoren
+        label: Gå tillbaka in i korridoren
+        sort_order: 9
+        effects: {advance_story_time: 1, log: "Ni gick in igen."}
+
+  - id: cykelstallen
+    arc: main
+    type: location
+    location: cykelstallen
+    title: "Cykelställen och bakgrinden"
+    media: {image_theme: school-bike-rack-iron-gate}
+    body: "Cykelställen, några glömda cyklar, och bakgrinden ut mot gång- och cykelvägen. Grinden står öppen. Än så länge."
+    body_variants:
+      - when: {all: [{story_time_gte: 10}, {not: {flag_set: bosse_helped}}]}
+        body: "Cykelställen. Grinden är låst – Bosse låser halv fem, punktligt, och det är efter halv fem. Bredvid grinden står komposten, mjuk och luktande, precis lagom hög att klättra över. Oliver: \"Nej.\" Arthur: \"Jo.\""
+      - when: {all: [{flag_set: bosse_helped}]}
+        body: "Cykelställen. Grinden står öppen – Bosse höll ord. Utanför börjar gång- och cykelvägen mot centrum."
+    edges:
+      - id: e-cykel-grind
+        to: cykelvagen
+        label: Gå ut genom grinden
+        conditions: {any: [{not: {story_time_gte: 10}}, {flag_set: bosse_helped}]}
+        effects: {progress_points: 20, advance_story_time: 1, set_flag: left_school, log: "Ni gick ut genom bakgrinden. Ute!"}
+      - id: e-cykel-kompost
+        to: cykelvagen
+        label: Klättra över komposten
+        conditions: {all: [{story_time_gte: 10}, {not: {flag_set: bosse_helped}}]}
+        effects: {progress_points: 15, advance_story_time: 2, set_flag: left_school, log: "Ni klättrade över komposten. Det luktade. Oliver fick ett bananskal i håret. Men ni är ute."}
+      - id: e-cykel-skolgard
+        to: skolgarden
+        label: Gå tillbaka till skolgården
+        sort_order: 9
+        effects: {advance_story_time: 1, log: "Ni gick tillbaka upp på skolgården."}
+
+  # ============================ Byn ============================
+  - id: cykelvagen
+    arc: main
+    type: location
+    location: cykelvagen
+    title: "Gång- och cykelvägen"
+    media: {image_theme: village-cycle-path-hedges-lampposts, real_place: "a paved footpath and cycleway between hedges in Södra Sandby, Skåne, Sweden"}
+    body: "Utanför grinden. Cykelvägen svänger av mot centrum, lång och trygg. Rakt fram, mellan häckarna, går genvägen genom villakvarteren.\n\nOliver: Cykelvägen. Där bor ingen som känner oss.\nArthur: Genvägen är fem minuter kortare.\nOliver: Och Margit bor där."
+    edges:
+      - id: e-cykelvag-centrum
+        to: centrum
+        label: Ta cykelvägen till centrum (trygg, lite lång)
+        effects: {progress_points: 5, advance_story_time: 6, log: "Ni tog cykelvägen. Sex minuter. Inget hände."}
+      - id: e-cykelvag-genvag
+        to: villakvarteren
+        label: Ta genvägen genom villakvarteren (snabbare)
+        effects: {progress_points: 5, advance_story_time: 2, log: "Ni tog genvägen in mellan häckarna."}
+
+  - id: villakvarteren
+    arc: main
+    type: location
+    location: villakvarteren
+    title: "Villakvarteren"
+    media: {image_theme: suburban-street-hedges-old-lady-watering}
+    body: "Tysta villagator, klippta häckar, en studsmatta bakom varje staket. Och i en trädgård, med vattenkannan i handen: Margit. Hon har redan sett er. Hon känner Arthurs mamma. Hon är den sorten som ringer \"för säkerhets skull\"."
+    body_variants:
+      - when: {all: [{flag_set: margit_ok}]}
+        body: "Villakvarteren. Margit har gått tillbaka till rabatten. Hon ringer inte. Centrum ligger bara ett kvarter bort."
+    edges:
+      - id: e-villa-margit
+        to: margit
+        label: Hälsa på Margit
+        effects: {advance_story_time: 1, log: "Ni gick fram till Margits staket."}
+      - id: e-villa-centrum-ok
+        to: centrum
+        label: Gå vidare mot centrum
+        conditions: {all: [{flag_set: margit_ok}]}
+        effects: {advance_story_time: 1, log: "Ni gick vidare mot centrum."}
+      - id: e-villa-centrum-smyg
+        to: centrum
+        label: Gå snabbt förbi utan att säga något
+        conditions: {all: [{not: {flag_set: margit_ok}}]}
+        effects: {advance_story_time: 1, set_flag: margit_called, log: "Ni skyndade förbi Margit utan att hälsa. Hon tittade länge efter er – och gick in för att hämta telefonen."}
+
+  - id: centrum
+    arc: main
+    type: location
+    location: centrum
+    title: "Sandby centrum"
+    media: {image_theme: village-centre-pizzeria-fallen-sign, real_place: "the small village centre of Södra Sandby, Skåne, Sweden, with a pizzeria and an ICA grocery shop"}
+    body: "ICA, pizzerian, busshållplatsen. Ali står utanför pizzerian och tittar på ett skyltställ som blåst omkull och rullat in under en parkerad bil.\n\nAli: Arthur! Oliver! Är ni ute själva? Säg inget, jag vill inte veta. Kan ni krypa in under bilen? Jag får inte plats.\nArthur: Om vi får en bulle.\nAli: Ni får en bulle om ni får ut skylten. Och en vägbeskrivning om det är kojan ni ska till. Det är det alltid."
+    body_variants:
+      - when: {all: [{flag_set: ali_helped}]}
+        body: "Centrum. Skyltstället står på plats igen och Ali vinkar från pizzerian. Söderut, bortom busshållplatsen, börjar trappan ner i Fågelsångsdalen."
+      - when: {all: [{flag_set: have_bun}]}
+        body: "Centrum. Kanelbullen är varm genom papperet. Ali står fortfarande och svär över skyltstället under bilen. Söderut börjar trappan ner i Fågelsångsdalen."
+    edges:
+      - id: e-centrum-ali
+        to: centrum
+        label: Hjälp Ali att få fram skyltstället under bilen
+        conditions: {all: [{not: {flag_set: ali_helped}}]}
+        effects: {progress_points: 15, advance_story_time: 2, set_flag: [ali_helped, have_bun], log: "Ni kröp in under bilen och fick ut skyltstället. Ali gav er en kanelbulle och vägbeskrivning: \"Ner för trappan, håll höger vid den stora boken, över stammen, kojan är där bäcken svänger. Och ta med något till hunden.\""}
+      - id: e-centrum-ica
+        to: centrum
+        label: Gå in på ICA och köp en kanelbulle för 20 kr
+        conditions: {all: [{flag_set: have_backpacks}, {not: {flag_set: have_bun}}, {not: {flag_set: spent_20kr}}]}
+        effects: {progress_points: 5, advance_story_time: 1, set_flag: [have_bun, spent_20kr], log: "Ni köpte en kanelbulle på ICA för Olivers tjugo kronor. Personalen tittade misstänksamt men sa inget."}
+      - id: e-centrum-dalen
+        to: stigen
+        label: Gå söder ner mot trappan till Fågelsångsdalen
+        effects: {progress_points: 10, advance_story_time: 3, log: "Ni lämnade centrum och gick ner mot Fågelsångsdalen."}
+
+  # ============================ Fågelsångsdalen ============================
+  - id: stigen
+    arc: main
+    type: location
+    location: stigen
+    title: "Stigen ner i dalen"
+    media: {image_theme: beech-ravine-steps-golden-dog, real_place: "wooden steps descending into the beech-wood ravine of Fågelsångsdalen near Södra Sandby, Skåne, Sweden"}
+    body: "Trappan ner i dalen. Det blir tyst och grönt. Mitt på stigen står Ludde: stor, gyllene, tungan ute, svansen som en propeller. Han tänker inte flytta sig. Han vill leka.\n\nOliver: Den är snäll.\nArthur: Den är stor.\nOliver: Den är snäll och stor. Ge den bullen."
+    body_variants:
+      - when: {all: [{flag_set: ludde_fed}]}
+        body: "Stigen. Ludde är borta i bokskogen med bullen. Stigen är fri ner mot bäcken."
+      - when: {all: [{flag_set: ludde_petted}]}
+        body: "Stigen. Ludde ligger nu ner mitt på stigen, på rygg, och vill bli klappad mer. Det gjorde inte saken bättre. Till vänster går en blöt omväg över ängen."
+    edges:
+      - id: e-stigen-bulle
+        to: backen
+        label: Ge kanelbullen till Ludde
+        conditions: {all: [{flag_set: have_bun}]}
+        effects: {progress_points: 15, advance_story_time: 1, set_flag: ludde_fed, clear_flag: have_bun, log: "Ludde tog bullen och sprang i väg med den. Stigen är fri."}
+      - id: e-stigen-klappa
+        to: stigen
+        label: Klappa Ludde
+        conditions: {all: [{not: {flag_set: ludde_petted}}]}
+        effects: {advance_story_time: 1, set_flag: ludde_petted, log: "Ni klappade Ludde. Han lade sig ner mitt på stigen. Ingen framgång, men trevligt."}
+      - id: e-stigen-ang
+        to: angen
+        label: Gå runt Ludde via ängen
+        effects: {advance_story_time: 3, log: "Ni gick runt via ängen."}
+      - id: e-stigen-fri
+        to: backen
+        label: Gå ner mot bäcken
+        conditions: {all: [{flag_set: ludde_fed}]}
+        effects: {advance_story_time: 1, log: "Ni gick vidare ner mot bäcken."}
+
+  - id: angen
+    arc: main
+    type: location
+    location: angen
+    title: "Ängen"
+    media: {image_theme: wet-meadow-beech-edge}
+    body: "Omvägen. Gräset är högt och blött och det finns ingen riktig stig. Vattnet går in i skorna på tredje steget. Oliver säger ingenting, men det är ett väldigt högljutt ingenting. Bortom ängen hörs bäcken."
+    edges:
+      - id: e-ang-back
+        to: backen
+        label: Fortsätt fram till bäcken
+        effects: {advance_story_time: 2, log: "Ni pulsade över ängen till bäcken. Blöta skor. Fem minuter totalt."}
+
+  - id: backen
+    arc: main
+    type: location
+    location: backen
+    title: "Bäcken"
+    media: {image_theme: mossy-log-over-woodland-stream}
+    body: "En fallen trädstam över bäcken. Under bokarna är det redan skumt och stammen är blank av mossa. Man ser inte var man sätter fötterna. På andra sidan, där bäcken svänger, står en stor bok – och något som lutar mot den."
+    edges:
+      - id: e-back-lampa
+        to: kojan
+        label: Tänd ficklampan och gå över stammen
+        conditions: {any: [{flag_set: have_backpacks}, {flag_set: have_vest}]}
+        effects: {progress_points: 10, advance_story_time: 1, log: "Ficklampan på. Ni gick över stammen med torra fötter."}
+      - id: e-back-morker
+        to: kojan
+        label: Gå över stammen i mörkret
+        conditions: {all: [{not: {flag_set: have_backpacks}}, {not: {flag_set: have_vest}}]}
+        effects: {advance_story_time: 3, set_flag: oliver_wet, log: "Oliver halkade i bäcken. Blöt till knäna. Han är tyst resten av vägen."}

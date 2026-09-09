@@ -1,0 +1,65 @@
+# Places within cells. Node `location:` fields reference these ids. This game shows no map
+# (`game.map: false`), so there are no map coordinates and no icons.
+locations:
+
+  # --- Uggleskolan ---
+  - id: fritidsrummet
+    name: Fritidsrummet
+    cell: skolan
+    description: "Startpunkten. Bord med pärlplattor, en sliten soffa, mellanmålsvagnen. Lena räknar barnen härifrån."
+  - id: korridoren
+    name: Korridoren
+    cell: skolan
+    description: "Lång, skolluktande. Klasskrokar längs väggen, en matteaffisch, en toalett. Dörrar åt alla håll."
+  - id: personalrummet
+    name: Personalrummet
+    cell: skolan
+    description: "Dans skrivbord, en whiteboard, kaffedoft. Nyckelknippan ligger bredvid datorn."
+  - id: klassrum3
+    name: Klassrum 3
+    cell: skolan
+    description: "Låst. Innanför hänger Arthurs och Olivers ryggsäckar på krokarna längst bak."
+  - id: forskolan
+    name: Förskoleavdelningen
+    cell: skolan
+    description: "Färgglatt och lite kaotiskt. Emilia är här. Ingen vuxen ser vem som kommer in."
+  - id: skolgarden
+    name: Skolgården
+    cell: skolan
+    description: "Klätterställning, komposten, Bosse och den fastkörda skottkärran."
+  - id: cykelstallen
+    name: Cykelställen och bakgrinden
+    cell: skolan
+    description: "Grinden ut mot gång- och cykelvägen. Bosse låser den halv fem, punktligt."
+
+  # --- Byn ---
+  - id: cykelvagen
+    name: Gång- och cykelvägen
+    cell: byn
+    description: "Från skolan mot centrum. Trygg, lite lång. Mellan häckarna går en genväg."
+  - id: villakvarteren
+    name: Villakvarteren
+    cell: byn
+    description: "Genvägen. Snabbare – men här bor Margit, som känner igen Arthur."
+  - id: centrum
+    name: Sandby centrum
+    cell: byn
+    description: "ICA, pizzerian, busshållplatsen. Ali står utanför pizzerian och svär över skyltstället."
+
+  # --- Fågelsångsdalen ---
+  - id: stigen
+    name: Stigen ner i dalen
+    cell: dalen
+    description: "Trappan ner, bokskog, plötsligt tyst. Ludde står mitt på stigen."
+  - id: angen
+    name: Ängen
+    cell: dalen
+    description: "Omvägen runt Ludde. Blött."
+  - id: backen
+    name: Bäcken
+    cell: dalen
+    description: "En fallen trädstam ligger över. Skuggigt, mossigt, man ser inte var man sätter fötterna."
+  - id: kojan
+    name: Kojan
+    cell: dalen
+    description: "Byggd av grenar mot en stor bok där bäcken svänger. Golvet är täckt av stenar."

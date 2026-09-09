@@ -1,0 +1,59 @@
+# Puzzles. A puzzle node references one by id. `solution.kind: set` accepts any listed
+# answer (case-insensitive; one-letter typos are forgiven for words ≥4 letters). `on_fail`
+# is applied on every wrong answer — this is a clock game, so mistakes cost minutes.
+puzzles:
+
+  # Scen 2 — Veckans klurighet on the maths poster. Solving it = Arthur writes it on his hand.
+  - id: veckans-klurighet
+    type: riddle
+    prompt: "På affischen står: \"Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?\" Vilket tal är det?"
+    solution: {kind: set, set: ["7", "sju", "talet 7", "det är 7", "det är sju"]}
+    hint_ladder:
+      - "Oliver: \"Tänk baklänges. Lägg tillbaka nian först.\""
+      - "Oliver: \"36 plus 9 är 45. Och 45 delat med tre?\""
+      - "Oliver: \"Sju. Det är sju. Jag vet, men Dan vet det inte än.\""
+    on_solve:
+      progress_points: 20
+      set_flag: have_riddle
+      advance_story_time: 1
+      log: "Ni löste veckans klurighet: talet är 7. Arthur skrev av gåtan på handen – Dan ska få den."
+    on_fail:
+      advance_story_time: 1
+      log: "Fel. Oliver rynkar på näsan. En minut borta."
+
+  # Scen 4 — Right key. Five keys, a blue sticker on the door.
+  - id: ratt-nyckel
+    type: combination
+    prompt: "Knippan har fem nycklar: en stor gammal, en med röd tejp, en med blå tejp, en liten (postlådan?) och en med en plastbricka där det står \"Gymnastik\". På dörren till klassrum 3 sitter en blå klisterlapp. Vilken nyckel provar du?"
+    solution: {kind: set, set: ["blå", "bla", "blåa", "den blå", "den blåa", "blå nyckel", "blå nyckeln", "blåa nyckeln", "den blå nyckeln", "den blåa nyckeln", "blå tejp", "den med blå tejp", "nyckeln med blå tejp", "nyckeln med blå tejp på"]}
+    hint_ladder:
+      - "Oliver: \"Titta på dörren.\""
+      - "Oliver: \"Blå lapp. Dan är ordentlig.\""
+      - "Oliver: \"Blå tejp. Ta den blå nyckeln.\""
+    on_solve:
+      progress_points: 30
+      set_flag: have_backpacks
+      advance_story_time: 1
+      log: "Blå lapp, blå tejp. Dörren gled upp. Ni tog ryggsäckarna: i Arthurs låg ficklampan, i Olivers skattkartan och tjugo kronor."
+    on_fail:
+      advance_story_time: 1
+      log: "Fel nyckel. Låset rör sig inte. Oliver himlar med ögonen. En minut borta."
+
+  # Scen 11 — Right stone in the hut. With the map it's trivial; without it you guess.
+  - id: ratt-sten
+    type: riddle
+    prompt: "Golvet i kojan är täckt av stenar. Under en av dem ligger plåtburken. Vilken sten lyfter du? (Beskriv den: vilken i ordningen från ingången, eller hur den ser ut.)"
+    solution: {kind: set, set: ["tredje", "den tredje", "tredje stenen", "den tredje stenen", "3", "tredje från ingången", "tredje stenen från ingången", "den tredje från ingången", "platta", "den platta", "platta stenen", "den platta stenen", "tredje platta", "den tredje platta", "platta tredje"]}
+    required_clues: [skattkartan]
+    hint_ladder:
+      - "Oliver vecklar ut kartan – om ni har den. Annars: \"Det var på lördagen. Det var ljust då.\""
+      - "Oliver: \"Räkna från ingången. Inte den första. Inte den andra.\""
+      - "Oliver: \"Tredje stenen från ingången. Den platta.\""
+    on_solve:
+      progress_points: 50
+      set_flag: have_treasure
+      advance_story_time: 1
+      log: "Tredje stenen, den platta. Under den: plåtburken."
+    on_fail:
+      advance_story_time: 2
+      log: "Fel sten. Bara jord och en daggmask. Två minuter borta. Oliver påminner om hämtningen."

@@ -1,0 +1,507 @@
+<!doctype html>
+<html lang="sv">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Flykten från fritids – storyboard</title>
+<style>
+  :root {
+    --bg: #fbf8f2;
+    --ink: #22201c;
+    --muted: #6b665c;
+    --line: #e2dccf;
+    --card: #ffffff;
+    --accent: #b5471f;
+    --soft: #f3ecdf;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg: #1c1a17;
+      --ink: #ece7dc;
+      --muted: #a39d90;
+      --line: #3a362f;
+      --card: #262320;
+      --accent: #e5804f;
+      --soft: #2e2a24;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font: 16px/1.55 Georgia, "Times New Roman", serif;
+  }
+  main { max-width: 900px; margin: 0 auto; padding: 32px 20px 80px; }
+  h1 { font-size: 2.4rem; margin: 0 0 4px; }
+  .sub { color: var(--muted); margin: 0 0 32px; }
+  h2 { font-size: 1.6rem; margin: 48px 0 12px; border-bottom: 2px solid var(--line); padding-bottom: 6px; }
+  h3 { font-size: 1.15rem; margin: 24px 0 6px; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px 16px; font-family: system-ui, sans-serif; font-size: .9rem; }
+  nav a { color: var(--accent); text-decoration: none; }
+  nav a:hover { text-decoration: underline; }
+  .meta { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; margin: 16px 0; }
+  .meta div { background: var(--soft); padding: 10px 14px; border-radius: 8px; font-family: system-ui, sans-serif; font-size: .9rem; }
+  .meta b { display: block; color: var(--muted); font-weight: 600; font-size: .75rem; text-transform: uppercase; letter-spacing: .04em; }
+  .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 10px; padding: 14px 16px; }
+  .card h3 { margin: 0 0 2px; }
+  .card .role { color: var(--muted); font-family: system-ui, sans-serif; font-size: .8rem; margin-bottom: 8px; }
+  .card p { margin: 6px 0; font-size: .95rem; }
+  .card p b { font-family: system-ui, sans-serif; font-size: .8rem; color: var(--muted); font-weight: 600; }
+  .tbl { overflow-x: auto; }
+  table { border-collapse: collapse; width: 100%; font-size: .93rem; }
+  th, td { text-align: left; vertical-align: top; padding: 8px 10px; border-bottom: 1px solid var(--line); }
+  th { font-family: system-ui, sans-serif; font-size: .78rem; text-transform: uppercase; letter-spacing: .04em; color: var(--muted); }
+  pre { background: var(--soft); padding: 14px 16px; border-radius: 8px; overflow-x: auto; font-size: .85rem; line-height: 1.4; }
+  details { border: 1px solid var(--line); border-radius: 10px; background: var(--card); margin: 12px 0; }
+  details > summary { cursor: pointer; padding: 12px 16px; font-weight: bold; list-style: none; display: flex; justify-content: space-between; gap: 12px; }
+  details > summary::-webkit-details-marker { display: none; }
+  details > summary::after { content: "+"; color: var(--muted); }
+  details[open] > summary::after { content: "–"; }
+  details > summary .tid { color: var(--muted); font-weight: normal; font-family: system-ui, sans-serif; font-size: .85rem; white-space: nowrap; }
+  details > div { padding: 0 16px 14px; }
+  .dialog { border-left: 3px solid var(--accent); padding: 4px 14px; margin: 10px 0; background: var(--soft); border-radius: 0 8px 8px 0; }
+  .dialog p { margin: 4px 0; }
+  .dialog i { color: var(--muted); }
+  .val { background: var(--soft); padding: 8px 12px; border-radius: 8px; margin: 8px 0; }
+  .val b { font-family: system-ui, sans-serif; font-size: .8rem; color: var(--muted); }
+  ul { padding-left: 20px; }
+  li { margin: 3px 0; }
+  .akt { color: var(--accent); font-family: system-ui, sans-serif; font-size: .8rem; text-transform: uppercase; letter-spacing: .06em; margin: 32px 0 -6px; }
+</style>
+</head>
+<body>
+<main>
+
+<h1>Flykten från fritids</h1>
+<p class="sub">Storyboard för ett textäventyr · Arthur &amp; Oliver i Södra Sandby · arbetsnamn</p>
+
+<nav>
+  <a href="#premiss">Premiss</a>
+  <a href="#karaktarer">Karaktärer</a>
+  <a href="#platser">Platser</a>
+  <a href="#foremal">Föremål</a>
+  <a href="#scener">Scener</a>
+  <a href="#pussel">Pussel</a>
+  <a href="#slut">Slut</a>
+  <a href="#fragor">Öppna frågor</a>
+</nav>
+
+<!-- ============================================================ -->
+<h2 id="premiss">1. Premiss</h2>
+<p>Klockan är 16:20 på Uggleskolans fritids. Arthur har tråkigt. Han och bästa kompisen Oliver glömde sina ryggsäckar i klassrummet när skolan slutade, och i Olivers ryggsäck ligger skattkartan han ritade i helgen. Arthur bestämmer: <em>vi smiter.</em> Först måste de få tag i nycklarna till klassrum 3. Sen ut från skolan utan att Lena märker det. Sen genom byn till Fågelsångsdalen, hitta kojan, och tillbaka innan mamma kommer och hämtar 17:15.</p>
+
+<div class="meta">
+  <div><b>Genre</b>Textäventyr med kommandon (gå norr, titta, ta nyckel, prata med Dan)</div>
+  <div><b>Spelare</b>Arthur. Oliver följer med som sällskap och kommenterar.</div>
+  <div><b>Ton</b>Busigt och snällt. Lite spänning, inget farligt. Vuxna är snälla men i vägen.</div>
+  <div><b>Spelklocka</b>Startar 16:20. Varje förflyttning eller handling tar 1–3 minuter. Hämtning 17:15.</div>
+  <div><b>Mål</b>Hämta ryggsäckarna, hitta skatten i kojan, vara tillbaka på fritids innan 17:15.</div>
+  <div><b>Längd</b>Cirka 20–30 minuter att spela igenom första gången.</div>
+</div>
+
+<p>Klockan är spelets motor. Allt tar tid, och den som slösar tid på fel saker kommer tillbaka för sent. Det finns aldrig något <em>game over</em>: alla vägar leder till ett slut, bara olika bra.</p>
+
+<!-- ============================================================ -->
+<h2 id="karaktarer">2. Karaktärer</h2>
+<div class="cards">
+
+  <div class="card">
+    <h3>Arthur</h3>
+    <div class="role">Spelaren · 9 år · klass 3</div>
+    <p>Idéspruta, modig, otålig. Det är alltid Arthur som säger "vi gör det". Har ett paket tuggummi i fickan som han inte får ha på skolan.</p>
+    <p><b>Vill:</b> äventyr, och skatten.</p>
+    <p><b>I spelet:</b> alla kommandon är Arthurs handlingar.</p>
+  </div>
+
+  <div class="card">
+    <h3>Oliver</h3>
+    <div class="role">Bästa kompisen · 9 år · klass 3</div>
+    <p>Försiktig, klurig, bäst i klassen på matte. Ritade skattkartan. Tänker efter innan han gör något, vilket Arthur tycker tar för lång tid.</p>
+    <p><b>Vill:</b> att ingen ska bli arg på dem.</p>
+    <p><b>I spelet:</b> följer med överallt. <code>prata med oliver</code> ger en ledtråd till det pussel man står i. Det är Oliver som kan lösa mattegåtan om Arthur inte kan.</p>
+  </div>
+
+  <div class="card">
+    <h3>Dan</h3>
+    <div class="role">Fritidspedagog · personalrummet</div>
+    <p>Sitter och planerar vid sitt skrivbord med nyckelknippan bredvid datorn. Älskar matte över allt annat. Får han en riktigt bra gåta ställer han sig vid whiteboarden och glömmer världen.</p>
+    <p><b>Vill:</b> få jobba i fred, och lösa gåtor.</p>
+    <p><b>I spelet:</b> <code>ge gåta till dan</code> → han går till whiteboarden, nycklarna ligger kvar på bordet. Frågar man om nycklarna rakt ut säger han nej.</p>
+  </div>
+
+  <div class="card">
+    <h3>Lena</h3>
+    <div class="role">Fritidspersonal · fritidsrummet</div>
+    <p>Snäll men noggrann. Räknar barnen var tjugonde minut (16:20, 16:40, 17:00) och ser direkt om någon saknas. Hindret för att smita.</p>
+    <p><b>Vill:</b> ha koll på alla barn.</p>
+    <p><b>I spelet:</b> är man borta vid en räkning utan avledning ropar hon på en, och man förlorar 5 minuter på att förklara sig. Vid två missade räkningar ringer hon föräldrarna.</p>
+  </div>
+
+  <div class="card">
+    <h3>Bosse</h3>
+    <div class="role">Vaktmästare · skolgården</div>
+    <p>Låser bakgrinden vid cykelställen klockan 16:30, punktligt. Just nu har hans skottkärra fastnat i gruset vid komposten och han är på dåligt humör.</p>
+    <p><b>Vill:</b> få kärran loss och gå hem.</p>
+    <p><b>I spelet:</b> <code>hjälp bosse</code> tar 3 minuter men då lämnar han grinden olåst "en stund till". Annars måste man klättra över komposten.</p>
+  </div>
+
+  <div class="card">
+    <h3>Sigrid</h3>
+    <div class="role">Klasskompis · fritidsrummet</div>
+    <p>Vet allt om alla. Skvallrar om man är taskig mot henne, men är en pålitlig allierad om man är schysst.</p>
+    <p><b>Vill:</b> vara med. Och tuggummi.</p>
+    <p><b>I spelet:</b> <code>ge tuggummi till sigrid</code> → hon lovar att säga till Lena att Arthur och Oliver är på toaletten vid nästa räkning. Ljuger man för henne berättar hon för Lena att de smitit.</p>
+  </div>
+
+  <div class="card">
+    <h3>Emilia</h3>
+    <div class="role">Arthurs lillasyster · 4 år · förskoleavdelningen</div>
+    <p>Följer efter Arthur om hon får syn på honom. Har en reflexväst och en väldigt hög röst.</p>
+    <p><b>Vill:</b> vara med storebror.</p>
+    <p><b>I spelet:</b> valfri. Går man via förskoleavdelningen får man reflexvästen (nyttig i dalen) men Emilia hänger på, går långsamt, och avslöjar allt i slutet. Leder till "Kompisslutet".</p>
+  </div>
+
+  <div class="card">
+    <h3>Ali</h3>
+    <div class="role">Driver pizzerian · Sandby centrum</div>
+    <p>Känner alla barn i byn. Vet exakt var kojan i Fågelsångsdalen är, för hans egna barn byggde den.</p>
+    <p><b>Vill:</b> att någon hämtar in skyltstället som blåst omkull utanför.</p>
+    <p><b>I spelet:</b> <code>hjälp ali</code> → vägbeskrivning och en kanelbulle. Har man 20 kr kan man köpa bullen direkt i stället och spara en minut.</p>
+  </div>
+
+  <div class="card">
+    <h3>Ludde</h3>
+    <div class="role">Lös hund · Fågelsångsdalen</div>
+    <p>Stor, glad, gyllene hund som står mitt på stigen och inte tänker flytta sig. Vill leka.</p>
+    <p><b>Vill:</b> bullen.</p>
+    <p><b>I spelet:</b> <code>ge kanelbulle till ludde</code> → han springer i väg med den. Utan bulle måste man gå runt via ängen, vilket kostar 5 minuter.</p>
+  </div>
+
+</div>
+
+<!-- ============================================================ -->
+<h2 id="platser">3. Platser</h2>
+
+<h3>Uggleskolan</h3>
+<ul>
+  <li><b>Fritidsrummet</b> – startpunkt. Bord med pärlplattor, soffa, mellanmålsvagnen. Lena är här. Sigrid sitter i soffan. Dörr till korridoren i norr, dörr till förskoleavdelningen i öster.</li>
+  <li><b>Korridoren</b> – långt, skolluktande. Klasskrokar, en matteaffisch på väggen ("Veckans klurighet") och en toalett. Personalrummet i väster, klassrum 3 i norr, skolgården i öster via ytterdörren.</li>
+  <li><b>Personalrummet</b> – Dan sitter vid sitt skrivbord. Whiteboard på väggen. Nyckelknippan ligger bredvid datorn. Kaffedoft.</li>
+  <li><b>Klassrum 3</b> – låst. Innanför: bänkar, Arthurs och Olivers ryggsäckar hänger på krokarna längst bak.</li>
+  <li><b>Förskoleavdelningen</b> – Emilia är här. Färgglatt, lite kaotiskt, ingen vuxen ser vem som kommer in.</li>
+  <li><b>Skolgården</b> – klätterställning, komposten, Bosse och skottkärran. Cykelställen i söder.</li>
+  <li><b>Cykelställen och bakgrinden</b> – grinden ut till gång- och cykelvägen. Bosse låser 16:30.</li>
+</ul>
+
+<h3>Byn</h3>
+<ul>
+  <li><b>Gång- och cykelvägen</b> – går från skolan till centrum. Trygg, lite lång.</li>
+  <li><b>Villakvarteren</b> – genväg. Snabbare, men här bor en granne som känner igen Arthur och kan ringa mamma (slumpad risk, eller undviks om man har reflexvästen på fel sätt, se pussel).</li>
+  <li><b>Sandby centrum</b> – ICA, pizzerian, busshållplatsen. Ali står utanför pizzerian och svär över skyltstället.</li>
+  <li><b>ICA</b> – man kan köpa en kanelbulle för 20 kr om man har pengarna. Personalen tittar misstänksamt på två barn utan vuxen men säger inget.</li>
+  <li><b>Stigen ner i Fågelsångsdalen</b> – trappan ner, bokskog, plötsligt tyst. Ludde står här.</li>
+  <li><b>Bäcken</b> – en fallen trädstam ligger över. Skuggigt, man ser inte var man sätter fötterna. Ficklampan hjälper.</li>
+  <li><b>Ängen</b> – omvägen runt Ludde. Blött.</li>
+  <li><b>Kojan</b> – byggd av grenar mot en stor bok. Inuti: en plåtburk under en sten. Skattkartan visar var.</li>
+</ul>
+
+<h3>Karta</h3>
+<pre>
+   [Personalrummet] ─V─ [Korridoren] ─N─ [Klassrum 3] (låst)
+                          │  Ö
+                          │
+   [Fritidsrummet] ─N─────┘        [Förskoleavd.] ─V─ [Fritidsrummet]
+        (start)
+                          │  Ö (ytterdörren)
+                          ▼
+                     [Skolgården] ─S─ [Cykelställen / bakgrinden] (låses 16:30)
+                                                │
+                                                ▼
+                     [Villakvarteren] ◄─genväg─ [Gång- och cykelvägen]
+                            │                          │
+                            └──────────► [Sandby centrum] ◄─┘
+                                          │  ICA · pizzerian
+                                          ▼
+                              [Stigen ner i Fågelsångsdalen] (Ludde)
+                                   │                 │
+                              [Ängen] (omväg)     [Bäcken] (trädstammen)
+                                   └───────┬─────────┘
+                                           ▼
+                                        [Kojan]
+</pre>
+
+<!-- ============================================================ -->
+<h2 id="foremal">4. Föremål</h2>
+<div class="tbl">
+<table>
+  <tr><th>Föremål</th><th>Var</th><th>Används till</th></tr>
+  <tr><td>Tuggummi</td><td>Arthurs ficka från start</td><td>Ge till Sigrid → avledning vid Lenas räkning</td></tr>
+  <tr><td>Veckans klurighet (gåtan)</td><td>Matteaffischen i korridoren, <code>ta gåta</code> eller <code>läs affisch</code></td><td>Ge till Dan → han går till whiteboarden</td></tr>
+  <tr><td>Nyckelknippan</td><td>Dans skrivbord, bara när Dan står vid whiteboarden</td><td>Låsa upp klassrum 3. Fem nycklar, en med blå tejp.</td></tr>
+  <tr><td>Arthurs ryggsäck</td><td>Klassrum 3</td><td>Innehåller ficklampan</td></tr>
+  <tr><td>Olivers ryggsäck</td><td>Klassrum 3</td><td>Innehåller skattkartan och 20 kr</td></tr>
+  <tr><td>Ficklampan</td><td>Arthurs ryggsäck</td><td>Gå över trädstammen utan att bli blöt</td></tr>
+  <tr><td>Skattkartan</td><td>Olivers ryggsäck</td><td>Hitta rätt sten i kojan. Utan karta: gissa, 3 minuter per fel sten.</td></tr>
+  <tr><td>20 kr</td><td>Olivers ryggsäck</td><td>Köpa kanelbulle på ICA (snabbare än att hjälpa Ali)</td></tr>
+  <tr><td>Kanelbulle</td><td>Ali eller ICA</td><td>Ge till Ludde</td></tr>
+  <tr><td>Reflexvästen</td><td>Emilia, förskoleavdelningen</td><td>Valfri. Man syns i dalen (bra) och i villakvarteren (dåligt).</td></tr>
+  <tr><td>Plåtburken (skatten)</td><td>Kojan, under stenen kartan visar</td><td>Målet. Innehållet bestäms i "Öppna frågor".</td></tr>
+</table>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="scener">5. Scener</h2>
+
+<p class="akt">Akt 1 · Smita från fritids · 16:20–16:40</p>
+
+<details open>
+<summary>Scen 1 · Idén <span class="tid">Fritidsrummet · 16:20</span></summary>
+<div>
+<p>Spelet börjar. Arthur och Oliver sitter vid pärlplattebordet. Lena räknar barnen högt: "…tolv, tretton, fjorton. Bra, alla här." Arthur tittar ut genom fönstret och sedan på Oliver.</p>
+<div class="dialog">
+  <p><b>Arthur:</b> Din karta. Den ligger i väskan. I klassrummet.</p>
+  <p><b>Oliver:</b> Ja? Vi hämtar den i morgon.</p>
+  <p><b>Arthur:</b> I morgon regnar det. Vi går nu.</p>
+  <p><b>Oliver:</b> Klassrummet är låst, Arthur.</p>
+  <p><b>Arthur:</b> Dan har nycklar.</p>
+  <p><i>Oliver suckar på det sätt som betyder ja.</i></p>
+</div>
+<div class="val"><b>Spelaren kan:</b> titta runt, prata med Sigrid (får veta att Lena räknar om tjugo minuter), prata med Oliver, gå norr till korridoren, gå öster till förskoleavdelningen.</div>
+<p><b>Vidare:</b> gå norr.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 2 · Affischen <span class="tid">Korridoren · 16:22</span></summary>
+<div>
+<p>Korridoren är tom. På väggen hänger "Veckans klurighet", Dans matteaffisch. Ingen har löst den den här veckan.</p>
+<div class="dialog">
+  <p><i>På affischen står: "Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?"</i></p>
+  <p><b>Oliver:</b> Sju. Det är sju.</p>
+  <p><b>Arthur:</b> Jag vet. Men Dan vet det inte än.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b> läsa affischen, ta gåtan (Arthur skriver av den på handen), gå väster till personalrummet, gå norr till klassrum 3 (låst: "Dörren rör sig inte"), gå öster ut på skolgården.</div>
+<p><b>Vidare:</b> ta gåtan, gå väster.</p>
+<p><b>Om spelaren går till Dan utan gåtan:</b> Dan säger "Nycklar? Nej. Gå och lek." och man förlorar 2 minuter.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 3 · Dan och whiteboarden <span class="tid">Personalrummet · 16:24</span></summary>
+<div>
+<p>Dan sitter med ryggen mot dörren. Nyckelknippan ligger bredvid datorn. Whiteboarden är blank.</p>
+<div class="dialog">
+  <p><b>Arthur:</b> Dan, vi har en gåta du inte kan.</p>
+  <p><b>Dan:</b> <i>(vänder sig inte om)</i> Det finns inga sådana.</p>
+  <p><b>Arthur:</b> Om man tar ett tal och tredubblar det och drar bort nio blir det trettiosex. Men vad blir det om man i stället gångrar det med fyra och lägger till sju?</p>
+  <p><i>Tystnad. Dans stol skrapar. Han reser sig, tar en whiteboardpenna och börjar skriva. "Låt x vara talet…"</i></p>
+  <p><b>Oliver:</b> <i>(viskar)</i> Sexton. Det är sexton.</p>
+  <p><b>Arthur:</b> <i>(viskar)</i> Säg inte det till honom.</p>
+</div>
+<p>Poängen: Arthur ställer en <em>ny</em> fråga ovanpå affischens gåta, för att den gamla är för lätt för Dan. Det är Oliver som fixar tvisten på gåtan. Dan står nu vid whiteboarden i 10 minuter oavsett vad som händer.</p>
+<div class="val"><b>Spelaren kan:</b> ta nyckelknippan (fungerar bara när Dan står vid tavlan), titta på whiteboarden (Dan har skrivit tre rader ekvationer och ritat en katt), gå öster tillbaka.</div>
+<p><b>Vidare:</b> ta nycklarna, gå öster, gå norr till klassrum 3.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 4 · Rätt nyckel <span class="tid">Klassrum 3 · 16:27</span></summary>
+<div>
+<p>Knippan har fem nycklar: en stor gammal, en med röd tejp, en med blå tejp, en liten (postlådan?) och en med en plastbricka där det står "Gymnastik". På dörren till klassrum 3 sitter en blå klisterlapp.</p>
+<div class="dialog">
+  <p><b>Oliver:</b> Blå lapp, blå tejp. Dan är ordentlig.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b> <code>använd blå nyckel</code> → dörren öppnas. Fel nyckel kostar 1 minut och Oliver himlar med ögonen. Inne: <code>ta ryggsäckar</code>, <code>titta i ryggsäck</code> → ficklampa, skattkarta, 20 kr.</div>
+<p><b>Vidare:</b> ta båda ryggsäckarna. Lämna nycklarna? Valfritt: <code>lägg tillbaka nycklarna</code> hos Dan tar 2 minuter men ger bättre slut (Dan märker aldrig något).</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 5 · Lenas räkning <span class="tid">Korridoren / fritidsrummet · 16:30–16:40</span></summary>
+<div>
+<p>Klockan närmar sig 16:40 och Lenas nästa räkning. Om pojkarna inte finns i fritidsrummet då märker hon det.</p>
+<div class="dialog">
+  <p><b>Sigrid:</b> <i>(i soffan)</i> Vart ska ni med väskorna?</p>
+  <p><b>Arthur:</b> Toaletten.</p>
+  <p><b>Sigrid:</b> Med väskorna.</p>
+  <p><b>Arthur:</b> …Vill du ha tuggummi?</p>
+  <p><b>Sigrid:</b> <i>(sträcker ut handen)</i> Ni är på toa i tjugo minuter. Sen är ni inte min sak.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b> ge tuggummi till Sigrid → hon täcker för dem vid 16:40-räkningen. Ljuga för Sigrid ("vi ska bara på toa") utan tuggummi → hon berättar för Lena; Lena letar och hittar dem på skolgården, 5 minuters skäll och tillbaka till start. Hoppa över Sigrid helt → 16:40-räkningen missas och Lena är orolig i slutet (sämre slut, men inte stopp).</div>
+<p><b>Vidare:</b> gå öster genom ytterdörren till skolgården.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 6 · Bosse och grinden <span class="tid">Skolgården · 16:28–16:35</span></summary>
+<div>
+<p>Bosse står vid komposten med en skottkärra som sjunkit ner i gruset. Han tittar på klockan. Bakgrinden vid cykelställen är fortfarande öppen.</p>
+<div class="dialog">
+  <p><b>Bosse:</b> Ska ni hem? Grinden går igen halv fem, sen får ni gå runt.</p>
+  <p><b>Oliver:</b> Behöver du hjälp med kärran?</p>
+  <p><b>Bosse:</b> <i>(tittar på dem)</i> Två små, det är nästan en stor. Ta i.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b>
+<ul>
+  <li><code>hjälp bosse</code> → 3 minuter, Bosse lämnar grinden öppen "en stund till" och säger inget till någon.</li>
+  <li>Gå direkt till grinden före 16:30 → öppen, bara ut.</li>
+  <li>Efter 16:30 utan att ha hjälpt → låst. <code>klättra över komposten</code> tar 2 minuter, luktar, och Oliver får ett bananskal i håret. Fungerar.</li>
+</ul></div>
+<p><b>Vidare:</b> gå söder genom grinden ut på gång- och cykelvägen.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 6b · Emilia (valfri) <span class="tid">Förskoleavdelningen · när som helst i akt 1</span></summary>
+<div>
+<p>Går man in på förskoleavdelningen ser Emilia Arthur på en sekund.</p>
+<div class="dialog">
+  <p><b>Emilia:</b> ARTHUR! Vart ska du? Jag ska med!</p>
+  <p><b>Arthur:</b> Shh. Vi ska ingenstans.</p>
+  <p><b>Emilia:</b> Ni har väskor. Jag har väst. <i>(håller upp reflexvästen)</i></p>
+</div>
+<div class="val"><b>Spelaren kan:</b> ta med Emilia (får reflexvästen, men alla förflyttningar tar 1 minut extra och slutet blir "Kompisslutet"), eller lova att leka med henne i morgon (hon skriker inte, man får ingen väst).</div>
+</div>
+</details>
+
+<p class="akt">Akt 2 · Genom byn · 16:40–16:55</p>
+
+<details>
+<summary>Scen 7 · Vägvalet <span class="tid">Gång- och cykelvägen · 16:40</span></summary>
+<div>
+<p>Utanför grinden. Cykelvägen svänger av mot centrum, lång och trygg. Rakt fram, mellan häckarna, går en genväg genom villakvarteren.</p>
+<div class="dialog">
+  <p><b>Oliver:</b> Cykelvägen. Där bor ingen som känner oss.</p>
+  <p><b>Arthur:</b> Genvägen är fem minuter kortare.</p>
+  <p><b>Oliver:</b> Och Margit bor där.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b>
+<ul>
+  <li>Cykelvägen: 6 minuter, inget händer.</li>
+  <li>Villakvarteren: 3 minuter. Margit (grannen) står i trädgården. Har man reflexvästen på är det Emilias väst och Margit känner igen den: hon ringer mamma (räknas som upptäckt i slutet). Utan väst: hon tittar men är inte säker, 50 % risk att hon ringer. <code>hälsa på margit</code> och säg att Oliver ska sova över → hon nöjer sig och ringer inte.</li>
+</ul></div>
+<p><b>Vidare:</b> Sandby centrum.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 8 · Ali och skyltstället <span class="tid">Sandby centrum · 16:45</span></summary>
+<div>
+<p>Ali står utanför pizzerian och tittar på ett skyltställ som blåst omkull och rullat in under en parkerad bil.</p>
+<div class="dialog">
+  <p><b>Ali:</b> Arthur! Oliver! Är ni ute själva? Säg inget, jag vill inte veta. Kan ni krypa in under bilen? Jag får inte plats.</p>
+  <p><b>Arthur:</b> Om vi får en bulle.</p>
+  <p><b>Ali:</b> Ni får en bulle om ni får ut skylten. Och en vägbeskrivning om det är kojan ni ska till. Det är det alltid.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b>
+<ul>
+  <li><code>hjälp ali</code> → 2 minuter, kanelbulle + vägbeskrivning ("Ner för trappan, håll höger vid den stora boken, över stammen, kojan är där bäcken svänger").</li>
+  <li>Gå in på ICA och köpa bulle för 20 kr → 1 minut, ingen vägbeskrivning. Spelaren behöver då kartan eller får gissa vid boken.</li>
+  <li>Strunta i bullen → Ludde blir ett problem.</li>
+</ul></div>
+<p><b>Vidare:</b> stigen ner i Fågelsångsdalen.</p>
+</div>
+</details>
+
+<p class="akt">Akt 3 · Fågelsångsdalen · 16:55–17:10</p>
+
+<details>
+<summary>Scen 9 · Ludde <span class="tid">Stigen · 16:52</span></summary>
+<div>
+<p>Trappan ner i dalen. Det blir tyst och grönt. Mitt på stigen står Ludde, stor och gyllene, med tungan ute och svansen som en propeller.</p>
+<div class="dialog">
+  <p><b>Oliver:</b> Den är snäll.</p>
+  <p><b>Arthur:</b> Den är stor.</p>
+  <p><b>Oliver:</b> Den är snäll och stor. Ge den bullen.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b> <code>ge kanelbulle till ludde</code> → han springer i väg, stigen är fri. <code>gå runt via ängen</code> → 5 minuter, blöta skor. <code>klappa ludde</code> → han lägger sig ner mitt på stigen. Ingen framgång, men trevligt.</div>
+<p><b>Vidare:</b> bäcken.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 10 · Trädstammen <span class="tid">Bäcken · 16:57</span></summary>
+<div>
+<p>En fallen trädstam över bäcken. Under bokarna är det redan skumt och stammen är blank av mossa.</p>
+<div class="val"><b>Spelaren kan:</b> <code>tänd ficklampan</code> och <code>gå över stammen</code> → 1 minut, torra fötter. Gå över utan lampa → Oliver halkar i, blöt till knäna, 3 minuter och Oliver är tyst resten av vägen. Har man reflexvästen syns man för varandra, samma effekt som lampan.</div>
+<p><b>Vidare:</b> kojan.</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 11 · Kojan och skatten <span class="tid">Kojan · 17:00</span></summary>
+<div>
+<p>Kojan står lutad mot en stor bok där bäcken svänger, precis som Ali sa. Inuti är golvet täckt av stenar. Under en av dem ligger plåtburken.</p>
+<div class="dialog">
+  <p><b>Oliver:</b> <i>(vecklar ut kartan)</i> Tredje stenen från ingången, den platta.</p>
+  <p><b>Arthur:</b> Du ritade ju den här. Du vet väl var den är?</p>
+  <p><b>Oliver:</b> Det var på lördagen. Det var ljust då.</p>
+</div>
+<div class="val"><b>Spelaren kan:</b> med kartan: <code>lyft platta stenen</code> → burken direkt. Utan karta: fyra stenar att prova, 2 minuter per fel. <code>öppna burken</code> → skatten (innehåll: se öppna frågor). Klockan går. Oliver påminner om hämtningen.</div>
+<p><b>Vidare:</b> hem. Återvägen är automatisk och tar 12 minuter, 9 om man springer (<code>spring</code>, men då tappar man en sak ur ryggsäcken, slumpat).</p>
+</div>
+</details>
+
+<details>
+<summary>Scen 12 · Tillbaka <span class="tid">Fritidsrummet · 17:10–17:20</span></summary>
+<div>
+<p>Pojkarna kommer in bakvägen. Vilket slut man får beror på klockan och vad man gjort på vägen. Se avsnitt 7.</p>
+</div>
+</details>
+
+<!-- ============================================================ -->
+<h2 id="pussel">6. Pussel</h2>
+<div class="tbl">
+<table>
+  <tr><th>Pussel</th><th>Ledtråd</th><th>Lösning</th><th>Om man misslyckas</th></tr>
+  <tr><td>Få Dans nycklar</td><td>Matteaffischen i korridoren. Oliver: "Dan glömmer allt om han får räkna."</td><td>Ta gåtan, ge till Dan, ta nycklarna medan han står vid tavlan.</td><td>Frågar man rakt ut: nej, 2 minuter.</td></tr>
+  <tr><td>Rätt nyckel</td><td>Blå lapp på dörren.</td><td>Nyckeln med blå tejp.</td><td>1 minut per fel nyckel.</td></tr>
+  <tr><td>Lenas räkning</td><td>Sigrid vill ha tuggummi.</td><td>Ge tuggummi → hon täcker.</td><td>Ljuga: Lena hittar dem, 5 minuter, tillbaka till start. Ignorera: sämre slut.</td></tr>
+  <tr><td>Bakgrinden</td><td>Bosse och kärran.</td><td>Hjälp Bosse innan 16:30, eller klättra över komposten efter.</td><td>Klättra: 2 minuter, bananskal.</td></tr>
+  <tr><td>Margit i villakvarteren</td><td>Oliver varnar.</td><td>Ta cykelvägen, eller hälsa på Margit och säg att Oliver ska sova över.</td><td>Hon ringer mamma → räknas som upptäckt.</td></tr>
+  <tr><td>Ludde</td><td>Ali: "Ta med något till hunden."</td><td>Kanelbullen.</td><td>Omväg via ängen, 5 minuter.</td></tr>
+  <tr><td>Trädstammen</td><td>"Det är mörkt under bokarna."</td><td>Ficklampan (eller reflexvästen).</td><td>Oliver blöt, 3 minuter.</td></tr>
+  <tr><td>Rätt sten i kojan</td><td>Skattkartan.</td><td>Tredje stenen, den platta.</td><td>2 minuter per fel sten.</td></tr>
+</table>
+</div>
+
+<p>Snabbaste vägen genom spelet tar cirka 40 speltidsminuter (16:20 → 17:00 vid kojan, hemma 17:12). Det finns alltså marginal för ett eller två misstag, men inte för tre.</p>
+
+<!-- ============================================================ -->
+<h2 id="slut">7. Slut</h2>
+<div class="cards">
+  <div class="card">
+    <h3>Ingen märkte något</h3>
+    <div class="role">Tillbaka före 17:15 · Sigrid täckte · Margit ringde inte</div>
+    <p>Pojkarna sitter vid pärlplattebordet när mamma kommer. Lena säger "de har varit så lugna i dag". Oliver håller plåtburken under bordet. Arthur ler på det sätt som betyder <em>i morgon igen</em>.</p>
+    <p>Bonus: la man tillbaka nycklarna hos Dan hälsar han glatt och säger att han löste gåtan. Det blev sextiosju.</p>
+  </div>
+  <div class="card">
+    <h3>Upptäckta</h3>
+    <div class="role">Tillbaka efter 17:15, eller två missade räkningar, eller Margit ringde</div>
+    <p>Mamma står i dörren med armarna i kors. Lena har ringt. Ingen är arg på riktigt, men det blir ett långt samtal i bilen, och skattkartan blir beslagtagen till helgen. Plåtburken får de behålla.</p>
+  </div>
+  <div class="card">
+    <h3>Kompisslutet</h3>
+    <div class="role">Emilia följde med</div>
+    <p>De hinner tillbaka. Allt är lugnt. Sen säger Emilia, högt, till Lena, till mamma och till hela fritids: "VI HITTADE EN SKATT I SKOGEN OCH EN HUND ÅT UPP BULLEN." Tystnad. Sen skrattar alla, utom Arthur. Bästa slutet enligt Emilia.</p>
+  </div>
+</div>
+
+<!-- ============================================================ -->
+<h2 id="fragor">8. Öppna frågor</h2>
+<ul>
+  <li><b>Vad finns i plåtburken?</b> Förslag: Olivers gamla walkie-talkies från förra sommaren, gömda för att ha en anledning att gå tillbaka. Eller något som pekar mot nästa äventyr.</li>
+  <li><b>Namn på spelet.</b> "Flykten från fritids" är arbetsnamn. Alternativ: "Klockan är 16:20", "Kojan i Fågelsångsdalen".</li>
+  <li><b>Hur strikt klocka?</b> Minuterna ovan är förslag. Ska spelaren se klockan hela tiden, eller bara när Oliver påminner?</li>
+  <li><b>Kommandon på svenska eller engelska?</b> Storyboarden antar svenska: <code>gå norr</code>, <code>ta nyckel</code>, <code>prata med dan</code>, <code>ge bulle till ludde</code>.</li>
+  <li><b>Margits 50 %-slump.</b> Slump i ett textäventyr kan kännas orättvist. Alternativ: hon ringer alltid om man inte hälsar.</li>
+  <li><b>Ska Emilia vara med alls?</b> Hon gör spelet roligare men krångligare. Går att lägga till i version 2.</li>
+  <li><b>Spelmotor.</b> Egen liten parser i JavaScript (en HTML-fil, samma stil som denna), eller ett färdigt verktyg som Inform 7 / Twine?</li>
+</ul>
+
+</main>
+</body>
+</html>

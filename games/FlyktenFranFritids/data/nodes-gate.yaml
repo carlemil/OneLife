@@ -1,0 +1,80 @@
+# Gate nodes host an AI-dialogue encounter (`gate:` -> gates.yaml). The player leaves
+# through an ordinary edge when ready. Gates never move the player: the payoff is a flag
+# and a conditional edge.
+nodes:
+
+  # --- Scen 3 · Dan och whiteboarden ---
+  - id: dan
+    arc: main
+    type: gate
+    location: personalrummet
+    gate: dan-gatan
+    title: "Personalrummet"
+    media: {image_theme: staff-room-desk-keys-whiteboard}
+    body: "Dan sitter med ryggen mot dörren och planerar. Nyckelknippan ligger bredvid datorn. Whiteboarden på väggen är blank. Det luktar kaffe. Dan vänder sig inte om. \"Nycklar? Nej. Gå och lek.\" (Prata med honom. Fråga inte om nycklarna – ge honom något att räkna på.)"
+    body_variants:
+      - when: {all: [{flag_set: keys_returned}]}
+        body: "Personalrummet. Dan står fortfarande vid whiteboarden. Tre rader ekvationer och en katt. Nyckelknippan ligger bredvid datorn igen, exakt där den låg. Han har inte märkt någonting."
+      - when: {all: [{flag_set: have_keys}]}
+        body: "Personalrummet. Dan står vid whiteboarden och mumlar. Han har skrivit tre rader ekvationer och ritat en katt. Platsen bredvid datorn där nyckelknippan låg är tom – den tynger i Arthurs ficka."
+      - when: {all: [{flag_set: dan_at_board}]}
+        body: "Dan står vid whiteboarden med ryggen mot er och skriver. \"Låt x vara talet…\" Han har glömt att ni finns. Nyckelknippan ligger kvar bredvid datorn. Fem nycklar. En med blå tejp."
+    edges:
+      - id: e-dan-ta-nycklar
+        to: korridoren
+        label: Ta nyckelknippan från skrivbordet
+        conditions: {all: [{flag_set: dan_at_board}, {not: {flag_set: have_keys}}, {not: {flag_set: have_backpacks}}]}
+        effects: {progress_points: 25, advance_story_time: 1, set_flag: have_keys, log: "Ni tog nyckelknippan medan Dan stod vid tavlan. Fem nycklar: en stor gammal, en med röd tejp, en med blå tejp, en liten, en med bricka \"Gymnastik\"."}
+      - id: e-dan-lamna-nycklar
+        to: korridoren
+        label: Lägg tillbaka nyckelknippan bredvid datorn
+        conditions: {all: [{flag_set: have_backpacks}, {flag_set: have_keys}, {not: {flag_set: keys_returned}}]}
+        effects: {progress_points: 15, advance_story_time: 2, set_flag: keys_returned, clear_flag: have_keys, log: "Ni lade tillbaka nycklarna. Dan märkte ingenting. Två minuter."}
+      - id: e-dan-ut
+        to: korridoren
+        label: Gå tillbaka ut i korridoren
+        sort_order: 9
+        effects: {advance_story_time: 1, log: "Ni gick ut ur personalrummet."}
+
+  # --- Scen 5 · Sigrid ---
+  - id: sigrid
+    arc: main
+    type: gate
+    location: fritidsrummet
+    gate: sigrid-tuggummi
+    title: "Sigrid i soffan"
+    media: {image_theme: girl-on-sofa-knowing-look}
+    body: "Sigrid tittar på er över soffkanten. Hon vet allt om alla. \"Vart ska ni?\" Hon har redan sett väskorna, eller planen, eller båda. Lena räknar barnen om en stund. (Var schysst. Ljug inte – hon märker.)"
+    body_variants:
+      - when: {all: [{gate_passed: sigrid-tuggummi}]}
+        body: "Sigrid tuggar jordgubbstuggummi och tittar på taket. \"Ni är på toa. I tjugo minuter. Gå nu innan jag ändrar mig.\""
+    edges:
+      - id: e-sigrid-ljug
+        to: lena-hittar-er
+        label: "Ljug: \"Vi ska bara på toa\" – och gå"
+        conditions: {all: [{not: {gate_passed: sigrid-tuggummi}}]}
+        effects: {advance_story_time: 1, set_flag: lied_to_sigrid, log: "Ni ljög för Sigrid och gick. Hon reste sig ur soffan och gick raka vägen till Lena."}
+      - id: e-sigrid-tillbaka
+        to: fritidsrummet
+        label: Gå tillbaka till pärlplattebordet
+        sort_order: 9
+        effects: {log: "Ni lämnade Sigrid i soffan."}
+
+  # --- Scen 7 · Margit ---
+  - id: margit
+    arc: main
+    type: gate
+    location: villakvarteren
+    gate: margit-halsa
+    title: "Margit vid staketet"
+    media: {image_theme: old-lady-watering-can-garden-fence}
+    body: "Margit ställer ner vattenkannan och kisar över staketet. \"Arthur? Är det du? Är ni ute själva, pojkar?\" Hon känner mamma. Hon har mammas nummer i telefonen i köket. (Hälsa ordentligt, och ge henne en lugn förklaring.)"
+    body_variants:
+      - when: {all: [{gate_passed: margit-halsa}]}
+        body: "Margit har böjt sig ner över rabatten igen. \"Hälsa mamma,\" säger hon utan att titta upp. Ni kan gå vidare."
+    edges:
+      - id: e-margit-tillbaka
+        to: villakvarteren
+        label: Gå vidare längs gatan
+        sort_order: 9
+        effects: {log: "Ni gick vidare längs gatan."}

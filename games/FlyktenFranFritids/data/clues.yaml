@@ -1,0 +1,23 @@
+# Clues surface in the log when their `discover_conditions` hold (same DSL as edges).
+clues:
+
+  # The blue sticker on the classroom door (Scen 4)
+  - id: bla-lapp
+    puzzle: ratt-nyckel
+    placement: {kind: location_text, location_id: klassrum3}
+    reveal_text: "På dörren till klassrum 3 sitter en blå klisterlapp. Oliver: \"Blå lapp, blå tejp. Dan är ordentlig.\""
+    discover_conditions: {all: [{node_visited: klassrum3}]}
+
+  # Oliver's treasure map (in his backpack)
+  - id: skattkartan
+    puzzle: ratt-sten
+    placement: {kind: interaction, location_id: klassrum3}
+    reveal_text: "Olivers skattkarta, ritad i helgen: kojan lutar mot den stora boken där bäcken svänger. Ett kryss inne i kojan: TREDJE STENEN FRÅN INGÅNGEN, DEN PLATTA."
+    discover_conditions: {all: [{flag_set: have_backpacks}]}
+
+  # Ali's directions (Scen 8)
+  - id: ali-vagbeskrivning
+    puzzle: ratt-sten
+    placement: {kind: dialogue, location_id: centrum}
+    reveal_text: "Alis vägbeskrivning: \"Ner för trappan, håll höger vid den stora boken, över stammen – kojan är där bäcken svänger. Och ta med något till hunden.\""
+    discover_conditions: {all: [{flag_set: ali_helped}]}

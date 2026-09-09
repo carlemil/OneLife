@@ -1,0 +1,2 @@
+# Standalone edges (explicit `from`). All edges in this game are embedded in their nodes.
+edges: []

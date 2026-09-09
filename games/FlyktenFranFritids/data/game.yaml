@@ -1,0 +1,84 @@
+# Game-level metadata + engine configuration for this dataset. Any key omitted here falls
+# back to a built-in default (api/app/gameconfig.py). title/subtitle/first_summary go into
+# the `games` registry table; the rest is read at runtime.
+#
+# This dataset is authored DIRECTLY IN SWEDISH (no i18n sidecar): `language: sv` below makes
+# selecting the game switch the player's UI chrome to Swedish as well.
+game:
+  title: "Flykten från fritids"
+  subtitle: "Klockan är 16:20. Ryggsäckarna är kvar i klassrummet. Vi smiter."
+  first_summary: "Uggleskolans fritids, 16:20. Arthur har tråkigt."
+  language: sv
+
+  # No map in this game — the whole afternoon is told through choices.
+  map: false
+
+  # The in-game clock. story_time counts minutes from here; the engine shows it as HH:MM.
+  # Pickup is 17:15 = story_time 55. Bosse locks the back gate at 16:30 = story_time 10.
+  clock:
+    start: "16:20"
+
+  setting:
+    region: "Södra Sandby, Skåne, Sverige"
+    period: "en vardagseftermiddag i september, nutid"
+
+  # Titles/particles that are not part of a character's name.
+  name_particles: [the, fröken, farbror, tant, herr, fru]
+
+  # Forced manual + quiz shown once before play (account-level). Written for a nine-year-old:
+  # no death, no fear — the clock is the whole game.
+  onboarding:
+    pass_threshold: 2
+    manual: |
+      FLYKTEN FRÅN FRITIDS
+
+      Du är Arthur. Du går i trean på Uggleskolan i Södra Sandby, och just nu sitter du på
+      fritids och har tråkigt. Din bästa kompis Oliver glömde sin ryggsäck i klassrummet, och
+      i den ligger skattkartan han ritade i helgen. Klockan är 16:20. Mamma hämtar 17:15.
+
+      Planen: få tag i nycklarna, hämta ryggsäckarna, smita ut ur skolan, gå genom byn till
+      Fågelsångsdalen, hitta kojan och skatten – och vara tillbaka innan mamma kommer.
+
+      SÅ HÄR FUNKAR DET
+      • Spelet är en berättelse. Du väljer vad Arthur gör genom att klicka på ett val, och du
+        pratar med människor genom att skriva vad Arthur säger.
+      • KLOCKAN uppe till höger går hela tiden. Allt tar tid: att gå, att prata, att prova fel
+        nyckel. Den som slösar minuter på fel saker kommer hem för sent.
+      • Oliver följer med överallt. Om du fastnar kan du be om en ledtråd – då viskar Oliver.
+      • LOGGEN sparar allt som händer. Den är ditt minne: vad folk sa, vad ni hittade.
+      • Det finns inget game over. Alla vägar leder till ett slut – bara olika bra.
+
+      Läs klart, svara på frågorna, och sen: vi smiter.
+    quiz:
+      - id: q-klockan
+        prompt: "Vad är det viktigaste att hålla koll på i spelet?"
+        options:
+          - "Hur många poäng man har"
+          - "Klockan – allt tar tid, och mamma hämtar 17:15"
+          - "Hur många rum man har sett"
+          - "Hur arg Lena är"
+        answer: 1
+      - id: q-oliver
+        prompt: "Vad gör du om du fastnar och inte vet vad du ska göra?"
+        options:
+          - "Börjar om från början"
+          - "Ber om en ledtråd – då viskar Oliver"
+          - "Skriker på Dan"
+          - "Väntar tills klockan blir 17:15"
+        answer: 1
+      - id: q-prata
+        prompt: "Hur får man folk att hjälpa en i spelet?"
+        options:
+          - "Genom att slåss"
+          - "Genom att skriva vad Arthur säger till dem, och säga rätt sorts sak"
+          - "Genom att gå förbi dem"
+          - "Man kan inte prata med någon"
+        answer: 1
+
+  # Deterministic offline soundtrack (no LLM/Spotify): light, mischievous, Swedish afternoon.
+  offline:
+    tracks:
+      - {artist: "Bo Kaspers Orkester", title: "Undantag", why: "lätt och listig, sen eftermiddag"}
+      - {artist: "Georg Riedel", title: "Här kommer Pippi Långstrump", why: "busigt och snällt, barnens egen signatur"}
+      - {artist: "Håkan Hellström", title: "Känn ingen sorg för mig Göteborg", why: "spring, hjärtat bankar, hem innan mamma kommer"}
+      - {artist: "Kent", title: "Utan dina andetag", why: "skogen blir tyst och grön nere i dalen"}

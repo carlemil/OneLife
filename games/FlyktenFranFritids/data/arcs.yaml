@@ -1,0 +1,5 @@
+# Narrative threads. `main` is the spine (is_spine: true).
+arcs:
+  - id: main
+    title: Flykten från fritids
+    is_spine: true

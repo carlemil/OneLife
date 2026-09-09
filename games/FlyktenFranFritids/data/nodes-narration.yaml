@@ -1,0 +1,80 @@
+# Narration beats. Exactly ONE node across all files is the entry (`entry: true`).
+# story_time = minutes since 16:20. Every edge costs the minutes the storyboard gives it.
+nodes:
+
+  # --- Scen 1 · Idén · 16:20 ---
+  - id: start
+    arc: main
+    type: narration
+    location: fritidsrummet
+    title: "Idén"
+    entry: true
+    media: {image_theme: fritids-room-bead-table-afternoon, real_place: "an after-school club room in a low brick primary school in Södra Sandby, Skåne, Sweden, late afternoon"}
+    body: "Klockan är 16:20 på Uggleskolans fritids. Arthur har tråkigt. Han och Oliver sitter vid pärlplattebordet och Lena räknar barnen högt: \"…tolv, tretton, fjorton. Bra, alla här.\" Arthur tittar ut genom fönstret och sedan på Oliver.\n\nArthur: Din karta. Den ligger i väskan. I klassrummet.\nOliver: Ja? Vi hämtar den i morgon.\nArthur: I morgon regnar det. Vi går nu.\nOliver: Klassrummet är låst, Arthur.\nArthur: Dan har nycklar.\n\nOliver suckar på det sätt som betyder ja. Mamma hämtar 17:15. I fickan har Arthur ett paket tuggummi som han inte får ha på skolan."
+    edges:
+      - id: e-start-fritids
+        to: fritidsrummet
+        label: Vi smiter.
+        effects: {progress_points: 5, set_flag: have_gum, log: "Beslutet: vi smiter. Nycklarna först, sen ut, sen kojan – och tillbaka innan 17:15."}
+
+  # --- Scen 5 (dålig utgång) · Lena hittar er ---
+  - id: lena-hittar-er
+    arc: main
+    type: narration
+    location: skolgarden
+    title: "Lena hittar er"
+    media: {image_theme: schoolyard-teacher-arms-crossed}
+    body: "Ni hinner precis ut på skolgården när dörren slår upp bakom er. Lena. Armarna i kors. Sigrid står i fönstret med huvudet på sned.\n\nLena: Toaletten, sa ni. Med väskorna.\n\nDet blir fem minuters förklaringar, en lång blick och ett \"in med er nu\". Oliver säger ingenting på hela vägen tillbaka. Han tittar bara på klockan."
+    edges:
+      - id: e-lena-tillbaka
+        to: fritidsrummet
+        label: Tillbaka in till fritidsrummet
+        effects: {advance_story_time: 5, log: "Lena hittade er på skolgården. Fem minuters skäll, tillbaka till start."}
+
+  # --- Scen 11 · Skatten ---
+  - id: skatten
+    arc: main
+    type: narration
+    location: kojan
+    title: "Plåtburken"
+    media: {image_theme: rusty-tin-box-opened-in-a-den}
+    body: "Plåtburken är kall och lite rostig i kanterna. Locket sitter hårt. Oliver håller ficklampan, Arthur bänder.\n\nInuti ligger inte det Oliver gömde. Oliver blir alldeles tyst. \"Det här är inte mina saker.\"\n\nI burken: en gammal mässingsnyckel med en pappersbricka, och en lapp, hopvikt två gånger. På brickan står med blyerts: KVARNEN. På lappen, i snirklig handstil: \"Till den som hittar det här. Nyckeln går till dörren under kvarnen. Kom när det är mörkt. Ta med en kompis. – R.\"\n\nArthur: Vem är R?\nOliver: Ingen aning. Men det är någon som vet var vår koja är.\n\nUte mellan bokarna har det blivit skummare. Oliver tittar på klockan och sedan på Arthur. Mamma. 17:15."
+    edges:
+      - id: e-skatten-ga
+        to: tillbaka
+        label: Gå hem samma väg – lugnt och ordentligt
+        effects: {progress_points: 10, advance_story_time: 12, log: "Ni gick hem genom byn med plåtburken i Olivers ryggsäck. Tolv minuter."}
+      - id: e-skatten-spring
+        to: tillbaka
+        label: Spring hem!
+        effects: {progress_points: 10, advance_story_time: 9, log: "Ni sprang hela vägen. Nio minuter, och ni är alldeles andfådda."}
+
+  # --- Scen 12 · Tillbaka ---
+  - id: tillbaka
+    arc: main
+    type: narration
+    location: fritidsrummet
+    title: "Bakvägen in"
+    media: {image_theme: school-back-door-dusk}
+    body: "Bakvägen in. Grinden, skolgården, ytterdörren som ni lämnade på glänt. Korridoren luktar som vanligt. Inne från fritidsrummet hörs pärlplattor som skramlar och Lenas röst. Oliver drar ner mössan över öronen som om det hjälpte. Nu gäller det bara att sätta sig ner som om ingenting hänt."
+    body_variants:
+      - when: {all: [{flag_set: emilia_along}]}
+        body: "Bakvägen in – med Emilia i reflexväst två steg bakom, som lyser som en liten gul lampa i korridoren. \"Shh,\" säger Arthur för femtionde gången. \"Jag ÄR tyst,\" säger Emilia, högt. Inne från fritidsrummet hörs pärlplattor och Lenas röst. Nu gäller det bara att sätta sig ner som om ingenting hänt."
+      - when: {all: [{story_time_gte: 55}]}
+        body: "Bakvägen in. Grinden, skolgården, ytterdörren. Men det är för tyst i korridoren, och i fönstret mot parkeringen står en bil med motorn på. Mammas bil. Oliver stannar. \"Arthur. Klockan.\""
+    edges:
+      - id: e-tillbaka-kompis
+        to: ending-kompis
+        label: Smyg in och sätt er vid pärlplattebordet
+        conditions: {all: [{flag_set: emilia_along}]}
+        effects: {log: "Ni smög in på fritids igen – med Emilia."}
+      - id: e-tillbaka-upptackta
+        to: ending-upptackta
+        label: Smyg in och sätt er vid pärlplattebordet
+        conditions: {all: [{not: {flag_set: emilia_along}}, {any: [{story_time_gte: 55}, {not: {flag_set: sigrid_covers}}, {flag_set: margit_called}]}]}
+        effects: {log: "Ni smög in på fritids igen."}
+      - id: e-tillbaka-ingen-markte
+        to: ending-ingen-markte
+        label: Smyg in och sätt er vid pärlplattebordet
+        conditions: {all: [{not: {flag_set: emilia_along}}, {not: {story_time_gte: 55}}, {flag_set: sigrid_covers}, {not: {flag_set: margit_called}}]}
+        effects: {progress_points: 30, log: "Ni smög in på fritids igen. Ingen vände sig om."}

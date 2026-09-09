@@ -1,0 +1,25 @@
+# World cells: three areas laid out west-to-east — the school, the village, the valley.
+# Movement is by explicit story edges (no node is world_access): a guided afternoon, not
+# open travel. `arrival_node` is where a cell is entered.
+cells:
+  - id: skolan
+    grid_x: 0
+    grid_y: 0
+    name: Uggleskolan
+    kind: village
+    region: "Uggleskolan, en låg tegelskola med fritids, Södra Sandby, Skåne"
+    arrival_node: fritidsrummet
+  - id: byn
+    grid_x: 1
+    grid_y: 0
+    name: Byn
+    kind: village
+    region: "Södra Sandby by, Skåne – villagator, cykelväg, ICA och pizzeria"
+    arrival_node: cykelvagen
+  - id: dalen
+    grid_x: 2
+    grid_y: 0
+    name: Fågelsångsdalen
+    kind: wilderness
+    region: "Fågelsångsdalen, en bokskogsravin med bäck söder om Södra Sandby, Skåne"
+    arrival_node: stigen

@@ -1,0 +1,78 @@
+# Puzzle nodes host a puzzle (`puzzle:` -> puzzles.yaml). Wrong answers cost minutes (on_fail).
+nodes:
+
+  # --- Scen 2 · Affischen ---
+  - id: affischen
+    arc: main
+    type: puzzle
+    location: korridoren
+    puzzle: veckans-klurighet
+    title: "Veckans klurighet"
+    media: {image_theme: maths-poster-on-school-wall}
+    body: "Dans matteaffisch. Ingen har löst den den här veckan. På affischen står: \"Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?\"\n\nOliver: Sju. Det är sju.\nArthur: Jag vet. Men Dan vet det inte än.\n\n(Svara på gåtan så skriver Arthur av den på handen.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: veckans-klurighet}]}
+        body: "Gåtan står skriven med kulspets på Arthurs handflata. Talet är sju – men det är inte poängen. Poängen är att Dan får den."
+    edges:
+      - id: e-affisch-klar
+        to: korridoren
+        label: Gå tillbaka ut i korridoren med gåtan på handen
+        conditions: {all: [{puzzle_solved: veckans-klurighet}]}
+        effects: {log: "Gåtan är avskriven. Nu till Dan."}
+      - id: e-affisch-tillbaka
+        to: korridoren
+        label: Strunta i affischen
+        sort_order: 9
+        effects: {log: "Ni lämnade affischen."}
+
+  # --- Scen 4 · Rätt nyckel ---
+  - id: klassrum3
+    arc: main
+    type: puzzle
+    location: klassrum3
+    puzzle: ratt-nyckel
+    title: "Dörren till klassrum 3"
+    media: {image_theme: classroom-door-blue-sticker-key-ring}
+    body: "Knippan har fem nycklar: en stor gammal, en med röd tejp, en med blå tejp, en liten (postlådan?) och en med en plastbricka där det står \"Gymnastik\". På dörren sitter en blå klisterlapp.\n\nOliver: Blå lapp, blå tejp. Dan är ordentlig.\n\n(Vilken nyckel provar du? Fel nyckel kostar en minut.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: ratt-nyckel}]}
+        body: "Klassrum 3. Bänkar, en glömd tröja, och längst bak på krokarna: Arthurs och Olivers ryggsäckar. I Arthurs: ficklampan. I Olivers: skattkartan, hopvikt fyra gånger, och tjugo kronor i en ficka."
+    edges:
+      - id: e-klassrum-ryggsackar
+        to: korridoren
+        label: Ta ryggsäckarna och gå ut i korridoren
+        conditions: {all: [{puzzle_solved: ratt-nyckel}]}
+        effects: {progress_points: 20, advance_story_time: 1, log: "Ni tog båda ryggsäckarna och gick ut. Ficklampa, skattkarta, tjugo kronor."}
+      - id: e-klassrum-tillbaka
+        to: korridoren
+        label: Gå tillbaka ut i korridoren utan att prova
+        conditions: {all: [{not: {puzzle_solved: ratt-nyckel}}]}
+        sort_order: 9
+        effects: {advance_story_time: 1, log: "Ni lämnade dörren låst."}
+
+  # --- Scen 11 · Kojan och rätt sten ---
+  - id: kojan
+    arc: main
+    type: puzzle
+    location: kojan
+    puzzle: ratt-sten
+    title: "Kojan"
+    media: {image_theme: branch-den-against-beech-flat-stones, real_place: "a children's den of leaning branches against a huge beech tree by a stream bend in a Skåne beech wood"}
+    body: "Kojan står lutad mot en stor bok där bäcken svänger, precis som Ali sa. Inuti är golvet täckt av stenar. Under en av dem ligger plåtburken.\n\nArthur: Du ritade ju den här. Du vet väl var den är?\nOliver: Det var på lördagen. Det var ljust då.\n\n(Vilken sten lyfter du? Fel sten kostar två minuter.)"
+    body_variants:
+      - when: {all: [{puzzle_solved: ratt-sten}]}
+        body: "Den platta stenen ligger vänd upp och ner bredvid hålet. I hålet: plåtburken. Oliver håller ficklampan med båda händerna."
+      - when: {all: [{flag_set: have_backpacks}]}
+        body: "Kojan står lutad mot den stora boken där bäcken svänger. Golvet är täckt av stenar. Oliver vecklar ut kartan i ficklampans sken.\n\nOliver: Tredje stenen från ingången, den platta.\nArthur: Du ritade ju den här. Du vet väl var den är?\nOliver: Det var på lördagen. Det var ljust då.\n\n(Vilken sten lyfter du?)"
+    edges:
+      - id: e-kojan-burk
+        to: skatten
+        label: Öppna plåtburken
+        conditions: {all: [{puzzle_solved: ratt-sten}]}
+        effects: {progress_points: 20, advance_story_time: 1, log: "Ni lyfte upp plåtburken ur hålet."}
+      - id: e-kojan-ge-upp
+        to: tillbaka
+        label: Ge upp letandet och gå hem
+        conditions: {all: [{not: {puzzle_solved: ratt-sten}}]}
+        sort_order: 9
+        effects: {advance_story_time: 12, log: "Ni gav upp och gick hem utan skatten. Tolv minuter."}
