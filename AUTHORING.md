@@ -117,6 +117,41 @@ See `content/killebackskolan.yaml` and `content/marta.yaml` for full examples.
 
 ---
 
+## Clock-driven games, minute costs and other per-game switches
+
+`story_time` is a plain integer the engine carries per save; edges (and gate/puzzle
+effects) add to it with `advance_story_time: N`, and conditions read it with
+`story_time_gte: N` (combine with `not:` for "before"). A game can present it as a wall
+clock and charge minutes for mistakes — `games/FlyktenFranFritids` is the worked example:
+
+```yaml
+game:
+  clock: {start: "16:20"}   # state.clock = "HH:MM" = start + story_time minutes (header shows it)
+  language: sv              # base YAML is Swedish → selecting the game switches the UI chrome
+  map: false                # no overview map: no map block, every edge stays a button
+
+puzzles:
+  - id: ratt-nyckel
+    on_solve: {set_flag: have_backpacks, advance_story_time: 1, log: "…"}
+    on_fail:  {advance_story_time: 1, log: "Fel nyckel. En minut borta."}   # every wrong answer
+
+nodes:
+  - id: cykelstallen
+    edges:
+      - {id: e-grind, to: cykelvagen, label: Gå ut genom grinden,
+         conditions: {any: [{not: {story_time_gte: 10}}, {flag_set: bosse_helped}]},
+         effects: {advance_story_time: 1, set_flag: [left_school, out_in_time]}}
+```
+
+- `on_fail` uses the same effect keys as `on_solve` and is applied on every wrong answer
+  (crosswords excluded); its `log` line is what the player sees.
+- `set_flag` / `clear_flag` accept a single flag **or a list**.
+- Without `clock`, `story_time` still advances but is never shown. Without `language`, the
+  base is English (translations live in `i18n/<lang>.yaml` sidecars). Without `map: false`,
+  the overview map is drawn from `map: {x, y}` node coordinates and `images/maps/icons/`.
+
+---
+
 ## Crossword puzzles
 
 A `puzzle` node can host a **crossword**: an interlocking grid of clued across/down

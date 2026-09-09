@@ -137,7 +137,22 @@ async def submit(conn, player_id, session, answer: str, entry: str = "") -> dict
     await conn.execute(
         "UPDATE puzzle_progress SET attempts=$4 WHERE player_id=$1 AND game_id=$2 AND puzzle_id=$3",
         player_id, gid, pz["id"], attempts)
-    return {"solved": False, "message": "Nothing happens."}
+    # A wrong answer may cost something (`on_fail`, same effect DSL as on_solve —
+    # typically `advance_story_time` in a clock-driven game, plus a `log` beat).
+    on_fail = json.loads(pz["on_fail"]) if ("on_fail" in pz.keys() and pz["on_fail"]) else {}
+    if on_fail:
+        if lang != "en" and on_fail.get("log"):
+            on_fail = {**on_fail, "log": await i18n.tr_one(
+                conn, gid, lang, "puzzles", pz["id"], "on_fail.log", on_fail["log"])}
+        _seq, story_time = await apply_action(
+            conn, player_id, gid, session["log_id"], node_id=node["id"],
+            effects=on_fail, story_time=session["story_time"], kind="puzzle")
+        await conn.execute(
+            """UPDATE player_games SET story_time=$1, last_played_at=now()
+               WHERE player_id=$2 AND game_id=$3""",
+            story_time, player_id, gid)
+        session["story_time"] = story_time
+    return {"solved": False, "message": on_fail.get("log") or "Nothing happens."}
 
 
 async def _submit_crossword(conn, player_id, gid, session, node, pz, pp,

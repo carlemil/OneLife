@@ -761,6 +761,8 @@
   async function refresh() {
     try {
       game = await api.state();
+      // A game authored in another language switches the chrome to match.
+      if (game?.language && game.language !== lang) { lang = game.language; localStorage.setItem('onelife_lang', lang); }
       logEntries = (await api.log()).entries;
       myWindow = (await api.leaderboard({ around: 1 })).rows;
     } catch (e) {
@@ -976,7 +978,7 @@
               <div class="banner">{@html atmo.image_svg}<span class="setting">{atmo.setting}</span></div>
             {/if}
           </div>
-          <h2>{game.node.title}</h2>
+          <h2>{game.node.title}{#if game.clock}<span class="clock" title="story time">🕓 {game.clock}</span>{/if}</h2>
           {#each prose(game.node.body) as para}<p class="body">{para}</p>{/each}
           <p class="media">🎨 {game.node.media.image_theme} &nbsp; 🎵 {game.node.media.music_theme}</p>
 
@@ -1344,6 +1346,7 @@
   .topbar .link { font-size:1.6rem; padding-left:.8rem; vertical-align:middle; line-height:1; }
   .body { font-size:1.15rem; line-height:1.6; }
   .media { color:#5a5a72; font-size:.85rem; }
+  .clock { float:right; font-size:.95rem; font-weight:normal; font-variant-numeric:tabular-nums; color:#5a5a72; }
   .gate-passed { color:#9ad29a; font-size:.95rem; margin:.25rem 0 1rem; }
   .llmload { background:#15171f; border:1px solid #2a2e3e; border-radius:8px; padding:.6rem .9rem; margin:0 0 1rem; font-size:.92rem; color:#c9cce0; }
   .llmload.err { border-color:#5a3a3a; color:#e0b0b0; }

@@ -262,14 +262,14 @@ async def seed_content(conn, data: dict, game_id: str) -> list[str]:
                 game_id, c["id"], c["name"], c["persona"], c.get("reveal_name"))
         for p in data["puzzles"]:
             await conn.execute(
-                """INSERT INTO puzzles (game_id,id,type,prompt,solution,required_clues,hint_ladder,on_solve)
-                   VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb,$8::jsonb)
+                """INSERT INTO puzzles (game_id,id,type,prompt,solution,required_clues,hint_ladder,on_solve,on_fail)
+                   VALUES ($1,$2,$3,$4,$5::jsonb,$6,$7::jsonb,$8::jsonb,$9::jsonb)
                    ON CONFLICT (game_id,id) DO UPDATE SET type=EXCLUDED.type,prompt=EXCLUDED.prompt,
                      solution=EXCLUDED.solution,required_clues=EXCLUDED.required_clues,
-                     hint_ladder=EXCLUDED.hint_ladder,on_solve=EXCLUDED.on_solve""",
+                     hint_ladder=EXCLUDED.hint_ladder,on_solve=EXCLUDED.on_solve,on_fail=EXCLUDED.on_fail""",
                 game_id, p["id"], p["type"], p.get("prompt", ""), json.dumps(p.get("solution", {})),
                 list(p.get("required_clues", []) or []), json.dumps(p.get("hint_ladder", [])),
-                json.dumps(p.get("on_solve", {})))
+                json.dumps(p.get("on_solve", {})), json.dumps(p.get("on_fail", {})))
         for n in data["nodes"]:
             await conn.execute(
                 """INSERT INTO story_nodes (game_id,id,arc_id,type,location_id,title,body,body_variants,is_entry,is_death,world_access,gate_id,puzzle_id,media,map)
@@ -437,15 +437,18 @@ async def export_content(conn, game_id: str) -> dict:
         data["locations"].append(row)
 
     for p in await conn.fetch(
-            "SELECT id,type,prompt,solution,required_clues,hint_ladder,on_solve "
+            "SELECT id,type,prompt,solution,required_clues,hint_ladder,on_solve,on_fail "
             "FROM puzzles WHERE game_id=$1 ORDER BY id", game_id):
-        data["puzzles"].append({
+        row = {
             "id": p["id"], "type": p["type"], "prompt": p["prompt"],
             "solution": _j(p["solution"], {}),
             "required_clues": list(p["required_clues"] or []),
             "hint_ladder": _j(p["hint_ladder"], []),
             "on_solve": _j(p["on_solve"], {}),
-        })
+        }
+        if _j(p["on_fail"], {}):
+            row["on_fail"] = _j(p["on_fail"], {})
+        data["puzzles"].append(row)
 
     for c in await conn.fetch(
             "SELECT id,puzzle_id,placement,reveal_text,discover_conditions "

@@ -205,34 +205,31 @@ def main():
     terminal = endings | deaths
 
     # ---- flags ever set anywhere (for typo / unreachable-flag detection) ----
+    # `set_flag` is one flag or a list of flags (engine.apply_action accepts both).
+    def set_flags(effects):
+        f = (effects or {}).get("set_flag")
+        return [] if not f else (list(f) if isinstance(f, list) else [f])
+
     declared_flags = set()
     for e in edges:
-        f = (e.get("effects") or {}).get("set_flag")
-        if f:
-            declared_flags.add(f)
+        declared_flags.update(set_flags(e.get("effects")))
     for g in gates.values():
-        f = (g.get("on_success") or {}).get("set_flag")
-        if f:
-            declared_flags.add(f)
+        declared_flags.update(set_flags(g.get("on_success")))
     for p in puzzles.values():
-        f = (p.get("on_solve") or {}).get("set_flag")
-        if f:
-            declared_flags.add(f)
+        declared_flags.update(set_flags(p.get("on_solve")))
 
     # ---- helpers to read a node's progress contribution -------------------
     def gate_flags(node):
         g = gates.get(node.get("gate"))
-        f = (g or {}).get("on_success", {}).get("set_flag") if g else None
         toks = {("gate", node.get("gate"))}
-        if f:
+        for f in set_flags((g or {}).get("on_success")):
             toks.add(("flag", f))
         return toks
 
     def puzzle_flags(node):
         p = puzzles.get(node.get("puzzle"))
-        f = (p or {}).get("on_solve", {}).get("set_flag") if p else None
         toks = {("puzzle", node.get("puzzle"))}
-        if f:
+        for f in set_flags((p or {}).get("on_solve")):
             toks.add(("flag", f))
         return toks
 
@@ -363,9 +360,9 @@ def main():
                 ctx = ctx_from(progress, reached)
                 for e in out_edges.get(nid, []):
                     if reach_evaluate(e.get("conditions"), ctx):
-                        f = (e.get("effects") or {}).get("set_flag")
-                        if f and ("flag", f) not in progress:
-                            progress.add(("flag", f)); changed = True
+                        for f in set_flags(e.get("effects")):
+                            if ("flag", f) not in progress:
+                                progress.add(("flag", f)); changed = True
                         to = e.get("to")
                         if to in nodes and to not in reached:
                             reached.add(to); changed = True
@@ -426,8 +423,7 @@ def main():
                     seen.add(ns); dq.append(ns)
             # Expand: take each visible edge
             for e in vis:
-                eff = (e.get("effects") or {}).get("set_flag")
-                ns_state = state | ({("flag", eff)} if eff else set())
+                ns_state = state | {("flag", f) for f in set_flags(e.get("effects"))}
                 ns = (e.get("to"), frozenset(ns_state))
                 if e.get("to") in nodes and ns not in seen:
                     seen.add(ns); dq.append(ns)

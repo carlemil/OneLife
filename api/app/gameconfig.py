@@ -23,6 +23,16 @@ from . import gamestate
 # content); the SandbyMystery dataset overrides these in its own game.yaml.
 DEFAULTS = {
     "setting": {"region": "", "period": ""},
+    # `map: false` turns the overview map off for a game (no map block in the state, no
+    # map panel; every edge is offered as a button).
+    "map": True,
+    # In-game wall clock: {"start": "16:20"} makes the engine expose story_time (minutes)
+    # as "HH:MM" in every state. Absent → no clock is shown.
+    "clock": {},
+    # Language the base YAML is written in. Content defaults to English; a game authored
+    # directly in another language declares it here so selecting the game switches the
+    # player's UI chrome to match (main.select_game).
+    "language": "en",
     # Name particles/titles that are not the name itself (so "von Trapp" is known as
     # "Trapp"). A small cross-European default; datasets add their own honorifics.
     "name_particles": ["the", "von", "van", "der", "de", "la", "le"],

@@ -198,6 +198,7 @@ CREATE TABLE puzzles (
     required_clues TEXT[] NOT NULL DEFAULT '{}',
     hint_ladder    JSONB NOT NULL DEFAULT '[]',
     on_solve       JSONB NOT NULL DEFAULT '{}',
+    on_fail        JSONB NOT NULL DEFAULT '{}',   -- effects applied on a wrong answer (e.g. advance_story_time)
     PRIMARY KEY (game_id, id)
 );
 

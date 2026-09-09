@@ -144,6 +144,22 @@ async def reveal_cells_around(conn, player_id, game_id, node_id, seq, log_id, st
             player_id, game_id, c["id"], stamp)
 
 
+def _as_list(v) -> list:
+    return [] if v is None else (list(v) if isinstance(v, (list, tuple)) else [v])
+
+
+def clock_for(game_id: str, story_time: int) -> str | None:
+    """The in-game wall clock as "HH:MM", when the dataset declares one
+    (`game.clock.start: "16:20"`); story_time counts minutes from that start."""
+    cfg = (gameconfig.for_game(game_id).get("clock") or {})
+    start = str(cfg.get("start") or "")
+    if ":" not in start:
+        return None
+    h, m = start.split(":", 1)
+    total = (int(h) * 60 + int(m) + int(story_time or 0)) % (24 * 60)
+    return f"{total // 60:02d}:{total % 60:02d}"
+
+
 # --------------------------------------------------------------------------- #
 #  Apply one action: a single log entry + its effects, all stamped with seq.
 # --------------------------------------------------------------------------- #
@@ -166,15 +182,16 @@ async def apply_action(conn, player_id, game_id, log_id, *, node_id: str | None,
             """INSERT INTO progress_events (player_id, game_id, seq, kind, points)
                VALUES ($1,$2,$3,$4,$5)""", player_id, game_id, seq, kind, pts)
 
-    if "set_flag" in effects:
+    # `set_flag` / `clear_flag` take one flag or a list of flags.
+    for flag in _as_list(effects.get("set_flag")):
         await conn.execute(
             """INSERT INTO player_flags (player_id, game_id, flag, set_at_seq)
                VALUES ($1,$2,$3,$4) ON CONFLICT (player_id, game_id, flag) DO NOTHING""",
-            player_id, game_id, effects["set_flag"], seq)
-    if "clear_flag" in effects:
+            player_id, game_id, flag, seq)
+    for flag in _as_list(effects.get("clear_flag")):
         await conn.execute(
             "DELETE FROM player_flags WHERE player_id=$1 AND game_id=$2 AND flag=$3",
-            player_id, game_id, effects["clear_flag"])
+            player_id, game_id, flag)
 
     # write_memory is recorded in the log summary for the slice; the full
     # agent_memories/pgvector path is deferred (see DATA_MODEL.md).
@@ -812,8 +829,13 @@ async def render_state(conn, player_id, session) -> dict:
     # edge leading to a place the map can walk to in this cell is "on the map" and
     # is NOT offered as a button — only in-place actions (gate/puzzle entry,
     # examine, the risky force-door) stay as buttons.
-    block, on_map_ids = await unified_map_block(
-        conn, player_id, node, session["story_time"])
+    # A dataset can switch the map off entirely (`game.map: false`): no map block, so
+    # every edge stays a button and the client draws no map panel.
+    if gameconfig.for_game(gid).get("map") is False:
+        block, on_map_ids = None, set()
+    else:
+        block, on_map_ids = await unified_map_block(
+            conn, player_id, node, session["story_time"])
     visible = [{"id": e["id"],
                 "label": tx.tr("story_edges", e["id"], "label", e["label"]),
                 "danger": e["danger"],
@@ -853,6 +875,8 @@ async def render_state(conn, player_id, session) -> dict:
         "clipboard": clipboard or "",
         "language": tx.lang,
         "story_time": session["story_time"],
+        "clock": clock_for(gid, session["story_time"]),
+        "language": session.get("language", "en"),
         # Current alignment coordinate (the full drift history is on /api/alignment).
         "alignment": {"good_evil": ctx.good_evil, "law_chaos": ctx.law_chaos,
                       "label": alignment_label(ctx.good_evil, ctx.law_chaos)},

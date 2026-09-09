@@ -14,7 +14,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, FileResponse
 from pydantic import BaseModel
 
-from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations, i18n
+from . import db, engine, gates, puzzles, llm, memory, content, content_log, auth, onboarding, atmosphere, security, admin, map_write, gamestate, migrations, i18n, gameconfig
 from .dsl import evaluate
 from .strings import M, t
 
@@ -123,6 +123,9 @@ async def _startup():
             "ALTER TABLE players ADD COLUMN IF NOT EXISTS language TEXT NOT NULL DEFAULT 'en'")
         await conn.execute(
             "ALTER TABLE player_games ADD COLUMN IF NOT EXISTS language TEXT")
+        # Effects applied on a wrong puzzle answer (clock-driven games charge minutes).
+        await conn.execute(
+            "ALTER TABLE puzzles ADD COLUMN IF NOT EXISTS on_fail JSONB NOT NULL DEFAULT '{}'")
         # The clipboard is per-(player, game) — notes must not leak between games. (The
         # old account-level players.clipboard column is left in place but unused.)
         await conn.execute(
@@ -686,6 +689,14 @@ async def select_game(body: GameSelectBody, authorization: str | None = Header(d
         if not sess.get("log_id"):
             async with conn.transaction():
                 await _start_game(conn, sess)
+        # A game authored in a non-English base language plays in that language unless
+        # the player has already chosen a per-game override.
+        base_lang = (gameconfig.for_game(game_id).get("language") or "en").strip()
+        if base_lang != "en":
+            sess["language"] = await conn.fetchval(
+                """UPDATE player_games SET language=COALESCE(language,$3)
+                   WHERE player_id=$1 AND game_id=$2 RETURNING language""",
+                sess["player_id"], game_id, base_lang) or base_lang
         return await engine.render_state(conn, sess["player_id"], sess)
 
 

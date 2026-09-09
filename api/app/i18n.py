@@ -111,6 +111,9 @@ def _puzzle_leaves(p):
     log = (p.get("on_solve") or {}).get("log")
     if log:
         yield "on_solve.log", log
+    log = (p.get("on_fail") or {}).get("log")
+    if log:
+        yield "on_fail.log", log
     sol = p.get("solution") or {}
     # Crossword accepted answers are locked to the interlocking grid — never translated.
     if p.get("type") != "crossword" and sol.get("kind") != "crossword":
