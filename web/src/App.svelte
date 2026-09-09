@@ -792,6 +792,18 @@
     try { game = await api.takeEdge(id); logEntries = (await api.log()).entries; }
     catch (e) { error = e.message; } finally { busy = false; }
   }
+  // Digits 1-9 fire the matching choice button (F-keys are browser-reserved). Typing in an
+  // input wins; Esc blurs it so the digits work again.
+  function onChoiceKey(ev) {
+    if (phase !== 'game' || !game || ev.ctrlKey || ev.altKey || ev.metaKey) return;
+    const typing = /^(INPUT|TEXTAREA)$/.test(ev.target?.tagName);
+    if (ev.key === 'Escape' && typing) { ev.target.blur(); return; }
+    if (typing || !/^[1-9]$/.test(ev.key)) return;
+    const e = game.edges[Number(ev.key) - 1];
+    if (!e || busy || llmBlocked) return;
+    ev.preventDefault();
+    onEdge(e.id);
+  }
   async function onGate() {
     if (!gateInput.trim()) return; busy = true;
     try {
@@ -842,6 +854,7 @@
   }
 </script>
 
+<svelte:window onkeydown={onChoiceKey} />
 <main>
   <h1>{UI.appTitle} <span class="sub">{UI.appTagline}</span></h1>
   {#if error}<div class="error">{error}</div>{/if}
@@ -1019,9 +1032,9 @@
                talk to, in-place actions). The overview map is an additional way to
                navigate, not a replacement — so the options are always visible as text. -->
           <div class="edges">
-            {#each game.edges as e}
+            {#each game.edges as e, i}
               <button class:danger={e.danger > 0} onclick={() => onEdge(e.id)} disabled={busy || llmBlocked}>
-                {e.label}{#if e.danger > 0} ⚠{/if}
+                {#if i < 9}<kbd class="key">{i + 1}</kbd>{/if}{e.label}{#if e.danger > 0} ⚠{/if}
               </button>
             {/each}
             {#if game.edges.length === 0 && game.node.is_death}
@@ -1437,6 +1450,7 @@
   .authhint { margin:-.15rem 0 .35rem; line-height:1.4; }
   .modal-card.worldmap { width:min(960px,94vw); max-height:92vh; overflow:auto; }
   .edges { display:flex; flex-direction:column; gap:.5rem; margin-top:1rem; }
+  .edges .key { display:inline-block; min-width:1.2em; margin-right:.55rem; padding:0 .3em; border:1px solid #4a5680; border-radius:4px; font-family:inherit; font-size:.75rem; color:#9aa4c8; text-align:center; }
   .notes { margin-top:1.5rem; }
   button { background:#2a3550; color:#e8e8f0; border:1px solid #3a456a; padding:.55rem .8rem; border-radius:6px; cursor:pointer; text-align:left; }
   button:hover { background:#34416a; }
