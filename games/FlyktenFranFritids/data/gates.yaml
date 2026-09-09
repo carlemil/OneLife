@@ -15,7 +15,7 @@ gates:
       knows:
         - "att nyckelknippan ligger bredvid datorn på hans skrivbord"
         - "att klassrum 3 är låst för dagen"
-        - "veckans klurighet på affischen i korridoren (svaret är 7, men han låtsas inte om att den är lätt)"
+        - "veckans klurighet på affischen i korridoren (svaret är 15, men han låtsas inte om att den är lätt)"
       refuses:
         - "att låna ut eller ge bort nycklar till barn"
         - "att lämna skrivbordet för något annat än en riktigt bra gåta"

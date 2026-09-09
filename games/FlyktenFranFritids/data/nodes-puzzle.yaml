@@ -9,10 +9,10 @@ nodes:
     puzzle: veckans-klurighet
     title: "Veckans klurighet"
     media: {image_theme: maths-poster-on-school-wall}
-    body: "Dans matteaffisch. Ingen har löst den den här veckan. På affischen står: \"Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?\"\n\nOliver: Sju. Det är sju.\nArthur: Jag vet. Men Dan vet det inte än.\n\n(Svara på gåtan så skriver Arthur av den på handen.)"
+    body: "Dans matteaffisch. Ingen har löst den den här veckan. På affischen står: \"Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?\"\n\nOliver: Femton. Det är femton.\nArthur: Jag vet. Men Dan vet det inte än.\n\n(Svara på gåtan så skriver Arthur av den på handen.)"
     body_variants:
       - when: {all: [{puzzle_solved: veckans-klurighet}]}
-        body: "Gåtan står skriven med kulspets på Arthurs handflata. Talet är sju – men det är inte poängen. Poängen är att Dan får den."
+        body: "Gåtan står skriven med kulspets på Arthurs handflata. Talet är femton – men det är inte poängen. Poängen är att Dan får den."
     edges:
       - id: e-affisch-klar
         to: korridoren

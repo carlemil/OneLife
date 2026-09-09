@@ -7,16 +7,16 @@ puzzles:
   - id: veckans-klurighet
     type: riddle
     prompt: "På affischen står: \"Jag är ett tal. Tredubblar du mig och drar bort 9 får du 36. Vem är jag?\" Vilket tal är det?"
-    solution: {kind: set, set: ["7", "sju", "talet 7", "det är 7", "det är sju"]}
+    solution: {kind: set, set: ["15", "femton", "talet 15", "det är 15", "det är femton"]}
     hint_ladder:
       - "Oliver: \"Tänk baklänges. Lägg tillbaka nian först.\""
       - "Oliver: \"36 plus 9 är 45. Och 45 delat med tre?\""
-      - "Oliver: \"Sju. Det är sju. Jag vet, men Dan vet det inte än.\""
+      - "Oliver: \"Femton. Det är femton. Jag vet, men Dan vet det inte än.\""
     on_solve:
       progress_points: 20
       set_flag: have_riddle
       advance_story_time: 1
-      log: "Ni löste veckans klurighet: talet är 7. Arthur skrev av gåtan på handen – Dan ska få den."
+      log: "Ni löste veckans klurighet: talet är 15. Arthur skrev av gåtan på handen – Dan ska få den."
     on_fail:
       advance_story_time: 1
       log: "Fel. Oliver rynkar på näsan. En minut borta."

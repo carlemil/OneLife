@@ -28,7 +28,7 @@ map of *this game* and its design invariants.
 
 ## The spine
 `start` → `fritidsrummet` (hub; Sigrid gate, Emilia via `forskolan`) → `korridoren` →
-`affischen` (riddle, 7) → `dan` (gate: give him a riddle → `dan_at_board` → take keys) →
+`affischen` (riddle, 15) → `dan` (gate: give him a riddle → `dan_at_board` → take keys) →
 `klassrum3` (puzzle: blue key → `have_backpacks` = lamp + map + 20 kr) → `skolgarden`
 (help Bosse) → `cykelstallen` → `cykelvagen` → (cycle path | `villakvarteren` + Margit gate)
 → `centrum` (help Ali → bun + directions | buy a bun) → `stigen` (bun to Ludde | ängen) →
@@ -36,7 +36,7 @@ map of *this game* and its design invariants.
 
 - **Gates** (`gates.yaml`): `dan-gatan` · `sigrid-tuggummi` · `margit-halsa`. Hint ladders are
   Oliver whispering. Mercy after 4 attempts — a child must never get stuck.
-- **Puzzles** (`puzzles.yaml`): `veckans-klurighet` (7) · `ratt-nyckel` (blå) · `ratt-sten`
+- **Puzzles** (`puzzles.yaml`): `veckans-klurighet` (15) · `ratt-nyckel` (blå) · `ratt-sten`
   (tredje / den platta). All have `on_fail: {advance_story_time, log}`.
 - **Endings** (`nodes-ending.yaml`), chosen by `tillbaka`'s edge conditions:
   `ending-kompis` if `emilia_along`; else `ending-upptackta` if `story_time_gte: 55` OR
