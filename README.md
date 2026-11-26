@@ -32,7 +32,8 @@ docker compose up --build
 Then open **http://localhost:5173**.
 
 - **API** is on http://localhost:8000 (`/api/health`, OpenAPI docs at `/docs`).
-- **Postgres** initializes from `db/01_schema.sql` + `db/02_seed.sql` on first boot.
+- **Postgres** initializes from `db/01_schema.sql` + `db/03_memory.sql` on first boot; the
+  API then seeds the game content from YAML on startup.
 
 ### LLM provider (optional)
 
@@ -57,7 +58,8 @@ playable with no key. Pick a provider with `LLM_PROVIDER` in `.env`:
 
 ### How to play the slice
 
-1. Enter a name to begin.
+1. Sign up with email and password (TOTP 2FA is optional), go through the short
+   onboarding, then pick a game in the lobby.
 2. **Get your bearings** → you're in the entrance hall.
 3. **Examine the brass plaque** (a clue), then **approach the janitor**.
 4. Talk to him — be kind / say you're lost, *and* ask how to get out. He'll reveal
@@ -141,21 +143,23 @@ leaderboard points become untrustworthy); the deployed instance runs `anthropic`
 ## Layout
 
 ```
-db/        Postgres schema (DDL only; content comes from the data repo)
+db/        Postgres schema (DDL only; content comes from games/)
 api/       FastAPI backend (story engine, gates, puzzles, memory, content loader)
 web/       Svelte + Vite frontend (text-stream UI)
 Makefile   up / down / reset / seed / lint shortcuts
 *.md       Design docs
 ```
 
-The **game data is a separate repo**: this is the data-agnostic engine + editor.
-The YAML world lives in a sibling repo (default `../OneLife-KBK-mystery`), mounted
-into the API at `/content`. Run a different dataset with `GAME_DATA_DIR` in `.env`.
+The **game data lives in this repo** under `games/<Game>/data` (SandbyMystery,
+SSandby1992, FlyktenFranFritids). The default game (`./games/SandbyMystery/data`) is
+mounted into the API at `/content`, and the whole `games/` tree at `/games` so the admin
+"switch game" control can seed any of them. Pick a different default with
+`GAME_DATA_DIR` in `.env`.
 
 ## Authoring content
 
-Story, NPCs, puzzles, and clues live as `*.yaml` in the **data repo**
-(`../OneLife-KBK-mystery`), loaded by a validating seeder. `make lint` checks
+Story, NPCs, puzzles, and clues live as `*.yaml` under **`games/<Game>/data`**,
+loaded by a validating seeder. `make lint` checks
 references and proves the spine is completable; `make seed` loads it. See
 [AUTHORING.md](AUTHORING.md). (The API also auto-seeds on startup, so
 `docker compose up` is self-contained.)
